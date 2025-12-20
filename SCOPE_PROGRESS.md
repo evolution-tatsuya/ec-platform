@@ -18,19 +18,19 @@
 - [x] カート・商品詳細機能の実装イメージ
 - [x] mockups/design-theme-selector.html生成
 
-## Phase 3: Git/GitHub管理 [ ]
-- [ ] GitHubリポジトリ作成
-- [ ] .gitignore設定
-- [ ] 初回コミット
-- [ ] リモートリポジトリ連携
+## Phase 3: Git/GitHub管理 [x]
+- [x] GitHubリポジトリ作成
+- [x] .gitignore設定
+- [x] 初回コミット
+- [x] リモートリポジトリ連携
 
-## Phase 4: フロントエンド基盤 [ ]
-- [ ] React + TypeScript + Vite環境構築
-- [ ] MUI v6導入
-- [ ] ルーティング設定（React Router v6）
-- [ ] 状態管理（Zustand + React Query）
-- [ ] 共通コンポーネント実装
-- [ ] 認証機能（ログイン、登録）
+## Phase 4: フロントエンド基盤 [x]
+- [x] React + TypeScript + Vite環境構築
+- [x] MUI v6導入
+- [x] ルーティング設定（React Router v6）
+- [x] 状態管理（Zustand + React Query）
+- [x] 共通コンポーネント実装
+- [x] 認証機能（ログイン、登録）
 
 ## Phase 5: バックエンド基盤 [ ]
 - [ ] Node.js + Express + TypeScript環境構築
