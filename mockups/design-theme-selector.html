@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>デザインテーマ選択 - 多機能ECプラットフォーム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      color: white;
+      padding: 30px 0;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+
+    .tab-button {
+      padding: 15px 30px;
+      border: 2px solid white;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .tab-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .tab-button.active {
+      background: white;
+      color: #667eea;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .theme-content {
+      display: none;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .theme-content.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .theme-header {
+      padding: 30px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+
+    .theme-header h2 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+
+    .theme-header .description {
+      color: #666;
+      font-size: 1rem;
+    }
+
+    .color-palette {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .color-swatch {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .color-box {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .color-label {
+      font-size: 0.75rem;
+      color: #666;
+      font-weight: 600;
+    }
+
+    .mockup-container {
+      padding: 40px;
+      background: #f5f5f5;
+    }
+
+    /* Theme 1: Modern Professional */
+    .theme1 {
+      --primary: #1976d2;
+      --secondary: #dc004e;
+      --bg: #f5f5f5;
+      --text: #212121;
+      --card-bg: white;
+    }
+
+    /* Theme 2: Elegant Dark */
+    .theme2 {
+      --primary: #90caf9;
+      --secondary: #f48fb1;
+      --bg: #1a1a1a;
+      --text: #e0e0e0;
+      --card-bg: #2c2c2c;
+    }
+
+    /* Theme 3: Warm & Friendly */
+    .theme3 {
+      --primary: #ff6f00;
+      --secondary: #00bfa5;
+      --bg: #fff8e1;
+      --text: #3e2723;
+      --card-bg: white;
+    }
+
+    /* Theme 4: Cool Minimal */
+    .theme4 {
+      --primary: #7c4dff;
+      --secondary: #00e676;
+      --bg: #fafafa;
+      --text: #263238;
+      --card-bg: white;
+    }
+
+    .mockup {
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .mockup-header {
+      background: var(--primary);
+      color: white;
+      padding: 20px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+    }
+
+    .nav-links a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.3s;
+    }
+
+    .nav-links a:hover {
+      opacity: 0.8;
+    }
+
+    .user-actions {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.3s;
+    }
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .breadcrumb {
+      padding: 20px 30px;
+      font-size: 0.9rem;
+      color: var(--text);
+      opacity: 0.7;
+    }
+
+    .navigation-axes {
+      padding: 20px 30px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .axis-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .axis-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+      opacity: 0.8;
+    }
+
+    .axis-select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--primary);
+      border-radius: 8px;
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .axis-select:hover {
+      border-color: var(--secondary);
+    }
+
+    .tags-container {
+      padding: 20px 30px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .tag {
+      padding: 8px 16px;
+      background: var(--primary);
+      color: white;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .tag:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+    }
+
+    .products-grid {
+      padding: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .product-card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .product-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+
+    .product-image {
+      width: 100%;
+      height: 200px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 3rem;
+    }
+
+    .product-info {
+      padding: 16px;
+    }
+
+    .product-name {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .product-meta {
+      font-size: 0.85rem;
+      color: var(--text);
+      opacity: 0.6;
+      margin-bottom: 12px;
+    }
+
+    .product-price {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+
+    .product-stock {
+      font-size: 0.85rem;
+      color: var(--secondary);
+      margin-bottom: 12px;
+    }
+
+    .add-to-cart-btn {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .add-to-cart-btn:hover {
+      background: var(--secondary);
+      transform: scale(1.02);
+    }
+
+    @media (max-width: 768px) {
+      header h1 {
+        font-size: 1.8rem;
+      }
+
+      .tabs {
+        flex-direction: column;
+      }
+
+      .tab-button {
+        width: 100%;
+      }
+
+      .nav-links {
+        display: none;
+      }
+
+      .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 16px;
+        padding: 20px;
+      }
+
+      .navigation-axes {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🎨 デザインテーマ選択</h1>
+      <p>多機能ECプラットフォーム - 4つのモダンデザインテーマからお選びください</p>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-button active" onclick="switchTheme('theme1')">
+        💼 Modern Professional
+      </button>
+      <button class="tab-button" onclick="switchTheme('theme2')">
+        🌙 Elegant Dark
+      </button>
+      <button class="tab-button" onclick="switchTheme('theme3')">
+        🔥 Warm & Friendly
+      </button>
+      <button class="tab-button" onclick="switchTheme('theme4')">
+        ✨ Cool Minimal
+      </button>
+    </div>
+
+    <!-- Theme 1: Modern Professional -->
+    <div id="theme1" class="theme-content active">
+      <div class="theme-header">
+        <h2>💼 Modern Professional</h2>
+        <p class="description">信頼感と使いやすさを兼ね備えた、ビジネス向けの洗練されたデザイン</p>
+        <div class="color-palette">
+          <div class="color-swatch">
+            <div class="color-box" style="background: #1976d2;"></div>
+            <span class="color-label">Primary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #dc004e;"></div>
+            <span class="color-label">Secondary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #f5f5f5;"></div>
+            <span class="color-label">Background</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: white; border: 1px solid #ddd;"></div>
+            <span class="color-label">Card</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup-container">
+        <div class="mockup theme1">
+          <div class="mockup-header">
+            <div class="logo">🚗 CAR PARTS</div>
+            <div class="nav-links">
+              <a href="#">車パーツ</a>
+              <a href="#">イベント</a>
+              <a href="#">デジタル</a>
+            </div>
+            <div class="user-actions">
+              <button class="icon-btn">🔍</button>
+              <button class="icon-btn">🛒 3</button>
+              <button class="icon-btn">👤</button>
+            </div>
+          </div>
+
+          <div class="breadcrumb">
+            トップ > 車パーツ > トヨタ > プリウス > ZVW30
+          </div>
+
+          <div class="navigation-axes">
+            <div class="axis-group">
+              <div class="axis-label">🏭 メーカー</div>
+              <select class="axis-select">
+                <option>トヨタ</option>
+                <option>ホンダ</option>
+                <option>日産</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🚙 車種</div>
+              <select class="axis-select">
+                <option>プリウス</option>
+                <option>アクア</option>
+                <option>カローラ</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">📋 型式</div>
+              <select class="axis-select">
+                <option>ZVW30</option>
+                <option>ZVW35</option>
+                <option>ZVW51</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🔧 パーツ種類</div>
+              <select class="axis-select">
+                <option>すべて</option>
+                <option>ブレーキ</option>
+                <option>エンジン</option>
+                <option>外装</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tags-container">
+            <span class="tag">#セール</span>
+            <span class="tag">#新商品</span>
+            <span class="tag">#送料無料</span>
+            <span class="tag">#在庫あり</span>
+          </div>
+
+          <div class="products-grid">
+            <div class="product-card">
+              <div class="product-image">🔩</div>
+              <div class="product-info">
+                <div class="product-name">純正ブレーキパッド フロント</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥12,800</div>
+                <div class="product-stock">在庫: 15個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">⚙️</div>
+              <div class="product-info">
+                <div class="product-name">エアフィルター</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥3,200</div>
+                <div class="product-stock">在庫: 28個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">💡</div>
+              <div class="product-info">
+                <div class="product-name">LEDヘッドライト H11</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥8,900</div>
+                <div class="product-stock">在庫: 7個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">🛡️</div>
+              <div class="product-info">
+                <div class="product-name">フロントバンパー カーボン調</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥45,000</div>
+                <div class="product-stock">在庫: 2個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme 2: Elegant Dark -->
+    <div id="theme2" class="theme-content">
+      <div class="theme-header">
+        <h2>🌙 Elegant Dark</h2>
+        <p class="description">目に優しく高級感のあるダークテーマ。長時間利用も快適</p>
+        <div class="color-palette">
+          <div class="color-swatch">
+            <div class="color-box" style="background: #90caf9;"></div>
+            <span class="color-label">Primary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #f48fb1;"></div>
+            <span class="color-label">Secondary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #1a1a1a;"></div>
+            <span class="color-label">Background</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #2c2c2c;"></div>
+            <span class="color-label">Card</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup-container">
+        <div class="mockup theme2">
+          <div class="mockup-header">
+            <div class="logo">🚗 CAR PARTS</div>
+            <div class="nav-links">
+              <a href="#">車パーツ</a>
+              <a href="#">イベント</a>
+              <a href="#">デジタル</a>
+            </div>
+            <div class="user-actions">
+              <button class="icon-btn">🔍</button>
+              <button class="icon-btn">🛒 3</button>
+              <button class="icon-btn">👤</button>
+            </div>
+          </div>
+
+          <div class="breadcrumb">
+            トップ > 車パーツ > トヨタ > プリウス > ZVW30
+          </div>
+
+          <div class="navigation-axes">
+            <div class="axis-group">
+              <div class="axis-label">🏭 メーカー</div>
+              <select class="axis-select">
+                <option>トヨタ</option>
+                <option>ホンダ</option>
+                <option>日産</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🚙 車種</div>
+              <select class="axis-select">
+                <option>プリウス</option>
+                <option>アクア</option>
+                <option>カローラ</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">📋 型式</div>
+              <select class="axis-select">
+                <option>ZVW30</option>
+                <option>ZVW35</option>
+                <option>ZVW51</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🔧 パーツ種類</div>
+              <select class="axis-select">
+                <option>すべて</option>
+                <option>ブレーキ</option>
+                <option>エンジン</option>
+                <option>外装</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tags-container">
+            <span class="tag">#セール</span>
+            <span class="tag">#新商品</span>
+            <span class="tag">#送料無料</span>
+            <span class="tag">#在庫あり</span>
+          </div>
+
+          <div class="products-grid">
+            <div class="product-card">
+              <div class="product-image">🔩</div>
+              <div class="product-info">
+                <div class="product-name">純正ブレーキパッド フロント</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥12,800</div>
+                <div class="product-stock">在庫: 15個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">⚙️</div>
+              <div class="product-info">
+                <div class="product-name">エアフィルター</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥3,200</div>
+                <div class="product-stock">在庫: 28個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">💡</div>
+              <div class="product-info">
+                <div class="product-name">LEDヘッドライト H11</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥8,900</div>
+                <div class="product-stock">在庫: 7個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">🛡️</div>
+              <div class="product-info">
+                <div class="product-name">フロントバンパー カーボン調</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥45,000</div>
+                <div class="product-stock">在庫: 2個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme 3: Warm & Friendly -->
+    <div id="theme3" class="theme-content">
+      <div class="theme-header">
+        <h2>🔥 Warm & Friendly</h2>
+        <p class="description">温かみのある色使いで、親しみやすく楽しいショッピング体験を提供</p>
+        <div class="color-palette">
+          <div class="color-swatch">
+            <div class="color-box" style="background: #ff6f00;"></div>
+            <span class="color-label">Primary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #00bfa5;"></div>
+            <span class="color-label">Secondary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #fff8e1;"></div>
+            <span class="color-label">Background</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: white; border: 1px solid #ddd;"></div>
+            <span class="color-label">Card</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup-container">
+        <div class="mockup theme3">
+          <div class="mockup-header">
+            <div class="logo">🚗 CAR PARTS</div>
+            <div class="nav-links">
+              <a href="#">車パーツ</a>
+              <a href="#">イベント</a>
+              <a href="#">デジタル</a>
+            </div>
+            <div class="user-actions">
+              <button class="icon-btn">🔍</button>
+              <button class="icon-btn">🛒 3</button>
+              <button class="icon-btn">👤</button>
+            </div>
+          </div>
+
+          <div class="breadcrumb">
+            トップ > 車パーツ > トヨタ > プリウス > ZVW30
+          </div>
+
+          <div class="navigation-axes">
+            <div class="axis-group">
+              <div class="axis-label">🏭 メーカー</div>
+              <select class="axis-select">
+                <option>トヨタ</option>
+                <option>ホンダ</option>
+                <option>日産</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🚙 車種</div>
+              <select class="axis-select">
+                <option>プリウス</option>
+                <option>アクア</option>
+                <option>カローラ</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">📋 型式</div>
+              <select class="axis-select">
+                <option>ZVW30</option>
+                <option>ZVW35</option>
+                <option>ZVW51</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🔧 パーツ種類</div>
+              <select class="axis-select">
+                <option>すべて</option>
+                <option>ブレーキ</option>
+                <option>エンジン</option>
+                <option>外装</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tags-container">
+            <span class="tag">#セール</span>
+            <span class="tag">#新商品</span>
+            <span class="tag">#送料無料</span>
+            <span class="tag">#在庫あり</span>
+          </div>
+
+          <div class="products-grid">
+            <div class="product-card">
+              <div class="product-image">🔩</div>
+              <div class="product-info">
+                <div class="product-name">純正ブレーキパッド フロント</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥12,800</div>
+                <div class="product-stock">在庫: 15個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">⚙️</div>
+              <div class="product-info">
+                <div class="product-name">エアフィルター</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥3,200</div>
+                <div class="product-stock">在庫: 28個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">💡</div>
+              <div class="product-info">
+                <div class="product-name">LEDヘッドライト H11</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥8,900</div>
+                <div class="product-stock">在庫: 7個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">🛡️</div>
+              <div class="product-info">
+                <div class="product-name">フロントバンパー カーボン調</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥45,000</div>
+                <div class="product-stock">在庫: 2個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme 4: Cool Minimal -->
+    <div id="theme4" class="theme-content">
+      <div class="theme-header">
+        <h2>✨ Cool Minimal</h2>
+        <p class="description">シンプルで洗練された、究極のミニマリストデザイン</p>
+        <div class="color-palette">
+          <div class="color-swatch">
+            <div class="color-box" style="background: #7c4dff;"></div>
+            <span class="color-label">Primary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #00e676;"></div>
+            <span class="color-label">Secondary</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: #fafafa;"></div>
+            <span class="color-label">Background</span>
+          </div>
+          <div class="color-swatch">
+            <div class="color-box" style="background: white; border: 1px solid #ddd;"></div>
+            <span class="color-label">Card</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mockup-container">
+        <div class="mockup theme4">
+          <div class="mockup-header">
+            <div class="logo">🚗 CAR PARTS</div>
+            <div class="nav-links">
+              <a href="#">車パーツ</a>
+              <a href="#">イベント</a>
+              <a href="#">デジタル</a>
+            </div>
+            <div class="user-actions">
+              <button class="icon-btn">🔍</button>
+              <button class="icon-btn">🛒 3</button>
+              <button class="icon-btn">👤</button>
+            </div>
+          </div>
+
+          <div class="breadcrumb">
+            トップ > 車パーツ > トヨタ > プリウス > ZVW30
+          </div>
+
+          <div class="navigation-axes">
+            <div class="axis-group">
+              <div class="axis-label">🏭 メーカー</div>
+              <select class="axis-select">
+                <option>トヨタ</option>
+                <option>ホンダ</option>
+                <option>日産</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🚙 車種</div>
+              <select class="axis-select">
+                <option>プリウス</option>
+                <option>アクア</option>
+                <option>カローラ</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">📋 型式</div>
+              <select class="axis-select">
+                <option>ZVW30</option>
+                <option>ZVW35</option>
+                <option>ZVW51</option>
+              </select>
+            </div>
+            <div class="axis-group">
+              <div class="axis-label">🔧 パーツ種類</div>
+              <select class="axis-select">
+                <option>すべて</option>
+                <option>ブレーキ</option>
+                <option>エンジン</option>
+                <option>外装</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tags-container">
+            <span class="tag">#セール</span>
+            <span class="tag">#新商品</span>
+            <span class="tag">#送料無料</span>
+            <span class="tag">#在庫あり</span>
+          </div>
+
+          <div class="products-grid">
+            <div class="product-card">
+              <div class="product-image">🔩</div>
+              <div class="product-info">
+                <div class="product-name">純正ブレーキパッド フロント</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥12,800</div>
+                <div class="product-stock">在庫: 15個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">⚙️</div>
+              <div class="product-info">
+                <div class="product-name">エアフィルター</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥3,200</div>
+                <div class="product-stock">在庫: 28個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">💡</div>
+              <div class="product-info">
+                <div class="product-name">LEDヘッドライト H11</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥8,900</div>
+                <div class="product-stock">在庫: 7個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+
+            <div class="product-card">
+              <div class="product-image">🛡️</div>
+              <div class="product-info">
+                <div class="product-name">フロントバンパー カーボン調</div>
+                <div class="product-meta">トヨタ プリウス ZVW30</div>
+                <div class="product-price">¥45,000</div>
+                <div class="product-stock">在庫: 2個</div>
+                <button class="add-to-cart-btn">カートに追加</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function switchTheme(themeId) {
+      // Remove active class from all tabs and content
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.theme-content').forEach(content => content.classList.remove('active'));
+
+      // Add active class to selected tab and content
+      event.target.classList.add('active');
+      document.getElementById(themeId).classList.add('active');
+    }
+  </script>
+</body>
+</html>
