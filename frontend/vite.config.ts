@@ -5,7 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 3247,
+    port: 3249,
+    hmr: {
+      overlay: true,
+    },
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  },
+  optimizeDeps: {
+    force: true,
   },
   build: {
     minify: 'terser',

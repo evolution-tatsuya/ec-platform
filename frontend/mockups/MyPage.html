@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P-011: マイページ | ECプラットフォーム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .page-header h1 {
+      font-size: 28px;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .page-header p {
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 20px;
+      padding: 16px;
+      background: #f7fafc;
+      border-radius: 8px;
+    }
+
+    .user-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 600;
+    }
+
+    .user-details h2 {
+      font-size: 18px;
+      color: #1a202c;
+      margin-bottom: 4px;
+    }
+
+    .user-details p {
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .tab-container {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #e2e8f0;
+      background: #f7fafc;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 16px 24px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 600;
+      color: #718096;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .tab:hover {
+      background: #edf2f7;
+      color: #4a5568;
+    }
+
+    .tab.active {
+      color: #667eea;
+      background: white;
+      border-bottom-color: #667eea;
+    }
+
+    .tab-badge {
+      display: inline-block;
+      background: #fc8181;
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    .tab-content {
+      display: none;
+      padding: 32px;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* 購入履歴 */
+    .order-card {
+      background: white;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      transition: all 0.3s;
+    }
+
+    .order-card:hover {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .order-number {
+      font-weight: 700;
+      color: #1a202c;
+      font-size: 16px;
+    }
+
+    .order-date {
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .status-badge {
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .status-badge.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+
+    .status-badge.preparing {
+      background: #cce5ff;
+      color: #004085;
+    }
+
+    .status-badge.shipped {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status-badge.delivered {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+
+    .order-items {
+      margin-bottom: 16px;
+    }
+
+    .order-item {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .order-item:last-child {
+      border-bottom: none;
+    }
+
+    .order-item-image {
+      width: 80px;
+      height: 80px;
+      border-radius: 8px;
+      background: #f7fafc;
+      object-fit: cover;
+    }
+
+    .order-item-details {
+      flex: 1;
+    }
+
+    .order-item-name {
+      font-weight: 600;
+      color: #1a202c;
+      margin-bottom: 4px;
+    }
+
+    .order-item-quantity {
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .order-item-price {
+      font-weight: 600;
+      color: #667eea;
+      text-align: right;
+    }
+
+    .order-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 16px;
+      border-top: 2px solid #e2e8f0;
+    }
+
+    .order-total {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a202c;
+    }
+
+    .order-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.3s;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #5a67d8;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+    }
+
+    .btn-secondary:hover {
+      background: #667eea;
+      color: white;
+    }
+
+    /* デジタルチケット */
+    .ticket-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .ticket-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 16px;
+      padding: 24px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+      transition: all 0.3s;
+    }
+
+    .ticket-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+    }
+
+    .ticket-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+      animation: shimmer 3s infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% {
+        transform: translate(0, 0);
+      }
+      50% {
+        transform: translate(-30px, -30px);
+      }
+    }
+
+    .ticket-header {
+      margin-bottom: 20px;
+    }
+
+    .ticket-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .ticket-event-date {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .ticket-qr {
+      background: white;
+      padding: 16px;
+      border-radius: 12px;
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    .ticket-qr-placeholder {
+      width: 160px;
+      height: 160px;
+      margin: 0 auto;
+      background: #f7fafc;
+      border: 2px dashed #cbd5e0;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #a0aec0;
+      font-size: 12px;
+    }
+
+    .ticket-code {
+      margin-top: 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #4a5568;
+      font-weight: 600;
+      letter-spacing: 2px;
+    }
+
+    .ticket-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .ticket-status.used {
+      background: rgba(252, 129, 129, 0.3);
+    }
+
+    .ticket-used-badge {
+      background: #fc8181;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* アカウント設定 */
+    .settings-section {
+      margin-bottom: 32px;
+    }
+
+    .settings-section h3 {
+      font-size: 18px;
+      color: #1a202c;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .save-btn {
+      background: #48bb78;
+      color: white;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-size: 15px;
+    }
+
+    .save-btn:hover {
+      background: #38a169;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #a0aec0;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .empty-state-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #718096;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-description {
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 768px) {
+      .tabs {
+        flex-direction: column;
+      }
+
+      .tab {
+        border-bottom: 1px solid #e2e8f0;
+        border-right: none;
+      }
+
+      .tab.active {
+        border-right: 3px solid #667eea;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .ticket-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .order-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .order-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .order-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ページヘッダー -->
+    <div class="page-header">
+      <h1>マイページ</h1>
+      <p>購入履歴、デジタルチケット、アカウント情報を管理できます</p>
+
+      <div class="user-info">
+        <div class="user-avatar">山</div>
+        <div class="user-details">
+          <h2>山田 太郎</h2>
+          <p>yamada@example.com</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- タブコンテナ -->
+    <div class="tab-container">
+      <!-- タブナビゲーション -->
+      <div class="tabs">
+        <div class="tab active" data-tab="orders">
+          購入履歴<span class="tab-badge">3</span>
+        </div>
+        <div class="tab" data-tab="tickets">
+          デジタルチケット<span class="tab-badge">2</span>
+        </div>
+        <div class="tab" data-tab="settings">
+          アカウント設定
+        </div>
+      </div>
+
+      <!-- タブコンテンツ1: 購入履歴 -->
+      <div class="tab-content active" id="orders">
+        <!-- 注文1: 配送済み -->
+        <div class="order-card">
+          <div class="order-header">
+            <div>
+              <div class="order-number">注文番号: ORD-20251220-0001</div>
+              <div class="order-date">2025年12月20日 14:30</div>
+            </div>
+            <span class="status-badge delivered">配送完了</span>
+          </div>
+
+          <div class="order-items">
+            <div class="order-item">
+              <img src="https://via.placeholder.com/80" alt="商品画像" class="order-item-image">
+              <div class="order-item-details">
+                <div class="order-item-name">ブレーキパッド（フロント用）</div>
+                <div class="order-item-quantity">数量: 2個</div>
+              </div>
+              <div class="order-item-price">¥15,800</div>
+            </div>
+            <div class="order-item">
+              <img src="https://via.placeholder.com/80" alt="商品画像" class="order-item-image">
+              <div class="order-item-details">
+                <div class="order-item-name">エアフィルター</div>
+                <div class="order-item-quantity">数量: 1個</div>
+              </div>
+              <div class="order-item-price">¥3,200</div>
+            </div>
+          </div>
+
+          <div class="order-footer">
+            <div class="order-total">合計: ¥19,000</div>
+            <div class="order-actions">
+              <button class="btn btn-primary">再注文</button>
+              <button class="btn btn-secondary">詳細を見る</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 注文2: 発送済み -->
+        <div class="order-card">
+          <div class="order-header">
+            <div>
+              <div class="order-number">注文番号: ORD-20251218-0042</div>
+              <div class="order-date">2025年12月18日 10:15</div>
+            </div>
+            <span class="status-badge shipped">発送済み</span>
+          </div>
+
+          <div class="order-items">
+            <div class="order-item">
+              <img src="https://via.placeholder.com/80" alt="商品画像" class="order-item-image">
+              <div class="order-item-details">
+                <div class="order-item-name">イベントチケット：カーミーティング2025</div>
+                <div class="order-item-quantity">数量: 1枚</div>
+              </div>
+              <div class="order-item-price">¥5,000</div>
+            </div>
+          </div>
+
+          <div class="order-footer">
+            <div class="order-total">合計: ¥5,000</div>
+            <div class="order-actions">
+              <button class="btn btn-primary">配送状況を確認</button>
+              <button class="btn btn-secondary">詳細を見る</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 注文3: 準備中 -->
+        <div class="order-card">
+          <div class="order-header">
+            <div>
+              <div class="order-number">注文番号: ORD-20251215-0028</div>
+              <div class="order-date">2025年12月15日 16:45</div>
+            </div>
+            <span class="status-badge preparing">発送準備中</span>
+          </div>
+
+          <div class="order-items">
+            <div class="order-item">
+              <img src="https://via.placeholder.com/80" alt="商品画像" class="order-item-image">
+              <div class="order-item-details">
+                <div class="order-item-name">デジタル整備マニュアル（PDF）</div>
+                <div class="order-item-quantity">数量: 1点</div>
+              </div>
+              <div class="order-item-price">¥2,980</div>
+            </div>
+          </div>
+
+          <div class="order-footer">
+            <div class="order-total">合計: ¥2,980</div>
+            <div class="order-actions">
+              <button class="btn btn-primary">ダウンロード</button>
+              <button class="btn btn-secondary">詳細を見る</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- タブコンテンツ2: デジタルチケット -->
+      <div class="tab-content" id="tickets">
+        <div class="ticket-grid">
+          <!-- チケット1: 未使用 -->
+          <div class="ticket-card">
+            <div class="ticket-header">
+              <div class="ticket-title">カーミーティング2025</div>
+              <div class="ticket-event-date">📅 2025年12月28日 10:00〜18:00</div>
+            </div>
+
+            <div class="ticket-qr">
+              <div class="ticket-qr-placeholder">QRコード表示エリア<br>(受付時に表示)</div>
+              <div class="ticket-code">TICKET-CM2025-0042</div>
+            </div>
+
+            <div class="ticket-status">
+              <span>ステータス: 未使用</span>
+              <button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">QRコード表示</button>
+            </div>
+          </div>
+
+          <!-- チケット2: 使用済み -->
+          <div class="ticket-card">
+            <div class="ticket-header">
+              <div class="ticket-title">オートサロン2025（入場券）</div>
+              <div class="ticket-event-date">📅 2025年12月10日 09:00〜20:00</div>
+            </div>
+
+            <div class="ticket-qr">
+              <div class="ticket-qr-placeholder" style="opacity: 0.5;">使用済み</div>
+              <div class="ticket-code">TICKET-AS2025-0128</div>
+            </div>
+
+            <div class="ticket-status used">
+              <span>ステータス: 使用済み</span>
+              <span class="ticket-used-badge">2025/12/10 10:25 使用</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- タブコンテンツ3: アカウント設定 -->
+      <div class="tab-content" id="settings">
+        <!-- 基本情報 -->
+        <div class="settings-section">
+          <h3>基本情報</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">氏名</label>
+              <input type="text" class="form-input" value="山田 太郎">
+            </div>
+            <div class="form-group">
+              <label class="form-label">メールアドレス</label>
+              <input type="email" class="form-input" value="yamada@example.com">
+            </div>
+          </div>
+        </div>
+
+        <!-- デフォルト配送先 -->
+        <div class="settings-section">
+          <h3>デフォルト配送先</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">郵便番号</label>
+              <input type="text" class="form-input" value="150-0001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">電話番号</label>
+              <input type="text" class="form-input" value="090-1234-5678">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">住所</label>
+            <input type="text" class="form-input" value="東京都渋谷区神宮前1-2-3">
+          </div>
+          <div class="form-group">
+            <label class="form-label">建物名・部屋番号（任意）</label>
+            <input type="text" class="form-input" value="サンプルマンション101">
+          </div>
+        </div>
+
+        <!-- パスワード変更 -->
+        <div class="settings-section">
+          <h3>パスワード変更</h3>
+          <div class="form-group">
+            <label class="form-label">現在のパスワード</label>
+            <input type="password" class="form-input" placeholder="現在のパスワードを入力">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">新しいパスワード</label>
+              <input type="password" class="form-input" placeholder="8文字以上">
+            </div>
+            <div class="form-group">
+              <label class="form-label">新しいパスワード（確認）</label>
+              <input type="password" class="form-input" placeholder="再入力">
+            </div>
+          </div>
+        </div>
+
+        <!-- 保存ボタン -->
+        <button class="save-btn">変更を保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // タブ切り替え
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        // すべてのタブとコンテンツから active クラスを削除
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(tc => tc.classList.remove('active'));
+
+        // クリックされたタブに active クラスを追加
+        tab.classList.add('active');
+
+        // 対応するコンテンツに active クラスを追加
+        const targetTab = tab.dataset.tab;
+        document.getElementById(targetTab).classList.add('active');
+      });
+    });
+
+    // QRコード表示ボタン
+    document.querySelectorAll('.ticket-card .btn-primary').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if (e.target.textContent === 'QRコード表示') {
+          alert('QRコード表示画面に遷移します\n\n実装時は全画面モーダルでQRコードを表示します。');
+        }
+      });
+    });
+
+    // 保存ボタン
+    document.querySelector('.save-btn')?.addEventListener('click', () => {
+      alert('アカウント情報を保存しました！\n\n実装時はAPIで更新処理を実行します。');
+    });
+
+    // 各種アクションボタン
+    document.querySelectorAll('.order-actions .btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.textContent;
+        alert(`「${action}」機能は実装時に追加されます`);
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P-009: カートページ - モックアップ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      background-color: #f5f5f5;
+      padding-top: 72px;
+      padding-bottom: 80px;
+    }
+
+    /* Header */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(135deg, #7c4dff 0%, #b47cff 100%);
+      color: white;
+      padding: 16px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 24px;
+    }
+
+    .header-nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .header-nav a:hover {
+      text-decoration: underline;
+    }
+
+    /* Main Content */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    .page-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 32px;
+      color: #333;
+    }
+
+    .cart-layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 24px;
+    }
+
+    /* Cart Items */
+    .cart-items {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .cart-item {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .item-image {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .item-details {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .item-category {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #e3f2fd;
+      color: #1976d2;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 500;
+      width: fit-content;
+    }
+
+    .item-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .item-price {
+      font-size: 24px;
+      font-weight: 700;
+      color: #7c4dff;
+    }
+
+    .item-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: flex-end;
+    }
+
+    .quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #f5f5f5;
+      padding: 8px 16px;
+      border-radius: 8px;
+    }
+
+    .quantity-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid #ddd;
+      background: white;
+      color: #333;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .quantity-btn:hover:not(:disabled) {
+      background: #7c4dff;
+      color: white;
+      border-color: #7c4dff;
+    }
+
+    .quantity-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .quantity-display {
+      font-size: 18px;
+      font-weight: 600;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .remove-btn {
+      color: #d32f2f;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: underline;
+      padding: 8px;
+      transition: color 0.2s;
+    }
+
+    .remove-btn:hover {
+      color: #9a0007;
+    }
+
+    /* Summary Card */
+    .summary-card {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      height: fit-content;
+      position: sticky;
+      top: 96px;
+    }
+
+    .summary-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #333;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .summary-row:last-child {
+      border-bottom: none;
+      padding-top: 24px;
+      border-top: 2px solid #e0e0e0;
+    }
+
+    .summary-label {
+      font-size: 16px;
+      color: #666;
+    }
+
+    .summary-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .summary-total-label {
+      font-size: 20px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .summary-total-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #7c4dff;
+    }
+
+    .discount-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      background: #fff3e0;
+      color: #e65100;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    .checkout-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #7c4dff 0%, #b47cff 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 24px;
+      box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+      transition: all 0.3s;
+    }
+
+    .checkout-btn:hover {
+      box-shadow: 0 6px 16px rgba(124, 77, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .checkout-btn:disabled {
+      background: #e0e0e0;
+      color: #9e9e9e;
+      box-shadow: none;
+      transform: none;
+      cursor: not-allowed;
+    }
+
+    .continue-shopping {
+      display: block;
+      text-align: center;
+      color: #7c4dff;
+      text-decoration: none;
+      margin-top: 16px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .continue-shopping:hover {
+      text-decoration: underline;
+    }
+
+    /* Empty Cart */
+    .empty-cart {
+      background: white;
+      border-radius: 8px;
+      padding: 64px 32px;
+      text-align: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .empty-cart-icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 24px;
+      background: #f5f5f5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #bdbdbd;
+    }
+
+    .empty-cart-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 16px;
+    }
+
+    .empty-cart-text {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 32px;
+    }
+
+    .browse-products-btn {
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #7c4dff 0%, #b47cff 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+      transition: all 0.3s;
+    }
+
+    .browse-products-btn:hover {
+      box-shadow: 0 6px 16px rgba(124, 77, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .cart-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-card {
+        position: static;
+      }
+
+      .cart-item {
+        grid-template-columns: 80px 1fr;
+        gap: 16px;
+      }
+
+      .item-image {
+        width: 80px;
+        height: 80px;
+        font-size: 12px;
+      }
+
+      .item-actions {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">ECプラットフォーム</div>
+      <nav class="header-nav">
+        <a href="/cart">カート (3)</a>
+        <a href="/auth/login">ログイン</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="container">
+    <h1 class="page-title">ショッピングカート</h1>
+
+    <!-- カート内に商品がある場合 -->
+    <div class="cart-layout" id="cart-with-items">
+      <!-- Left: Cart Items -->
+      <div class="cart-items">
+        <!-- Cart Item 1 -->
+        <div class="cart-item">
+          <div class="item-image">商品画像</div>
+          <div class="item-details">
+            <span class="item-category">車パーツ</span>
+            <h3 class="item-name">86用 高性能ブレーキパッド フロント用</h3>
+            <div class="item-price">¥28,800</div>
+          </div>
+          <div class="item-actions">
+            <div class="quantity-controls">
+              <button class="quantity-btn" onclick="updateQuantity(1, -1)">−</button>
+              <span class="quantity-display" id="quantity-1">2</span>
+              <button class="quantity-btn" onclick="updateQuantity(1, 1)">+</button>
+            </div>
+            <button class="remove-btn" onclick="removeItem(1)">削除</button>
+          </div>
+        </div>
+
+        <!-- Cart Item 2 -->
+        <div class="cart-item">
+          <div class="item-image">商品画像</div>
+          <div class="item-details">
+            <span class="item-category">車パーツ</span>
+            <h3 class="item-name">86用 スポーツマフラー</h3>
+            <div class="item-price">¥89,800</div>
+          </div>
+          <div class="item-actions">
+            <div class="quantity-controls">
+              <button class="quantity-btn" onclick="updateQuantity(2, -1)">−</button>
+              <span class="quantity-display" id="quantity-2">1</span>
+              <button class="quantity-btn" onclick="updateQuantity(2, 1)">+</button>
+            </div>
+            <button class="remove-btn" onclick="removeItem(2)">削除</button>
+          </div>
+        </div>
+
+        <!-- Cart Item 3 -->
+        <div class="cart-item">
+          <div class="item-image">商品画像</div>
+          <div class="item-details">
+            <span class="item-category">イベント</span>
+            <h3 class="item-name">Tokyo Auto Salon 2025 VIPチケット</h3>
+            <div class="item-price">¥15,000</div>
+          </div>
+          <div class="item-actions">
+            <div class="quantity-controls">
+              <button class="quantity-btn" onclick="updateQuantity(3, -1)">−</button>
+              <span class="quantity-display" id="quantity-3">3</span>
+              <button class="quantity-btn" onclick="updateQuantity(3, 1)">+</button>
+            </div>
+            <button class="remove-btn" onclick="removeItem(3)">削除</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Summary -->
+      <div class="summary-card">
+        <h2 class="summary-title">注文内容</h2>
+
+        <div class="summary-row">
+          <span class="summary-label">小計（3商品）</span>
+          <span class="summary-value" id="subtotal">¥192,400</span>
+        </div>
+
+        <div class="summary-row">
+          <span class="summary-label">送料</span>
+          <span class="summary-value">無料</span>
+        </div>
+
+        <div class="summary-row">
+          <span class="summary-label">
+            銀行振込割引 (3.6%)
+            <span class="discount-badge">お得!</span>
+          </span>
+          <span class="summary-value" style="color: #e65100;">-¥6,926</span>
+        </div>
+
+        <div class="summary-row">
+          <span class="summary-total-label">合計</span>
+          <span class="summary-total-value" id="total">¥185,474</span>
+        </div>
+
+        <button class="checkout-btn">購入手続きへ進む</button>
+        <a href="/" class="continue-shopping">買い物を続ける</a>
+      </div>
+    </div>
+
+    <!-- カートが空の場合（初期状態では非表示） -->
+    <div class="empty-cart" id="empty-cart" style="display: none;">
+      <div class="empty-cart-icon">🛒</div>
+      <h2 class="empty-cart-title">カートは空です</h2>
+      <p class="empty-cart-text">商品を追加して、お買い物をお楽しみください。</p>
+      <a href="/" class="browse-products-btn">商品を見る</a>
+    </div>
+  </div>
+
+  <script>
+    // Mock cart data
+    let cartItems = [
+      { id: 1, name: '86用 高性能ブレーキパッド フロント用', price: 28800, quantity: 2, maxStock: 15 },
+      { id: 2, name: '86用 スポーツマフラー', price: 89800, quantity: 1, maxStock: 5 },
+      { id: 3, name: 'Tokyo Auto Salon 2025 VIPチケット', price: 15000, quantity: 3, maxStock: 100 }
+    ];
+
+    const BANK_TRANSFER_DISCOUNT_RATE = 0.036; // 3.6%
+
+    function updateQuantity(itemId, delta) {
+      const item = cartItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const newQuantity = item.quantity + delta;
+      if (newQuantity >= 1 && newQuantity <= item.maxStock) {
+        item.quantity = newQuantity;
+        document.getElementById(`quantity-${itemId}`).textContent = newQuantity;
+        updateSummary();
+      }
+    }
+
+    function removeItem(itemId) {
+      if (confirm('この商品をカートから削除しますか?')) {
+        cartItems = cartItems.filter(i => i.id !== itemId);
+
+        if (cartItems.length === 0) {
+          document.getElementById('cart-with-items').style.display = 'none';
+          document.getElementById('empty-cart').style.display = 'block';
+        } else {
+          // 実際のアプリではDOMから削除
+          alert('商品を削除しました（デモでは表示はそのまま）');
+          updateSummary();
+        }
+      }
+    }
+
+    function updateSummary() {
+      const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const discount = Math.floor(subtotal * BANK_TRANSFER_DISCOUNT_RATE);
+      const total = subtotal - discount;
+
+      document.getElementById('subtotal').textContent = `¥${subtotal.toLocaleString()}`;
+      document.getElementById('total').textContent = `¥${total.toLocaleString()}`;
+    }
+
+    // Initial summary calculation
+    updateSummary();
+  </script>
+</body>
+</html>

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ログイン・新規登録 | EC Platform</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans JP', sans-serif;
+      background: #ffffff;
+      color: #333;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 16px 32px;
+    }
+
+    /* ========================================
+       Header（共通化済み）
+    ======================================== */
+    .header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      background: white;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+    }
+
+    .header-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #7c4dff;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 32px;
+    }
+
+    .nav a {
+      color: #333;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav a:hover {
+      color: #7c4dff;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .icon-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 24px;
+      color: #666;
+      position: relative;
+      transition: color 0.2s;
+    }
+
+    .icon-button:hover {
+      color: #7c4dff;
+    }
+
+    .cart-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background: #ff4081;
+      color: white;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    /* ========================================
+       認証カード
+    ======================================== */
+    .auth-container {
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .auth-card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .auth-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 32px;
+      text-align: center;
+    }
+
+    .auth-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .auth-subtitle {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .auth-body {
+      padding: 32px;
+    }
+
+    /* タブ */
+    .tabs {
+      background-color: #f7fafc;
+      border-radius: 12px;
+      padding: 6px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 6px;
+    }
+
+    .tab-button {
+      flex: 1;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      background: none;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      color: #667eea;
+      transition: all 0.2s;
+    }
+
+    .tab-button.active {
+      background: white;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* フォーム */
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #7c4dff;
+    }
+
+    .form-helper {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .password-toggle {
+      position: relative;
+    }
+
+    .password-toggle input {
+      padding-right: 40px;
+    }
+
+    .toggle-button {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #666;
+    }
+
+    .forgot-password {
+      text-align: right;
+      margin-bottom: 24px;
+    }
+
+    .forgot-password a {
+      color: #7c4dff;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
+    .checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      cursor: pointer;
+      margin-bottom: 16px;
+    }
+
+    .checkbox-label input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+
+    .checkbox-label span {
+      font-size: 14px;
+    }
+
+    .checkbox-label a {
+      color: #7c4dff;
+      text-decoration: none;
+    }
+
+    .checkbox-label a:hover {
+      text-decoration: underline;
+    }
+
+    .alert {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+
+    .alert-error {
+      background-color: #fee;
+      color: #c00;
+      border: 1px solid #fcc;
+    }
+
+    .alert-success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border: 1px solid #c8e6c9;
+    }
+
+    .button-primary {
+      width: 100%;
+      padding: 12px 32px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .button-primary:hover {
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .button-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .divider {
+      text-align: center;
+      margin: 24px 0;
+      position: relative;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 45%;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    .divider::before {
+      left: 0;
+    }
+
+    .divider::after {
+      right: 0;
+    }
+
+    .divider span {
+      background: white;
+      padding: 0 12px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .social-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .button-social {
+      padding: 10px 16px;
+      border: 1px solid #7c4dff;
+      background: white;
+      color: #7c4dff;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .button-social:hover {
+      background: #f5f0ff;
+    }
+
+    .auth-footer {
+      padding: 24px;
+      background-color: #f7fafc;
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+    }
+
+    .auth-footer a {
+      color: #7c4dff;
+      text-decoration: none;
+    }
+
+    .auth-footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* パスワードリセット画面 */
+    .reset-container {
+      display: none;
+    }
+
+    .reset-container.active {
+      display: block;
+    }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      margin-bottom: 24px;
+      color: #7c4dff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-container">
+      <div class="logo" onclick="window.location.href='TopPage.html'">EC Platform</div>
+      <nav class="nav">
+        <a href="TopPage.html">トップ</a>
+        <a href="#">カテゴリー</a>
+        <a href="#">イベント</a>
+        <a href="ContactPage.html">お問い合わせ</a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-button">👤</button>
+        <button class="icon-button">
+          🛒
+          <span class="cart-badge">0</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- メイン認証画面 -->
+  <div class="auth-container" id="main-auth">
+    <div class="auth-card">
+      <!-- ヘッダー -->
+      <div class="auth-header">
+        <h1 class="auth-title" id="auth-title">ようこそ</h1>
+        <p class="auth-subtitle" id="auth-subtitle">アカウントにログインしてください</p>
+      </div>
+
+      <!-- ボディ -->
+      <div class="auth-body">
+        <!-- タブ -->
+        <div class="tabs">
+          <button class="tab-button active" onclick="switchAuthTab(0)">ログイン</button>
+          <button class="tab-button" onclick="switchAuthTab(1)">新規登録</button>
+        </div>
+
+        <!-- ログインフォーム -->
+        <div class="tab-content active" id="login-tab">
+          <form id="login-form">
+            <div class="form-group">
+              <label class="form-label">メールアドレス</label>
+              <input type="email" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">パスワード</label>
+              <div class="password-toggle">
+                <input type="password" class="form-input" id="login-password" required>
+                <button type="button" class="toggle-button" onclick="togglePassword('login-password', this)">
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <div class="forgot-password">
+              <a href="#" onclick="showResetForm(); return false;">パスワードをお忘れの方</a>
+            </div>
+
+            <button type="submit" class="button-primary">ログイン</button>
+          </form>
+
+          <div class="divider">
+            <span>または</span>
+          </div>
+
+          <div class="social-buttons">
+            <button class="button-social" onclick="alert('Google でログインします')">
+              🟢 Google
+            </button>
+            <button class="button-social" onclick="alert('Facebook でログインします')">
+              🔵 Facebook
+            </button>
+          </div>
+        </div>
+
+        <!-- 新規登録フォーム -->
+        <div class="tab-content" id="register-tab">
+          <form id="register-form">
+            <div class="form-group">
+              <label class="form-label">氏名</label>
+              <input type="text" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">メールアドレス</label>
+              <input type="email" class="form-input" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">パスワード</label>
+              <div class="password-toggle">
+                <input type="password" class="form-input" id="register-password" required>
+                <button type="button" class="toggle-button" onclick="togglePassword('register-password', this)">
+                  👁️
+                </button>
+              </div>
+              <div class="form-helper">英数字を含む8文字以上で設定してください</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">パスワード（確認）</label>
+              <div class="password-toggle">
+                <input type="password" class="form-input" id="register-confirm-password" required>
+                <button type="button" class="toggle-button" onclick="togglePassword('register-confirm-password', this)">
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <label class="checkbox-label">
+              <input type="checkbox" required>
+              <span>
+                <a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意します
+              </span>
+            </label>
+
+            <button type="submit" class="button-primary">アカウント作成</button>
+          </form>
+
+          <div class="divider">
+            <span>または</span>
+          </div>
+
+          <div class="social-buttons">
+            <button class="button-social" onclick="alert('Google でログインします')">
+              🟢 Google
+            </button>
+            <button class="button-social" onclick="alert('Facebook でログインします')">
+              🔵 Facebook
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- フッター -->
+      <div class="auth-footer">
+        <a href="TopPage.html">トップページに戻る</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- パスワードリセット画面 -->
+  <div class="auth-container reset-container" id="reset-auth">
+    <div class="auth-card">
+      <!-- ヘッダー -->
+      <div class="auth-header">
+        <h1 class="auth-title">パスワードリセット</h1>
+        <p class="auth-subtitle">登録済みのメールアドレスにリセットリンクを送信します</p>
+      </div>
+
+      <!-- ボディ -->
+      <div class="auth-body">
+        <a href="#" class="back-link" onclick="hideResetForm(); return false;">
+          ← ログインに戻る
+        </a>
+
+        <div id="reset-success-message" class="alert alert-success" style="display: none;">
+          リセットリンクを送信しました！<br>
+          メールをご確認ください。
+        </div>
+
+        <form id="reset-form">
+          <div class="form-group">
+            <label class="form-label">メールアドレス</label>
+            <input type="email" class="form-input" id="reset-email" required>
+            <div class="form-helper">登録済みのメールアドレスを入力してください</div>
+          </div>
+
+          <button type="submit" class="button-primary">リセットリンクを送信</button>
+        </form>
+      </div>
+
+      <!-- フッター -->
+      <div class="auth-footer">
+        <a href="TopPage.html">トップページに戻る</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // タブ切り替え
+    function switchAuthTab(index) {
+      // タブボタン
+      const tabButtons = document.querySelectorAll('.tab-button');
+      tabButtons.forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+
+      // タブコンテンツ
+      const loginTab = document.getElementById('login-tab');
+      const registerTab = document.getElementById('register-tab');
+
+      if (index === 0) {
+        loginTab.classList.add('active');
+        registerTab.classList.remove('active');
+        document.getElementById('auth-title').textContent = 'ようこそ';
+        document.getElementById('auth-subtitle').textContent = 'アカウントにログインしてください';
+      } else {
+        loginTab.classList.remove('active');
+        registerTab.classList.add('active');
+        document.getElementById('auth-title').textContent = '新規登録';
+        document.getElementById('auth-subtitle').textContent = 'アカウントを作成してお買い物を始めましょう';
+      }
+    }
+
+    // パスワード表示切り替え
+    function togglePassword(inputId, button) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        button.textContent = '👁️';
+      }
+    }
+
+    // パスワードリセット画面表示
+    function showResetForm() {
+      document.getElementById('main-auth').style.display = 'none';
+      document.getElementById('reset-auth').classList.add('active');
+    }
+
+    // パスワードリセット画面非表示
+    function hideResetForm() {
+      document.getElementById('main-auth').style.display = 'block';
+      document.getElementById('reset-auth').classList.remove('active');
+      document.getElementById('reset-success-message').style.display = 'none';
+    }
+
+    // ログインフォーム送信
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('ログインしました！\n\n実装時はAPIでログイン処理を行います。');
+      window.location.href = 'TopPage.html';
+    });
+
+    // 新規登録フォーム送信
+    document.getElementById('register-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-confirm-password').value;
+
+      if (password !== confirmPassword) {
+        alert('パスワードが一致しません');
+        return;
+      }
+
+      if (password.length < 8) {
+        alert('パスワードは8文字以上で入力してください');
+        return;
+      }
+
+      alert('アカウントを作成しました！\n\n実装時はAPIで新規登録処理を行います。');
+      window.location.href = 'TopPage.html';
+    });
+
+    // パスワードリセットフォーム送信
+    document.getElementById('reset-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('reset-email').value;
+
+      // 成功メッセージ表示
+      document.getElementById('reset-success-message').style.display = 'block';
+      document.getElementById('reset-email').value = '';
+
+      setTimeout(() => {
+        hideResetForm();
+      }, 3000);
+    });
+  </script>
+</body>
+</html>

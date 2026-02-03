@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P-006: デジタル商品一覧 - モックアップ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .cart-icon {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .breadcrumbs {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .breadcrumbs a {
+      color: #667eea;
+      text-decoration: none;
+      margin-right: 8px;
+    }
+
+    .page-title {
+      background: white;
+      padding: 32px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    .page-title h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+
+    .page-title p {
+      color: #666;
+    }
+
+    /* 動的2軸ナビゲーション */
+    .navigation-axes {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .axis-row {
+      margin-bottom: 20px;
+    }
+
+    .axis-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .axis-label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .axis-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .axis-option {
+      padding: 10px 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .axis-option:hover {
+      border-color: #667eea;
+      background: #f8f8ff;
+    }
+
+    .axis-option.active {
+      border-color: #667eea;
+      background: #667eea;
+      color: white;
+    }
+
+    .controls {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .result-count {
+      color: #666;
+    }
+
+    .sort-dropdown {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .product-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .product-image {
+      width: 100%;
+      height: 220px;
+      background: linear-gradient(135deg, #667eea30 0%, #764ba230 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 14px;
+      position: relative;
+    }
+
+    .digital-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #4caf50;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .product-info {
+      padding: 16px;
+    }
+
+    .product-category {
+      color: #667eea;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .product-name {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .product-desc {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 12px;
+      height: 40px;
+      overflow: hidden;
+    }
+
+    .product-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .product-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .download-info {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 32px;
+    }
+
+    .page-btn {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .page-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    @media (max-width: 768px) {
+      .product-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <div class="header">
+    <div class="header-content">
+      <div class="logo">EC Platform</div>
+      <div class="cart-icon">🛒 カート (0)</div>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="container">
+    <!-- パンくずリスト -->
+    <div class="breadcrumbs">
+      <a href="/">トップ</a> &gt; デジタル商品一覧
+    </div>
+
+    <!-- ページタイトル -->
+    <div class="page-title">
+      <h1>💾 デジタル商品一覧</h1>
+      <p>PDF、音楽、動画、デジタルチケットなど即時ダウンロード可能</p>
+    </div>
+
+    <!-- 動的2軸ナビゲーション -->
+    <div class="navigation-axes">
+      <h3 style="margin-bottom: 20px;">商品を探す</h3>
+
+      <!-- 軸1: 商品種類 -->
+      <div class="axis-row">
+        <label class="axis-label">商品種類</label>
+        <div class="axis-options">
+          <div class="axis-option active">すべて</div>
+          <div class="axis-option">PDF</div>
+          <div class="axis-option">音楽</div>
+          <div class="axis-option">動画</div>
+          <div class="axis-option">デジタルチケット</div>
+        </div>
+      </div>
+
+      <!-- 軸2: ジャンル（種類に応じて動的変更） -->
+      <div class="axis-row">
+        <label class="axis-label">ジャンル</label>
+        <div class="axis-options">
+          <div class="axis-option">すべて</div>
+          <div class="axis-option">ビジネス</div>
+          <div class="axis-option">教育</div>
+          <div class="axis-option">エンタメ</div>
+          <div class="axis-option">技術書</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- コントロール -->
+    <div class="controls">
+      <div class="result-count">検索結果: 32件</div>
+      <select class="sort-dropdown">
+        <option>人気順</option>
+        <option>価格が安い順</option>
+        <option>価格が高い順</option>
+        <option>新着順</option>
+      </select>
+    </div>
+
+    <!-- 商品グリッド -->
+    <div class="product-grid">
+      <div class="product-card">
+        <div class="product-image">
+          <div class="digital-badge">📄 PDF</div>
+          商品画像
+        </div>
+        <div class="product-info">
+          <div class="product-category">ビジネス書</div>
+          <div class="product-name">マーケティング戦略入門</div>
+          <div class="product-desc">150ページ デジタル版</div>
+          <div class="product-footer">
+            <div class="product-price">¥1,980</div>
+            <div class="download-info">即ダウンロード</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">
+          <div class="digital-badge">🎵 音楽</div>
+          商品画像
+        </div>
+        <div class="product-info">
+          <div class="product-category">アルバム</div>
+          <div class="product-name">リラックスBGM集</div>
+          <div class="product-desc">10曲収録 MP3形式</div>
+          <div class="product-footer">
+            <div class="product-price">¥1,500</div>
+            <div class="download-info">即ダウンロード</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">
+          <div class="digital-badge">🎬 動画</div>
+          商品画像
+        </div>
+        <div class="product-info">
+          <div class="product-category">オンライン講座</div>
+          <div class="product-name">Web開発入門講座</div>
+          <div class="product-desc">5時間 フルHD画質</div>
+          <div class="product-footer">
+            <div class="product-price">¥4,980</div>
+            <div class="download-info">即ダウンロード</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">
+          <div class="digital-badge">🎫 チケット</div>
+          商品画像
+        </div>
+        <div class="product-info">
+          <div class="product-category">イベント</div>
+          <div class="product-name">プログラミングセミナー</div>
+          <div class="product-desc">2025年3月10日 オンライン</div>
+          <div class="product-footer">
+            <div class="product-price">¥3,000</div>
+            <div class="download-info">即発行</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">
+          <div class="digital-badge">📄 PDF</div>
+          商品画像
+        </div>
+        <div class="product-info">
+          <div class="product-category">技術書</div>
+          <div class="product-name">React完全ガイド</div>
+          <div class="product-desc">300ページ サンプルコード付</div>
+          <div class="product-footer">
+            <div class="product-price">¥2,800</div>
+            <div class="download-info">即ダウンロード</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">
+          <div class="digital-badge">🎵 音楽</div>
+          商品画像
+        </div>
+        <div class="product-info">
+          <div class="product-category">効果音</div>
+          <div class="product-name">効果音パック Vol.1</div>
+          <div class="product-desc">100種類 WAV形式</div>
+          <div class="product-footer">
+            <div class="product-price">¥980</div>
+            <div class="download-info">即ダウンロード</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ページネーション -->
+    <div class="pagination">
+      <button class="page-btn">‹</button>
+      <button class="page-btn active">1</button>
+      <button class="page-btn">2</button>
+      <button class="page-btn">3</button>
+      <button class="page-btn">4</button>
+      <button class="page-btn">5</button>
+      <button class="page-btn">›</button>
+    </div>
+  </div>
+
+  <script>
+    // 軸オプションのクリック処理
+    document.querySelectorAll('.axis-option').forEach(option => {
+      option.addEventListener('click', function() {
+        const parent = this.parentElement;
+        parent.querySelectorAll('.axis-option').forEach(opt => {
+          opt.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

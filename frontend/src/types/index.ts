@@ -2,6 +2,33 @@
 // 型定義ファイル（フロントエンド）
 // ========================================
 // 注意: backend/src/types/index.tsと完全同期すること
+// 更新日時: 2026-02-03
+
+// ========================================
+// Product Type (先頭に配置 - 優先度高)
+// ========================================
+
+// Tag interface
+export interface Tag {
+  id: string;
+  name: string;
+}
+
+// ProductAttribute interface
+export interface ProductAttribute {
+  id: string;
+  productId: string;
+  axisKey: string;
+  value: string;
+}
+
+// ShippingSettings interface
+export interface ShippingSettings {
+  allowWeekendDelivery: boolean;
+  allowDateSelection: boolean;
+  allowTimeSelection: boolean;
+  preparationDays: number;
+}
 
 // ========================================
 // Enums
@@ -18,6 +45,30 @@ export enum CategoryType {
   CARS = 'cars',
   EVENTS = 'events',
   DIGITAL = 'digital',
+}
+
+// ========================================
+// Product Interface (Enumの直後に配置)
+// ========================================
+
+export interface Product {
+  id: string;
+  name: string;
+  slug?: string;
+  price: number;
+  description?: string;
+  productType: ProductType;
+  categoryType: CategoryType;
+  images: string[];
+  externalUrl?: string;
+  shippingSettings?: ShippingSettings;
+  preparationDays?: number;
+  allowWeekendDelivery?: boolean;
+  isActive?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  attributes: ProductAttribute[];
+  tags: Tag[];
 }
 
 export enum AxisType {
@@ -44,6 +95,7 @@ export enum OrderStatus {
 export enum PaymentMethod {
   BANK_TRANSFER = 'BANK_TRANSFER',
   CREDIT_CARD = 'CREDIT_CARD',
+  PAYPAY = 'PAYPAY',
 }
 
 export enum PaymentStatus {
@@ -96,45 +148,6 @@ export interface AuthContextType {
 }
 
 // ========================================
-// Product
-// ========================================
-
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description?: string;
-  productType: ProductType;
-  categoryType: CategoryType;
-  images: string[];
-  externalUrl?: string;
-  shippingSettings?: ShippingSettings;
-  createdAt: Date;
-  updatedAt: Date;
-  attributes: ProductAttribute[];
-  tags: Tag[];
-}
-
-export interface ProductAttribute {
-  id: string;
-  productId: string;
-  axisKey: string;
-  value: string;
-}
-
-export interface ShippingSettings {
-  allowWeekendDelivery: boolean;
-  allowDateSelection: boolean;
-  allowTimeSelection: boolean;
-  preparationDays: number;
-}
-
-export interface Tag {
-  id: string;
-  name: string;
-}
-
-// ========================================
 // Category Navigation Axis
 // ========================================
 
@@ -160,21 +173,32 @@ export interface Order {
   id: string;
   userId: string;
   orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
   totalAmount: number;
-  status: OrderStatus;
-  paymentMethod: PaymentMethod;
-  paymentStatus: PaymentStatus;
+  status: OrderStatus | string; // 'pending' | 'paid' | 'preparing' | 'shipped' | 'completed' | 'cancelled'
+  paymentMethod: PaymentMethod | string; // 'bank_transfer' | 'credit_card'
+  paymentStatus?: PaymentStatus;
   shippingAddress?: string;
   shippingPostalCode?: string;
-  shippingPhone?: string;
-  shippingOptions?: ShippingOptions;
-  notes?: string;
-  isDefaultAddress: boolean;
+  carrier?: string; // 'yamato' | 'sagawa' | 'japan_post'
+  trackingNumber?: string;
+  shippedAt?: Date;
+  cancelReason?: string;
+  cancelledAt?: Date;
+  checkedIn?: boolean;
+  checkedInAt?: Date;
+  checkedInBy?: string;
   createdAt: Date;
   updatedAt: Date;
   items: OrderItem[];
-  shipmentHistory: ShipmentHistory[];
-  digitalTickets: DigitalTicket[];
+  user?: {
+    id: string;
+    email: string;
+    name: string;
+  };
+  digitalTickets?: DigitalTicket[];
 }
 
 export interface OrderItem {
@@ -202,6 +226,18 @@ export interface ShipmentHistory {
   createdAt: Date;
 }
 
+export interface CheckinResponse {
+  success: boolean;
+  message: string;
+  order: Order;
+  alreadyCheckedIn?: boolean;
+}
+
+export interface OrderDetailResponse {
+  order: Order;
+  alreadyCheckedIn?: boolean;
+}
+
 // ========================================
 // Digital Ticket
 // ========================================
@@ -218,16 +254,9 @@ export interface DigitalTicket {
 }
 
 // ========================================
-// Digital Product
+// Digital Download（フロントエンド用）
 // ========================================
-
-export interface DigitalProduct {
-  id: string;
-  productId: string;
-  fileName: string;
-  fileSize: number;
-  r2Key: string;
-}
+// 注意: バックエンドのDigitalProduct（R2ストレージ用）はフロントエンドでは使用しません
 
 export interface DigitalDownload {
   id: string;
@@ -292,6 +321,24 @@ export interface Inquiry {
   updatedAt: Date;
 }
 
+export interface InquiryRequest {
+  name: string;
+  email: string;
+  question: string;
+}
+
+export interface InquiryResponse {
+  success: boolean;
+  message: string;
+  inquiry: Inquiry;
+  aiModel?: string;
+  aiResponse?: string;
+}
+
+export interface InquiryHistory extends Inquiry {
+  // InquiryHistoryはInquiryと同じ構造
+}
+
 // ========================================
 // Cart
 // ========================================
@@ -320,3 +367,169 @@ export interface InventoryLog {
   reason?: string;
   createdAt: Date;
 }
+
+// ========================================
+// Top Page (P-001)
+// ========================================
+
+export interface HeroSlide {
+  id: string;
+  imageUrl: string;
+  title?: string;
+  description?: string;
+  linkUrl?: string;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MegaCategory {
+  id: string;
+  categoryType: CategoryType;
+  name: string;
+  description: string;
+  backgroundImageUrl: string;
+  linkUrl: string;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PickupProduct {
+  id: string;
+  productId: string;
+  order: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  product: Product;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  content?: string;
+  publishedAt: Date;
+  isPublished: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface TopPageData {
+  heroSlides: HeroSlide[];
+  megaCategories: MegaCategory[];
+  pickupProducts: PickupProduct[];
+  newProducts: Product[];
+  saleProducts: Product[];
+  popularProducts: Product[];
+  news: NewsItem[];
+}
+
+// ========================================
+// P-007: 商品詳細ページ（フロントエンド専用）
+// ========================================
+
+export interface ProductDetail extends Product {
+  stockQuantity: number;
+  salePrice?: number;
+  relatedProducts: RelatedProduct[];
+  variants?: ProductVariant[];
+  variantOptions?: VariantOption[];
+}
+
+export interface ProductVariant {
+  id: string;
+  name: string;
+  price: number;
+  salePrice?: number;
+  stockQuantity: number;
+  sku?: string;
+  selectedOptions: Record<string, string>;
+}
+
+export interface VariantOption {
+  name: string;
+  key: string;
+  values: VariantOptionValue[];
+  required: boolean;
+}
+
+export interface VariantOptionValue {
+  value: string;
+  label: string;
+}
+
+export interface RelatedProduct {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  categoryType: CategoryType;
+}
+
+export interface ProductDetailPageData {
+  product: ProductDetail;
+  breadcrumb: BreadcrumbItem[];
+}
+
+export interface BreadcrumbItem {
+  label: string;
+  url?: string;
+}
+
+// ========================================
+// Event (イベント) - フロントエンド専用型
+// ========================================
+
+export interface Event {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  startDate: Date;
+  endDate: Date;
+  location: string;
+  capacity: number;
+  remainingCapacity: number;
+  eventType: string;
+  tags: Tag[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ========================================
+// Digital Product Display - フロントエンド専用型
+// ========================================
+// 注意: バックエンドにも同名のDigitalProduct型が存在しますが、
+// バックエンドはR2ストレージ用、フロントエンドはUI表示用です
+
+export interface DigitalProductDisplay {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  digitalType: string;
+  genre: string;
+  fileSize?: string;
+  format?: string;
+  tags: Tag[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 互換性のため、DigitalProductとしてもエクスポート
+export type DigitalProduct = DigitalProductDisplay;
+
+// ========================================
+// Navigation Filter State（フロントエンド専用）
+// ========================================
+
+export interface NavigationFilterState {
+  [axisKey: string]: string | string[];
+}
+
+// すべての型は個別にエクスポート済み

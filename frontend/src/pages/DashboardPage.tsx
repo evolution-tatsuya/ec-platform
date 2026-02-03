@@ -14,7 +14,7 @@ import {
   Paper,
   Chip,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
+import Grid from '@mui/material/Grid';
 import {
   LineChart,
   Line,
@@ -103,7 +103,7 @@ export const DashboardPage: React.FC = () => {
       {/* 統計カード */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {statsData.map((stat) => (
-          <Grid item xs={12} sm={6} md={3} key={stat.label}>
+          <Grid xs={12} sm={6} md={3} key={stat.label}>
             <Card>
               <CardContent>
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -134,7 +134,7 @@ export const DashboardPage: React.FC = () => {
       {/* グラフエリア */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* 売上推移グラフ */}
-        <Grid item xs={12} md={8}>
+        <Grid xs={12} md={8}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               売上推移
@@ -166,7 +166,7 @@ export const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* カテゴリー別売上グラフ */}
-        <Grid item xs={12} md={4}>
+        <Grid xs={12} md={4}>
           <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>
               カテゴリー別売上

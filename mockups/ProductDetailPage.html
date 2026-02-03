@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>商品詳細ページ - 多機能ECプラットフォーム</title>
+
+  <!-- Google Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+      min-width: 320px;
+      min-height: 100vh;
+    }
+
+    /* ヘッダー */
+    .header {
+      background: linear-gradient(135deg, #7c4dff 0%, #b47cff 100%);
+      color: white;
+      padding: 16px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 24px;
+    }
+
+    .header-nav a {
+      color: white;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .header-nav a:hover {
+      text-decoration: underline;
+    }
+
+    /* メインコンテンツ */
+    .main-content {
+      max-width: 1200px;
+      margin: 88px auto 80px;
+      padding: 0 16px;
+    }
+
+    /* パンくずリスト */
+    .breadcrumb {
+      margin-bottom: 24px;
+      font-size: 14px;
+      color: #757575;
+    }
+
+    .breadcrumb a {
+      color: #1976d2;
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    /* 商品詳細コンテナ */
+    .product-detail {
+      background: white;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      margin-bottom: 48px;
+    }
+
+    @media (max-width: 960px) {
+      .product-detail {
+        grid-template-columns: 1fr;
+        gap: 32px;
+      }
+    }
+
+    /* 画像ギャラリー */
+    .image-gallery {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .main-image {
+      width: 100%;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      font-weight: 500;
+      cursor: zoom-in;
+    }
+
+    .thumbnail-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .thumbnail {
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      border-radius: 4px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.2s;
+    }
+
+    .thumbnail:hover,
+    .thumbnail.active {
+      border-color: #1976d2;
+    }
+
+    /* 商品情報 */
+    .product-info {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .product-category {
+      display: inline-block;
+      background: #e3f2fd;
+      color: #1976d2;
+      padding: 4px 12px;
+      border-radius: 16px;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .product-name {
+      font-size: 32px;
+      font-weight: 700;
+      color: #333;
+      line-height: 1.3;
+    }
+
+    .product-price {
+      font-size: 36px;
+      font-weight: 700;
+      color: #1976d2;
+    }
+
+    .product-price-old {
+      font-size: 24px;
+      color: #757575;
+      text-decoration: line-through;
+      margin-left: 16px;
+    }
+
+    .stock-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .stock-status.in-stock {
+      color: #43a047;
+    }
+
+    .stock-status.low-stock {
+      color: #f57c00;
+    }
+
+    .stock-status.out-of-stock {
+      color: #e53935;
+    }
+
+    .stock-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .product-description {
+      font-size: 16px;
+      line-height: 1.8;
+      color: #555;
+      padding: 16px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+
+    .product-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .tag {
+      background: #f5f5f5;
+      color: #555;
+      padding: 6px 16px;
+      border-radius: 16px;
+      font-size: 14px;
+    }
+
+    /* 配送オプション */
+    .shipping-options {
+      padding: 16px;
+      background: #fff3e0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .shipping-options h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .shipping-options ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .shipping-options li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .shipping-options li::before {
+      content: '✓';
+      color: #43a047;
+      font-weight: bold;
+    }
+
+    /* 購入アクション */
+    .purchase-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .quantity-selector {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .quantity-selector label {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .quantity-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid #e0e0e0;
+      background: #f5f5f5;
+      cursor: pointer;
+      font-size: 20px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border-radius: 4px;
+    }
+
+    .quantity-btn:hover {
+      background: #1976d2;
+      color: white;
+      border-color: #1976d2;
+    }
+
+    .quantity-display {
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .add-to-cart-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(25, 118, 210, 0.3);
+    }
+
+    .add-to-cart-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(25, 118, 210, 0.4);
+    }
+
+    .add-to-cart-btn:disabled {
+      background: #e0e0e0;
+      color: #9e9e9e;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .external-link-btn {
+      background: linear-gradient(135deg, #43a047 0%, #66bb6a 100%);
+      box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
+    }
+
+    .external-link-btn:hover {
+      box-shadow: 0 6px 16px rgba(67, 160, 71, 0.4);
+    }
+
+    /* 関連商品 */
+    .related-products {
+      background: white;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .related-products h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #333;
+    }
+
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+
+    @media (max-width: 960px) {
+      .related-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .related-product-card {
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .related-product-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+
+    .related-product-image {
+      width: 100%;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .related-product-info {
+      padding: 16px;
+    }
+
+    .related-product-name {
+      font-size: 16px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .related-product-price {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1976d2;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const minusBtn = document.querySelector('.quantity-btn:first-child');
+      const plusBtn = document.querySelector('.quantity-btn:last-child');
+      const quantityDisplay = document.querySelector('.quantity-display');
+      const maxStock = 15; // 在庫数
+
+      let quantity = 1;
+
+      // マイナスボタン
+      minusBtn.addEventListener('click', function() {
+        if (quantity > 1) {
+          quantity--;
+          quantityDisplay.textContent = quantity;
+        }
+      });
+
+      // プラスボタン
+      plusBtn.addEventListener('click', function() {
+        if (quantity < maxStock) {
+          quantity++;
+          quantityDisplay.textContent = quantity;
+        }
+      });
+
+      // サムネイル切り替え（おまけ機能）
+      const thumbnails = document.querySelectorAll('.thumbnail');
+      thumbnails.forEach((thumb, index) => {
+        thumb.addEventListener('click', function() {
+          thumbnails.forEach(t => t.classList.remove('active'));
+          thumb.classList.add('active');
+        });
+      });
+    });
+  </script>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo">ECプラットフォーム</div>
+      <nav class="header-nav">
+        <a href="/cart">カート (3)</a>
+        <a href="/auth/login">ログイン</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main class="main-content">
+    <!-- パンくずリスト -->
+    <nav class="breadcrumb">
+      <a href="/">トップ</a> &gt;
+      <a href="/cars">車パーツ</a> &gt;
+      <a href="/cars/toyota">トヨタ</a> &gt;
+      <span>86用 高性能ブレーキパッド</span>
+    </nav>
+
+    <!-- 商品詳細 -->
+    <div class="product-detail">
+      <!-- 画像ギャラリー -->
+      <div class="image-gallery">
+        <div class="main-image">
+          メイン画像
+        </div>
+        <div class="thumbnail-list">
+          <div class="thumbnail active"></div>
+          <div class="thumbnail"></div>
+          <div class="thumbnail"></div>
+          <div class="thumbnail"></div>
+        </div>
+      </div>
+
+      <!-- 商品情報 -->
+      <div class="product-info">
+        <div>
+          <span class="product-category">車パーツ</span>
+        </div>
+
+        <h1 class="product-name">86用 高性能ブレーキパッド フロント用</h1>
+
+        <div class="product-price">
+          ¥28,800
+          <span class="product-price-old">¥35,000</span>
+        </div>
+
+        <div class="stock-status in-stock">
+          <span class="stock-indicator"></span>
+          在庫あり（残り15個）
+        </div>
+
+        <div class="product-description">
+          トヨタ86専用に開発された高性能ブレーキパッドです。
+          サーキット走行にも対応した高い制動力と耐久性を実現。
+          純正比で約30%の制動距離短縮を実現しています。
+
+          <br><br>
+
+          <strong>主な特徴:</strong><br>
+          • 高温時でも安定した制動力<br>
+          • ダストが少なく、ホイールの汚れを軽減<br>
+          • 低ノイズ設計で快適な走行<br>
+          • 車検対応
+        </div>
+
+        <div class="product-tags">
+          <span class="tag">#トヨタ</span>
+          <span class="tag">#86</span>
+          <span class="tag">#ブレーキ</span>
+          <span class="tag">#サーキット</span>
+        </div>
+
+        <div class="shipping-options">
+          <h3>配送オプション</h3>
+          <ul>
+            <li>土日配達可能</li>
+            <li>日時指定可能</li>
+            <li>通常2〜3営業日でお届け</li>
+            <li>全国送料無料（一部地域を除く）</li>
+          </ul>
+        </div>
+
+        <div class="purchase-actions">
+          <div class="quantity-selector">
+            <label>数量:</label>
+            <div class="quantity-controls">
+              <button class="quantity-btn">−</button>
+              <span class="quantity-display">1</span>
+              <button class="quantity-btn">+</button>
+            </div>
+          </div>
+
+          <button class="add-to-cart-btn">
+            カートに追加
+          </button>
+
+          <!-- 外部申し込みの場合の例 -->
+          <!-- <button class="add-to-cart-btn external-link-btn">
+            申し込みフォームへ（外部サイト）
+          </button> -->
+
+          <!-- 在庫切れの場合の例 -->
+          <!-- <button class="add-to-cart-btn" disabled>
+            在庫切れ
+          </button> -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 関連商品 -->
+    <section class="related-products">
+      <h2>関連商品</h2>
+      <div class="related-grid">
+        <div class="related-product-card">
+          <div class="related-product-image">商品1</div>
+          <div class="related-product-info">
+            <div class="related-product-name">86用 スポーツマフラー</div>
+            <div class="related-product-price">¥89,800</div>
+          </div>
+        </div>
+
+        <div class="related-product-card">
+          <div class="related-product-image">商品2</div>
+          <div class="related-product-info">
+            <div class="related-product-name">86用 車高調キット</div>
+            <div class="related-product-price">¥128,000</div>
+          </div>
+        </div>
+
+        <div class="related-product-card">
+          <div class="related-product-image">商品3</div>
+          <div class="related-product-info">
+            <div class="related-product-name">86用 エアフィルター</div>
+            <div class="related-product-price">¥12,800</div>
+          </div>
+        </div>
+
+        <div class="related-product-card">
+          <div class="related-product-image">商品4</div>
+          <div class="related-product-info">
+            <div class="related-product-name">86用 オイルフィルター</div>
+            <div class="related-product-price">¥3,200</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

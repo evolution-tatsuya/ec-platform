@@ -8,7 +8,7 @@ import {
   CardActionArea,
   CardContent,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
+import Grid from '@mui/material/Grid';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import EventIcon from '@mui/icons-material/Event';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
@@ -87,7 +87,7 @@ export const HomePage: React.FC = () => {
 
         <Grid container spacing={4}>
           {categories.map((category) => (
-            <Grid item xs={12} md={4} key={category.title}>
+            <Grid xs={12} md={4} key={category.title}>
               <Card
                 sx={{
                   height: '100%',
@@ -140,7 +140,7 @@ export const HomePage: React.FC = () => {
           </Typography>
 
           <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <Box sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                   豊富な品揃え
@@ -150,7 +150,7 @@ export const HomePage: React.FC = () => {
                 </Typography>
               </Box>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <Box sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                   安心の決済
@@ -160,7 +160,7 @@ export const HomePage: React.FC = () => {
                 </Typography>
               </Box>
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid xs={12} md={4}>
               <Box sx={{ p: 3 }}>
                 <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
                   迅速な配送

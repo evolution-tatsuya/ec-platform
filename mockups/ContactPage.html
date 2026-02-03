@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>問い合わせ - モックアップ</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"/>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+      padding: 24px 16px;
+      color: rgba(0, 0, 0, 0.87);
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: rgba(0, 0, 0, 0.87);
+    }
+    .subtitle {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+      margin-bottom: 24px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 16px;
+      color: rgba(0, 0, 0, 0.87);
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+      margin-bottom: 4px;
+    }
+    input[type="text"],
+    input[type="email"],
+    textarea {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      font-family: 'Roboto', sans-serif;
+      border: 1px solid rgba(0, 0, 0, 0.23);
+      border-radius: 4px;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #7c4dff;
+      border-width: 2px;
+      padding: 11px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+    .helper-text {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+      margin-top: 4px;
+    }
+    .button {
+      padding: 10px 22px;
+      font-size: 14px;
+      font-weight: 500;
+      text-transform: uppercase;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s, box-shadow 0.2s;
+      font-family: 'Roboto', sans-serif;
+    }
+    .button-primary {
+      background-color: #7c4dff;
+      color: #ffffff;
+    }
+    .button-primary:hover {
+      background-color: #3f1dcb;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .button-secondary {
+      background-color: #ffffff;
+      color: #7c4dff;
+      border: 1px solid rgba(124, 77, 255, 0.5);
+    }
+    .button-secondary:hover {
+      background-color: rgba(124, 77, 255, 0.04);
+    }
+    .ai-response {
+      display: none;
+      background: #f9f9f9;
+      border-left: 4px solid #7c4dff;
+      padding: 16px;
+      margin-top: 16px;
+      border-radius: 4px;
+    }
+    .ai-response.show {
+      display: block;
+    }
+    .ai-badge {
+      display: inline-block;
+      background: #7c4dff;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 8px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+    }
+    .feedback-buttons {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+    .escalation-section {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .escalation-section.show {
+      display: block;
+    }
+    .history-list {
+      list-style: none;
+    }
+    .history-item {
+      padding: 16px;
+      margin-bottom: 12px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .history-item:hover {
+      background: #eeeeee;
+    }
+    .history-date {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+      margin-bottom: 4px;
+    }
+    .history-question {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.87);
+      margin-bottom: 4px;
+    }
+    .history-status {
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .status-resolved {
+      color: #4caf50;
+    }
+    .status-pending {
+      color: #ff9800;
+    }
+    .disabled-note {
+      background: #e3f2fd;
+      border-left: 4px solid #2196f3;
+      padding: 12px;
+      margin-bottom: 24px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+    @media (max-width: 600px) {
+      body {
+        padding: 16px 12px;
+      }
+      .card {
+        padding: 16px;
+      }
+      h1 {
+        font-size: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>お問い合わせ</h1>
+    <p class="subtitle">まずはよくある質問をご確認ください。解決しない場合はAIまたはオペレーターにおつなぎします。</p>
+
+    <!-- よくある質問（FAQ） -->
+    <div class="card">
+      <div class="card-title">よくある質問（FAQ）</div>
+
+      <div class="faq-search" style="margin-bottom: 24px;">
+        <input type="text" id="faqSearch" placeholder="キーワードで検索..." style="width: 100%;">
+      </div>
+
+      <div class="faq-categories">
+        <!-- 注文・配送 -->
+        <details class="faq-category" open>
+          <summary class="faq-category-title">📦 注文・配送について</summary>
+          <div class="faq-items">
+            <details class="faq-item">
+              <summary class="faq-question">注文後、どのくらいで届きますか？</summary>
+              <div class="faq-answer">
+                通常、ご注文から2〜3営業日で発送いたします。お届けまでは発送後1〜2日程度です。お急ぎの場合は、注文時に「お急ぎ便」をご選択ください（追加料金500円）。
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary class="faq-question">配送状況を確認したい</summary>
+              <div class="faq-answer">
+                マイページの「注文履歴」から配送状況を確認できます。発送完了後、追跡番号が表示されますので、配送業者のサイトで詳細な配送状況をご確認いただけます。
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary class="faq-question">配送日時の指定はできますか？</summary>
+              <div class="faq-answer">
+                はい、可能です。購入手続き時に配送日時を指定できます。土日祝日の配達も対応しております。ただし、一部の地域や商品では日時指定ができない場合があります。
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <!-- 返品・交換 -->
+        <details class="faq-category">
+          <summary class="faq-category-title">🔄 返品・交換について</summary>
+          <div class="faq-items">
+            <details class="faq-item">
+              <summary class="faq-question">返品はできますか？</summary>
+              <div class="faq-answer">
+                商品到着後7日以内であれば、未開封・未使用の商品に限り返品を受け付けております。マイページの「注文履歴」から返品申請を行ってください。なお、お客様都合による返品の場合、返送料はお客様負担となります。
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary class="faq-question">不良品が届いた場合は？</summary>
+              <div class="faq-answer">
+                大変申し訳ございません。商品到着後7日以内にお問い合わせフォームまたはカスタマーサポート（support@example.com）までご連絡ください。不良品の場合、返送料は当社負担で交換または返金対応いたします。
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <!-- 支払い -->
+        <details class="faq-category">
+          <summary class="faq-category-title">💳 お支払いについて</summary>
+          <div class="faq-items">
+            <details class="faq-item">
+              <summary class="faq-question">どんな支払い方法がありますか？</summary>
+              <div class="faq-answer">
+                クレジットカード（Visa、MasterCard、JCB、American Express）、銀行振込、コンビニ決済に対応しております。銀行振込をご選択いただくと、手数料割引（3.6%OFF）が適用されます。
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary class="faq-question">領収書は発行できますか？</summary>
+              <div class="faq-answer">
+                はい、マイページの「注文履歴」から領収書をPDFでダウンロードできます。宛名や但し書きの変更も可能です。
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <!-- 会員登録 -->
+        <details class="faq-category">
+          <summary class="faq-category-title">👤 会員登録について</summary>
+          <div class="faq-items">
+            <details class="faq-item">
+              <summary class="faq-question">会員登録は必須ですか？</summary>
+              <div class="faq-answer">
+                いいえ、ゲストとしても購入可能です。ただし、会員登録いただくと、購入履歴の確認、お気に入り商品の保存、ポイントの獲得などの特典がございます。
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary class="faq-question">パスワードを忘れてしまった</summary>
+              <div class="faq-answer">
+                ログインページの「パスワードをお忘れの方」からパスワード再設定を行ってください。ご登録のメールアドレスに再設定用のリンクをお送りします。
+              </div>
+            </details>
+          </div>
+        </details>
+
+        <!-- その他 -->
+        <details class="faq-category">
+          <summary class="faq-category-title">❓ その他</summary>
+          <div class="faq-items">
+            <details class="faq-item">
+              <summary class="faq-question">デジタル商品の利用方法は？</summary>
+              <div class="faq-answer">
+                購入完了後、マイページの「購入済みデジタル商品」からダウンロードできます。ダウンロードリンクは24時間有効で、最大5回までダウンロード可能です。
+              </div>
+            </details>
+            <details class="faq-item">
+              <summary class="faq-question">イベントチケットの使い方は？</summary>
+              <div class="faq-answer">
+                購入完了後、マイページの「マイチケット」にQRコード付きチケットが表示されます。イベント当日、受付でQRコードをスキャンしてください。
+              </div>
+            </details>
+          </div>
+        </details>
+      </div>
+
+      <div style="margin-top: 24px; padding: 16px; background: #f0f0f0; border-radius: 4px; text-align: center;">
+        <p style="font-size: 14px; color: rgba(0, 0, 0, 0.6); margin-bottom: 8px;">
+          FAQで解決しませんでしたか？
+        </p>
+        <button type="button" class="button button-primary" onclick="document.getElementById('contactForm').scrollIntoView({ behavior: 'smooth' })">
+          お問い合わせフォームへ
+        </button>
+      </div>
+    </div>
+
+    <!-- 問い合わせフォーム -->
+    <div class="card">
+      <div class="card-title">質問内容を入力</div>
+
+      <form id="contactForm">
+        <div class="form-group">
+          <label for="name">お名前 *</label>
+          <input type="text" id="name" placeholder="山田太郎" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">メールアドレス *</label>
+          <input type="email" id="email" placeholder="example@email.com" required>
+          <div class="helper-text">ログイン時は自動入力されます</div>
+        </div>
+
+        <div class="form-group">
+          <label for="orderNumber">注文番号（任意）</label>
+          <input type="text" id="orderNumber" placeholder="ORD-20251223-XXXX">
+          <div class="helper-text">注文に関するお問い合わせの場合はご入力ください</div>
+        </div>
+
+        <div class="form-group">
+          <label for="question">質問内容 *</label>
+          <textarea id="question" placeholder="例: 注文した商品の配送状況を教えてください" required></textarea>
+        </div>
+
+        <button type="submit" class="button button-primary">AI回答を受け取る</button>
+      </form>
+
+      <!-- AI回答エリア -->
+      <div class="ai-response" id="aiResponse">
+        <div class="ai-badge">AI回答（Gemini 2.0 Flash）</div>
+        <p id="responseText">
+          ご注文の配送状況についてお答えします。注文番号ORD-20251223-XXXXの商品は現在配送中です。お届け予定日は12月25日となっております。配送業者は佐川急便で、追跡番号は123456789です。最新の配送状況は佐川急便の公式サイトからご確認いただけます。
+        </p>
+
+        <!-- 満足度フィードバック -->
+        <div class="feedback-buttons">
+          <button type="button" class="button button-primary" onclick="handleResolved()">解決した</button>
+          <button type="button" class="button button-secondary" onclick="showEscalation()">解決しなかった</button>
+        </div>
+
+        <!-- エスカレーション -->
+        <div class="escalation-section" id="escalationSection">
+          <p style="font-size: 14px; color: rgba(0, 0, 0, 0.6); margin-bottom: 12px;">
+            申し訳ございません。オペレーターにおつなぎします。
+          </p>
+          <button type="button" class="button button-primary">オペレーターに問い合わせる</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 過去の問い合わせ履歴 -->
+    <div class="card">
+      <div class="card-title">過去の問い合わせ</div>
+
+      <!-- 未ログイン時 -->
+      <div class="disabled-note" id="loginRequired">
+        ログインすると過去の問い合わせ履歴を確認できます
+      </div>
+
+      <!-- ログイン時のみ表示 -->
+      <ul class="history-list" id="historyList" style="display: none;">
+        <li class="history-item">
+          <div class="history-date">2025年12月20日 14:30</div>
+          <div class="history-question">配送状況について</div>
+          <div class="history-status status-resolved">解決済み</div>
+        </li>
+        <li class="history-item">
+          <div class="history-date">2025年12月18日 10:15</div>
+          <div class="history-question">返品手続きについて</div>
+          <div class="history-status status-pending">オペレーター対応中</div>
+        </li>
+        <li class="history-item">
+          <div class="history-date">2025年12月15日 16:45</div>
+          <div class="history-question">商品の在庫確認</div>
+          <div class="history-status status-resolved">解決済み</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // フォーム送信時の処理（デモ用）
+    document.getElementById('contactForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      // AI回答を表示
+      document.getElementById('aiResponse').classList.add('show');
+
+      // スムーズスクロール
+      document.getElementById('aiResponse').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    function handleResolved() {
+      alert('フィードバックありがとうございます！問い合わせを解決済みとして保存しました。');
+      document.getElementById('contactForm').reset();
+      document.getElementById('aiResponse').classList.remove('show');
+      document.getElementById('escalationSection').classList.remove('show');
+    }
+
+    function showEscalation() {
+      document.getElementById('escalationSection').classList.add('show');
+    }
+
+    // ログイン状態のデモ切り替え（本番ではバックエンドから取得）
+    const isLoggedIn = true; // true に変更すると履歴が表示される
+    if (isLoggedIn) {
+      document.getElementById('loginRequired').style.display = 'none';
+      document.getElementById('historyList').style.display = 'block';
+
+      // ログイン時は自動入力
+      document.getElementById('name').value = '山田太郎';
+      document.getElementById('email').value = 'yamada@example.com';
+    }
+  </script>
+</body>
+</html>

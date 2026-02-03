@@ -1,0 +1,434 @@
+// ===== Prisma スキーマ定義 =====
+// 生成日: 2026-01-23
+// プロジェクト: 多機能ECプラットフォーム
+// データベース: PostgreSQL (Neon)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== 会員・管理者モデル =====
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  password           String // bcryptでハッシュ化
+  name               String?
+  isAdmin            Boolean  @default(false)
+  defaultAddress     String?  @map("default_address") // デフォルト配送先住所
+  defaultPostalCode  String?  @map("default_postal_code") // デフォルト配送先郵便番号
+  defaultPhone       String?  @map("default_phone") // デフォルト配送先電話番号
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // リレーション
+  orders              Order[]
+  carts               Cart[]
+  passwordResetTokens PasswordResetToken[]
+  inquiries           Inquiry[]
+  repliedInquiries    Inquiry[] @relation("InquiryReplies")
+
+  @@index([email])
+  @@map("users")
+}
+
+// ===== パスワードリセットトークンモデル =====
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  token     String    @unique // ランダム生成されたトークン
+  expiresAt DateTime  @map("expires_at") // 有効期限（1時間）
+  isUsed    Boolean   @default(false) @map("is_used") // 使用済みフラグ
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // リレーション
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+// ===== 商品管理モデル =====
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  parentId    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // リレーション
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+
+  @@index([slug])
+  @@index([parentId])
+  @@map("categories")
+}
+
+model Product {
+  id                   String   @id @default(cuid())
+  name                 String
+  slug                 String   @unique
+  description          String?
+  price                Int // 整数（円単位）
+  categoryId           String?
+  isActive             Boolean  @default(true)
+  productType          String // 'physical' | 'digital' | 'event' | 'external'
+  preparationDays      Int      @default(3) @map("preparation_days") // 配送準備日数（デフォルト3日）
+  allowWeekendDelivery Boolean  @default(true) @map("allow_weekend_delivery") // 土日配送可否（デフォルトtrue）
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  // リレーション
+  category         Category?          @relation(fields: [categoryId], references: [id])
+  inventoryLogs    InventoryLog[]
+  orderItems       OrderItem[]
+  cartItems        CartItem[]
+  pickupProducts   PickupProduct[]
+  digitalTickets   DigitalTicket[]
+  digitalDownloads DigitalDownload[]
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([productType])
+  @@map("products")
+}
+
+// ===== 在庫管理モデル（イミュータブル） =====
+
+model InventoryLog {
+  id        String   @id @default(cuid())
+  productId String
+  quantity  Int // 正数=入庫、負数=出庫
+  type      String // 'purchase' | 'sale' | 'adjustment' | 'return'
+  note      String?
+  createdAt DateTime @default(now())
+
+  // リレーション
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@index([createdAt])
+  @@map("inventory_logs")
+}
+
+// ===== カートモデル =====
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+
+  @@index([userId])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  quantity  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // リレーション
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+  @@map("cart_items")
+}
+
+// ===== 注文管理モデル =====
+
+model Order {
+  id              String    @id @default(cuid())
+  orderNumber     String    @unique // 注文番号（表示用）
+  userId          String
+  customerName    String    @map("customer_name") // 顧客名
+  customerEmail   String    @map("customer_email") // 顧客メール
+  customerPhone   String    @map("customer_phone") // 顧客電話番号
+  status          String // 'pending' | 'paid' | 'preparing' | 'shipped' | 'completed' | 'cancelled'
+  paymentMethod   String // 'bank_transfer' | 'credit_card'
+  totalAmount     Int
+  shippingAddress String?   @map("shipping_address") // 配送先住所
+  shippingPostalCode String? @map("shipping_postal_code") // 配送先郵便番号
+  carrier         String?   // 配送業者（'yamato' | 'sagawa' | 'japan_post' | null）
+  trackingNumber  String?   @map("tracking_number") // 追跡番号
+  shippedAt       DateTime? @map("shipped_at") // 発送日時
+  cancelReason    String?   @map("cancel_reason") // キャンセル理由
+  cancelledAt     DateTime? @map("cancelled_at") // キャンセル日時
+  checkedIn       Boolean   @default(false) @map("checked_in") // 受付済みフラグ
+  checkedInAt     DateTime? @map("checked_in_at") // 受付日時
+  checkedInBy     String?   @map("checked_in_by") // 受付担当者ID
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // リレーション
+  user             User              @relation(fields: [userId], references: [id])
+  items            OrderItem[]
+  digitalTickets   DigitalTicket[]
+  digitalDownloads DigitalDownload[]
+
+  @@index([userId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([createdAt])
+  @@index([checkedIn])
+  @@index([customerEmail])
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Int // 購入時の価格（スナップショット）
+  createdAt DateTime @default(now())
+
+  // リレーション
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [productId], references: [id])
+  digitalTickets DigitalTicket[]
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+// ===== デジタルチケットモデル =====
+
+model DigitalTicket {
+  id          String    @id @default(cuid())
+  orderId     String    @map("order_id")
+  orderItemId String    @map("order_item_id")
+  productId   String    @map("product_id")
+  ticketCode  String    @unique @map("ticket_code") // チケット固有コード
+  qrCodeData  String    @map("qr_code_data") // QRコード用データ
+  isUsed      Boolean   @default(false) @map("is_used") // 使用済みフラグ
+  usedAt      DateTime? @map("used_at") // 使用日時
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  // リレーション
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([ticketCode])
+  @@index([isUsed])
+  @@map("digital_tickets")
+}
+
+// ===== デジタルダウンロードモデル =====
+
+model DigitalDownload {
+  id               String    @id @default(cuid())
+  orderId          String    @map("order_id")
+  productId        String    @map("product_id")
+  r2FileKey        String    @map("r2_file_key") // Cloudflare R2のファイルキー
+  fileName         String    @map("file_name") // 元のファイル名
+  downloadCount    Int       @default(0) @map("download_count") // ダウンロード回数
+  maxDownloads     Int       @default(5) @map("max_downloads") // 最大ダウンロード回数
+  lastDownloadedAt DateTime? @map("last_downloaded_at") // 最終ダウンロード日時
+  expiresAt        DateTime? @map("expires_at") // 有効期限（オプション）
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  // リレーション
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("digital_downloads")
+}
+
+// ===== サイト設定モデル =====
+
+model SiteSettings {
+  id                      String   @id @default(cuid())
+  // 配送設定
+  enableDeliveryDateTime  Boolean  @default(true) @map("enable_delivery_date_time") // 配達日時指定機能のON/OFF
+  // 決済設定
+  enableBankTransfer      Boolean  @default(true) @map("enable_bank_transfer") // 銀行振込の有効/無効
+  bankTransferDiscount    Float    @default(0.036) @map("bank_transfer_discount") // 銀行振込割引率（デフォルト3.6%）
+  enableCreditCard        Boolean  @default(true) @map("enable_credit_card") // クレジットカード決済の有効/無効
+  // 会社情報
+  companyName             String?  @map("company_name") // 会社名
+  companyLogoUrl          String?  @map("company_logo_url") // ロゴURL（R2）
+  companyPostalCode       String?  @map("company_postal_code") // 郵便番号
+  companyAddress          String?  @map("company_address") // 住所
+  companyPhone            String?  @map("company_phone") // 電話番号
+  // 銀行振込先情報
+  bankName                String?  @map("bank_name") // 銀行名
+  bankBranch              String?  @map("bank_branch") // 支店名
+  bankAccountType         String?  @map("bank_account_type") // 口座種別（普通/当座）
+  bankAccountNumber       String?  @map("bank_account_number") // 口座番号
+  bankAccountHolder       String?  @map("bank_account_holder") // 口座名義
+  // メール設定
+  emailFrom               String?  @map("email_from") // 送信元メールアドレス
+  // 画像最適化設定
+  enableWebpConversion    Boolean  @default(true) @map("enable_webp_conversion") // WebP変換の有効/無効
+  imageQuality            Int      @default(80) @map("image_quality") // 圧縮品質（60-100%）
+  thumbnailSize           Int      @default(200) @map("thumbnail_size") // サムネイルサイズ（ピクセル）
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+// ===== ナビゲーション軸モデル =====
+
+model NavigationAxis {
+  id           String   @id @default(cuid())
+  categoryType String   @map("category_type") // 'cars' | 'events' | 'digital'
+  axisName     String   @map("axis_name") // 軸名（例: "メーカー"）
+  axisKey      String   @map("axis_key") // 軸キー（例: "maker"）
+  axisType     String   @map("axis_type") // 'select' | 'multi_select' | 'search' | 'range'
+  displayType  String   @map("display_type") // 'dropdown' | 'button' | 'radio'
+  icon         String?  // アイコン（絵文字）
+  order        Int      @default(0) // 表示順序
+  isActive     Boolean  @default(true) @map("is_active") // 有効/無効
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  options NavigationAxisOption[]
+
+  @@index([categoryType])
+  @@index([order])
+  @@map("navigation_axes")
+}
+
+model NavigationAxisOption {
+  id               String         @id @default(cuid())
+  navigationAxisId String         @map("navigation_axis_id")
+  label            String // 選択肢ラベル（例: "トヨタ"）
+  value            String // 選択肢値（例: "toyota"）
+  order            Int            @default(0) // 表示順序
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  // リレーション
+  navigationAxis NavigationAxis @relation(fields: [navigationAxisId], references: [id], onDelete: Cascade)
+
+  @@index([navigationAxisId])
+  @@index([order])
+  @@map("navigation_axis_options")
+}
+
+// ===== トップページ管理モデル =====
+
+model HeroSlide {
+  id          String   @id @default(cuid())
+  imageUrl    String   @map("image_url") // ヒーロー画像URL
+  title       String?
+  description String?
+  linkUrl     String?  @map("link_url") // クリック時のリンク先
+  order       Int      @default(0) // 表示順序
+  isActive    Boolean  @default(true) @map("is_active") // 表示/非表示
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([order])
+  @@index([isActive])
+  @@map("hero_slides")
+}
+
+model MegaCategory {
+  id                 String   @id @default(cuid())
+  categoryType       String   @map("category_type") // 'cars' | 'events' | 'digital'
+  name               String
+  description        String?
+  backgroundImageUrl String   @map("background_image_url") // 背景画像URL
+  linkUrl            String   @map("link_url") // クリック時のリンク先
+  order              Int      @default(0) // 表示順序
+  isActive           Boolean  @default(true) @map("is_active") // 表示/非表示
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@index([categoryType])
+  @@index([order])
+  @@index([isActive])
+  @@map("mega_categories")
+}
+
+model PickupProduct {
+  id        String   @id @default(cuid())
+  productId String   @map("product_id")
+  order     Int      @default(0) // 表示順序
+  isActive  Boolean  @default(true) @map("is_active") // 表示/非表示
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([order])
+  @@index([isActive])
+  @@map("pickup_products")
+}
+
+model NewsItem {
+  id          String   @id @default(cuid())
+  title       String
+  content     String?
+  publishedAt DateTime @default(now()) @map("published_at") // 公開日時
+  isPublished Boolean  @default(true) @map("is_published") // 公開/非公開
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([publishedAt])
+  @@index([isPublished])
+  @@map("news_items")
+}
+
+// ===== 問い合わせ管理モデル =====
+
+model Inquiry {
+  id         String    @id @default(cuid())
+  userId     String?   @map("user_id") // ログインユーザーの場合（オプション）
+  name       String // 送信者名
+  email      String // 送信者メール
+  subject    String // 件名
+  message    String    @db.Text // 問い合わせ本文
+  status     String    @default("pending") // 'pending' | 'replied' | 'closed'
+  reply      String?   @db.Text // 管理者の返信
+  repliedAt  DateTime? @map("replied_at") // 返信日時
+  repliedBy  String?   @map("replied_by") // 返信者（管理者）ID
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  // リレーション
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  repliedByUser User?  @relation("InquiryReplies", fields: [repliedBy], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([email])
+  @@index([status])
+  @@index([createdAt])
+  @@map("inquiries")
+}

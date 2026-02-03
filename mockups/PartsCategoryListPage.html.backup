@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P-004: パーツカテゴリー一覧 - モックアップ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', 'Noto Sans JP', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .cart-icon {
+      background: rgba(255,255,255,0.2);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .breadcrumbs {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .breadcrumbs a {
+      color: #667eea;
+      text-decoration: none;
+      margin-right: 8px;
+    }
+
+    .page-title {
+      background: white;
+      padding: 32px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .page-title h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .page-title p {
+      color: #666;
+    }
+
+    /* フィルター（パーツ種類 + 対応車種） */
+    .filter-section {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .filter-row {
+      margin-bottom: 20px;
+    }
+
+    .filter-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .filter-label {
+      font-weight: bold;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .filter-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .filter-option {
+      padding: 10px 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .filter-option:hover {
+      border-color: #667eea;
+      background: #f8f8ff;
+    }
+
+    .filter-option.active {
+      border-color: #667eea;
+      background: #667eea;
+      color: white;
+    }
+
+    .controls {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .result-count {
+      color: #666;
+    }
+
+    .sort-dropdown {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .product-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .product-image {
+      width: 100%;
+      height: 220px;
+      background: linear-gradient(135deg, #667eea30 0%, #764ba230 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .product-info {
+      padding: 16px;
+    }
+
+    .product-category {
+      color: #667eea;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .product-name {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .product-desc {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 12px;
+      height: 40px;
+      overflow: hidden;
+    }
+
+    .product-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .product-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .product-stock {
+      font-size: 12px;
+      color: #4caf50;
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 32px;
+    }
+
+    .page-btn {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .page-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    @media (max-width: 768px) {
+      .product-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <div class="header">
+    <div class="header-content">
+      <div class="logo">EC Platform</div>
+      <div class="cart-icon">🛒 カート (0)</div>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="container">
+    <!-- パンくずリスト -->
+    <div class="breadcrumbs">
+      <a href="/">トップ</a> &gt;
+      <a href="/cars">車パーツ</a> &gt;
+      ブレーキパーツ
+    </div>
+
+    <!-- ページタイトル -->
+    <div class="page-title">
+      <h1>🔧 ブレーキパーツ</h1>
+      <p>ブレーキパッド、ブレーキローター、ブレーキフルードなど</p>
+    </div>
+
+    <!-- フィルター -->
+    <div class="filter-section">
+      <div class="filter-row">
+        <label class="filter-label">パーツ種類</label>
+        <div class="filter-options">
+          <div class="filter-option active">すべて</div>
+          <div class="filter-option">ブレーキパッド</div>
+          <div class="filter-option">ブレーキローター</div>
+          <div class="filter-option">ブレーキフルード</div>
+          <div class="filter-option">キャリパー</div>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <label class="filter-label">対応車種フィルター</label>
+        <div class="filter-options">
+          <div class="filter-option">すべて</div>
+          <div class="filter-option">トヨタ プリウス</div>
+          <div class="filter-option">ホンダ シビック</div>
+          <div class="filter-option">日産 スカイライン</div>
+          <div class="filter-option">マツダ ロードスター</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- コントロール -->
+    <div class="controls">
+      <div class="result-count">検索結果: 18件</div>
+      <select class="sort-dropdown">
+        <option>人気順</option>
+        <option>価格が安い順</option>
+        <option>価格が高い順</option>
+        <option>新着順</option>
+      </select>
+    </div>
+
+    <!-- 商品グリッド -->
+    <div class="product-grid">
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキパッド</div>
+          <div class="product-name">フロント ブレーキパッド</div>
+          <div class="product-desc">プリウス ZVW30 専用 純正品質</div>
+          <div class="product-footer">
+            <div class="product-price">¥12,800</div>
+            <div class="product-stock">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキローター</div>
+          <div class="product-name">スリット入りローター リア</div>
+          <div class="product-desc">冷却性能向上 制動力アップ</div>
+          <div class="product-footer">
+            <div class="product-price">¥18,500</div>
+            <div class="product-stock">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキフルード</div>
+          <div class="product-name">高性能ブレーキフルード DOT4</div>
+          <div class="product-desc">1L 沸点262℃</div>
+          <div class="product-footer">
+            <div class="product-price">¥2,800</div>
+            <div class="product-stock">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキパッド</div>
+          <div class="product-name">リア ブレーキパッド</div>
+          <div class="product-desc">シビック FK7 対応</div>
+          <div class="product-footer">
+            <div class="product-price">¥10,500</div>
+            <div class="product-stock">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">キャリパー</div>
+          <div class="product-name">4ポットキャリパー</div>
+          <div class="product-desc">高制動力 レーシング仕様</div>
+          <div class="product-footer">
+            <div class="product-price">¥85,000</div>
+            <div class="product-stock">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキローター</div>
+          <div class="product-name">フロント ブレーキローター</div>
+          <div class="product-desc">スカイライン R34 対応</div>
+          <div class="product-footer">
+            <div class="product-price">¥24,000</div>
+            <div class="product-stock">在庫あり</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ページネーション -->
+    <div class="pagination">
+      <button class="page-btn">‹</button>
+      <button class="page-btn active">1</button>
+      <button class="page-btn">2</button>
+      <button class="page-btn">3</button>
+      <button class="page-btn">›</button>
+    </div>
+  </div>
+
+  <script>
+    // フィルターオプションのクリック処理
+    document.querySelectorAll('.filter-option').forEach(option => {
+      option.addEventListener('click', function() {
+        const parent = this.parentElement;
+        parent.querySelectorAll('.filter-option').forEach(opt => {
+          opt.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <title>P-003: 車種別パーツ一覧 - モックアップ</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+        /* ヘッダー */
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #7c4dff;
+      color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 1100;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      padding: 8px 24px;
+      min-height: 64px;
+    }
+
+    
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      white-space: nowrap;
+      margin-right: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo-image {
+      height: 40px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .search-bar {
+      position: relative;
+      border-radius: 4px;
+      background-color: rgba(255, 255, 255, 0.15);
+
+      margin-right: 0;
+      width: 100%;
+      max-width: 600px;
+      transition: background-color 0.3s;
+    }
+
+    .search-bar:hover {
+      background-color: rgba(255, 255, 255, 0.25);
+    }
+
+    .search-icon {
+      position: absolute;
+      padding: 0 16px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      font-size: 24px;
+    }
+
+    .search-input {
+      color: white;
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 8px 8px 8px calc(1em + 32px);
+      font-size: 16px;
+      outline: none;
+    }
+
+    .search-input::placeholder {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .spacer {
+      flex-grow: 1;
+    }
+
+    .icon-button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      padding: 12px;
+      margin: 0 4px;
+      border-radius: 50%;
+      position: relative;
+      transition: background-color 0.3s;
+    }
+
+    .icon-button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .icon-button .material-icons {
+      font-size: 28px;
+      display: block;
+    }
+
+    .badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #f44336;
+      color: white;
+      border-radius: 10px;
+      padding: 2px 6px;
+      font-size: 12px;
+      font-weight: 600;
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+      padding-top: 96px;
+    }
+
+    .breadcrumbs {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .breadcrumbs a {
+      color: #667eea;
+      text-decoration: none;
+      margin-right: 8px;
+    }
+
+    /* 動的多軸ナビゲーション */
+    .navigation-axes {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .axis-row {
+      margin-bottom: 20px;
+    }
+
+    .axis-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .axis-label {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .axis-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .axis-option {
+      padding: 10px 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .axis-option:hover {
+      border-color: #667eea;
+      background: #f8f8ff;
+    }
+
+    .axis-option.active {
+      border-color: #667eea;
+      background: #667eea;
+      color: white;
+      font-weight: bold;
+    }
+
+    /* タグフィルター */
+    .tag-filter {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #f0f0f0;
+      color: #667eea;
+      border-radius: 20px;
+      margin: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tag:hover, .tag.active {
+      background: #667eea;
+      color: white;
+    }
+
+    /* 並び替えとページネーション */
+    .controls {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .sort-dropdown {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .result-count {
+      color: #666;
+    }
+
+    /* 商品グリッド */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+      margin-bottom: 32px;
+    }
+
+    .product-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+
+    .product-image {
+      width: 100%;
+      height: 220px;
+      background: linear-gradient(135deg, #667eea30 0%, #764ba230 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      font-size: 14px;
+    }
+
+    .product-info {
+      padding: 16px;
+    }
+
+    .product-category {
+      color: #667eea;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .product-name {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #333;
+    }
+
+    .product-desc {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 12px;
+      height: 40px;
+      overflow: hidden;
+    }
+
+    .product-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .product-price {
+      font-size: 20px;
+      font-weight: bold;
+      color: #667eea;
+    }
+
+    .product-stock {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .stock-ok {
+      color: #4caf50;
+    }
+
+    .stock-low {
+      color: #ff9800;
+    }
+
+    /* ページネーション */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 32px;
+    }
+
+    .page-btn {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .page-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .page-btn.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    @media (max-width: 768px) {
+      .product-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        flex-direction: column;
+        gap: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+    <!-- ヘッダー -->
+  <header class="header">
+    <div class="header-content">
+      <!-- ロゴ -->
+            <!-- ロゴ -->
+      <div class="logo" onclick="window.location.href='/'">
+        <!-- ロゴ画像を使用する場合は以下のコメントを外して、src属性にロゴ画像のパスを設定 -->
+        <!-- <img src="/path/to/logo.png" alt="EC Platform" class="logo-image"> -->
+        <span class="logo-text">EC Platform</span>
+      </div>
+
+      <!-- 検索バー -->
+      <form class="search-bar" onsubmit="event.preventDefault();">
+        <span class="material-icons search-icon">search</span>
+        <input type="text" placeholder="商品を検索…" class="search-input" />
+      </form>
+
+      <div class="spacer"></div>
+
+      <!-- カートアイコン -->
+      <button class="icon-button" onclick="window.location.href='/cart'" aria-label="カート">
+        <span class="material-icons">shopping_cart</span>
+        <span class="badge">0</span>
+      </button>
+
+      <!-- ユーザーアイコン -->
+      <button class="icon-button" onclick="window.location.href='/auth/login'" aria-label="アカウント">
+        <span class="material-icons">account_circle</span>
+      </button>
+    </div>
+  </header>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="container">
+    <!-- パンくずリスト -->
+    <div class="breadcrumbs">
+      <a href="/">トップ</a> &gt;
+      <a href="/cars">車パーツ</a> &gt;
+      <a href="/cars/toyota">トヨタ</a> &gt;
+      <a href="/cars/toyota/prius">プリウス</a> &gt;
+      ZVW30
+    </div>
+
+    <!-- 動的多軸ナビゲーション -->
+    <div class="navigation-axes">
+      <h3 style="margin-bottom: 20px;">絞り込み条件</h3>
+
+      <!-- 軸1: メーカー -->
+      <div class="axis-row">
+        <div class="axis-label">メーカー</div>
+        <div class="axis-options">
+          <div class="axis-option active">トヨタ</div>
+          <div class="axis-option">ホンダ</div>
+          <div class="axis-option">日産</div>
+          <div class="axis-option">マツダ</div>
+          <div class="axis-option">スバル</div>
+        </div>
+      </div>
+
+      <!-- 軸2: 車種 -->
+      <div class="axis-row">
+        <div class="axis-label">車種</div>
+        <div class="axis-options">
+          <div class="axis-option active">プリウス</div>
+          <div class="axis-option">カローラ</div>
+          <div class="axis-option">クラウン</div>
+          <div class="axis-option">ハリアー</div>
+        </div>
+      </div>
+
+      <!-- 軸3: 型式 -->
+      <div class="axis-row">
+        <div class="axis-label">型式</div>
+        <div class="axis-options">
+          <div class="axis-option">ZVW30 (2009-2015)</div>
+          <div class="axis-option">ZVW50 (2015-2018)</div>
+          <div class="axis-option">ZVW51 (2015-2018)</div>
+        </div>
+      </div>
+
+      <!-- 軸4: パーツ種類 -->
+      <div class="axis-row">
+        <div class="axis-label">パーツ種類</div>
+        <div class="axis-options">
+          <div class="axis-option">すべて</div>
+          <div class="axis-option">エンジン</div>
+          <div class="axis-option">ブレーキ</div>
+          <div class="axis-option">外装</div>
+          <div class="axis-option">内装</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- タグフィルター -->
+    <div class="tag-filter">
+      <strong>タグで絞り込み:</strong>
+      <span class="tag">#セール</span>
+      <span class="tag active">#純正品</span>
+      <span class="tag">#送料無料</span>
+      <span class="tag">#新商品</span>
+    </div>
+
+    <!-- コントロール -->
+    <div class="controls">
+      <div class="result-count">検索結果: 24件</div>
+      <select class="sort-dropdown">
+        <option>人気順</option>
+        <option>価格が安い順</option>
+        <option>価格が高い順</option>
+        <option>新着順</option>
+      </select>
+    </div>
+
+    <!-- 商品グリッド -->
+    <div class="product-grid">
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキパーツ</div>
+          <div class="product-name">ブレーキパッド フロント</div>
+          <div class="product-desc">プリウス ZVW30専用 純正品質</div>
+          <div class="product-footer">
+            <div class="product-price">¥12,800</div>
+            <div class="product-stock stock-ok">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">エンジンパーツ</div>
+          <div class="product-name">エアフィルター</div>
+          <div class="product-desc">高効率フィルター 長寿命タイプ</div>
+          <div class="product-footer">
+            <div class="product-price">¥3,200</div>
+            <div class="product-stock stock-ok">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">エンジンパーツ</div>
+          <div class="product-name">スパークプラグ 4本セット</div>
+          <div class="product-desc">NGK製 イリジウムプラグ</div>
+          <div class="product-footer">
+            <div class="product-price">¥4,800</div>
+            <div class="product-stock stock-ok">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">外装パーツ</div>
+          <div class="product-name">ワイパーブレード</div>
+          <div class="product-desc">撥水コーティング仕様</div>
+          <div class="product-footer">
+            <div class="product-price">¥2,400</div>
+            <div class="product-stock stock-low">残り3個</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">ブレーキパーツ</div>
+          <div class="product-name">ブレーキローター リア</div>
+          <div class="product-desc">スリット入り 冷却性能向上</div>
+          <div class="product-footer">
+            <div class="product-price">¥18,500</div>
+            <div class="product-stock stock-ok">在庫あり</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-image">商品画像</div>
+        <div class="product-info">
+          <div class="product-category">内装パーツ</div>
+          <div class="product-name">フロアマット セット</div>
+          <div class="product-desc">高級絨毯生地 防水加工</div>
+          <div class="product-footer">
+            <div class="product-price">¥8,900</div>
+            <div class="product-stock stock-ok">在庫あり</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ページネーション -->
+    <div class="pagination">
+      <button class="page-btn">‹</button>
+      <button class="page-btn active">1</button>
+      <button class="page-btn">2</button>
+      <button class="page-btn">3</button>
+      <button class="page-btn">4</button>
+      <button class="page-btn">›</button>
+    </div>
+  </div>
+
+  <script>
+    // 軸オプションのクリック処理
+    document.querySelectorAll('.axis-option').forEach(option => {
+      option.addEventListener('click', function() {
+        const parent = this.parentElement;
+        parent.querySelectorAll('.axis-option').forEach(opt => {
+          opt.classList.remove('active');
+        });
+        this.classList.add('active');
+      });
+    });
+
+    // タグのクリック処理
+    document.querySelectorAll('.tag').forEach(tag => {
+      tag.addEventListener('click', function() {
+        this.classList.toggle('active');
+      });
+    });
+  </script>
+</body>
+</html>

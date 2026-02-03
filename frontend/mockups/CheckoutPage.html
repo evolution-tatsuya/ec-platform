@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>購入手続き - ECプラットフォーム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+      padding-bottom: 80px;
+    }
+
+    /* ヘッダー */
+    header {
+      background: linear-gradient(135deg, #7c4dff 0%, #b47cff 100%);
+      color: white;
+      padding: 16px 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    /* メインコンテンツ */
+    main {
+      max-width: 1200px;
+      margin: 88px auto 0;
+      padding: 24px 16px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 32px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    .breadcrumb a {
+      color: #7c4dff;
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    /* レイアウト */
+    .checkout-layout {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .checkout-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .order-summary {
+        order: -1;
+      }
+    }
+
+    /* 左側: フォーム */
+    .checkout-form {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .form-section {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .form-section h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-number {
+      background: #7c4dff;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 600px) {
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .required {
+      color: #f44336;
+      margin-left: 4px;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #7c4dff;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .checkbox-group label {
+      font-size: 14px;
+      color: #333;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .radio-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .radio-option:hover {
+      border-color: #7c4dff;
+      background-color: #f5f0ff;
+    }
+
+    .radio-option input[type="radio"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+
+    .radio-option.selected {
+      border-color: #7c4dff;
+      background-color: #f5f0ff;
+    }
+
+    .radio-label {
+      flex: 1;
+    }
+
+    .radio-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .radio-description {
+      font-size: 14px;
+      color: #666;
+    }
+
+    .discount-badge {
+      background: #fff3e0;
+      color: #e65100;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .helper-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    /* 右側: 注文サマリー */
+    .order-summary {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      height: fit-content;
+      position: sticky;
+      top: 96px;
+    }
+
+    @media (max-width: 900px) {
+      .order-summary {
+        position: static;
+      }
+    }
+
+    .order-summary h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 16px;
+    }
+
+    .order-items {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+
+    .order-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .order-item:last-child {
+      border-bottom: none;
+    }
+
+    .item-image {
+      width: 60px;
+      height: 60px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 10px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .item-details {
+      flex: 1;
+    }
+
+    .item-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    .item-meta {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .item-price {
+      font-size: 14px;
+      font-weight: 600;
+      color: #7c4dff;
+      text-align: right;
+    }
+
+    .divider {
+      height: 1px;
+      background: #eee;
+      margin: 16px 0;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .summary-label {
+      color: #666;
+    }
+
+    .summary-value {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .discount-value {
+      color: #e65100;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 2px solid #eee;
+      margin-top: 16px;
+    }
+
+    .total-label {
+      font-size: 18px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .total-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #7c4dff;
+    }
+
+    /* ボタン */
+    .button-group {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 16px 32px;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex: 1;
+    }
+
+    .btn-primary {
+      background: #7c4dff;
+      color: white;
+      box-shadow: 0 4px 12px rgba(124, 77, 255, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: #6a3de8;
+      box-shadow: 0 6px 16px rgba(124, 77, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #7c4dff;
+      border: 2px solid #7c4dff;
+    }
+
+    .btn-secondary:hover {
+      background: #f5f0ff;
+    }
+
+    /* 配送オプション */
+    .shipping-options {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .info-box {
+      background: #f5f0ff;
+      border-left: 4px solid #7c4dff;
+      padding: 12px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      color: #333;
+      margin-top: 16px;
+    }
+
+    .info-box strong {
+      color: #7c4dff;
+    }
+  </style>
+</head>
+<body>
+  <!-- ヘッダー -->
+  <header>
+    <div class="header-content">
+      <div class="logo">ECプラットフォーム</div>
+    </div>
+  </header>
+
+  <!-- メインコンテンツ -->
+  <main>
+    <!-- パンくずリスト -->
+    <div class="breadcrumb">
+      <a href="/">トップ</a>
+      <span>›</span>
+      <a href="/cart">カート</a>
+      <span>›</span>
+      <span>購入手続き</span>
+    </div>
+
+    <h1>購入手続き</h1>
+
+    <div class="checkout-layout">
+      <!-- 左側: フォーム -->
+      <div class="checkout-form">
+        <!-- 1. 配送先情報 -->
+        <div class="form-section">
+          <h2>
+            <span class="section-number">1</span>
+            配送先情報
+          </h2>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="useDefaultAddress" checked>
+            <label for="useDefaultAddress">登録済みの住所を使用する</label>
+          </div>
+
+          <div class="form-group">
+            <label for="name">お名前 <span class="required">*</span></label>
+            <input type="text" id="name" value="山田 太郎" placeholder="例: 山田 太郎">
+          </div>
+
+          <div class="form-group">
+            <label for="postalCode">郵便番号 <span class="required">*</span></label>
+            <input type="text" id="postalCode" value="150-0001" placeholder="例: 150-0001">
+            <div class="helper-text">ハイフンなしでも入力可能です</div>
+          </div>
+
+          <div class="form-group">
+            <label for="address">住所 <span class="required">*</span></label>
+            <input type="text" id="address" value="東京都渋谷区神宮前1-2-3" placeholder="例: 東京都渋谷区神宮前1-2-3">
+          </div>
+
+          <div class="form-group">
+            <label for="building">建物名・部屋番号</label>
+            <input type="text" id="building" value="サンプルマンション101" placeholder="例: ○○マンション101">
+          </div>
+
+          <div class="form-group">
+            <label for="phone">電話番号 <span class="required">*</span></label>
+            <input type="tel" id="phone" value="090-1234-5678" placeholder="例: 090-1234-5678">
+          </div>
+        </div>
+
+        <!-- 2. 配送オプション -->
+        <div class="form-section">
+          <h2>
+            <span class="section-number">2</span>
+            配送オプション
+          </h2>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="weekendDelivery">
+            <label for="weekendDelivery">土日配達を希望する</label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="deliveryDate">配達希望日</label>
+              <input type="date" id="deliveryDate">
+              <div class="helper-text">最短: 2025年12月25日</div>
+            </div>
+
+            <div class="form-group">
+              <label for="deliveryTime">配達時間帯</label>
+              <select id="deliveryTime">
+                <option value="">指定なし</option>
+                <option value="0812">08:00 - 12:00</option>
+                <option value="1214">12:00 - 14:00</option>
+                <option value="1416">14:00 - 16:00</option>
+                <option value="1618">16:00 - 18:00</option>
+                <option value="1820">18:00 - 20:00</option>
+                <option value="1921">19:00 - 21:00</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="info-box">
+            <strong>配送について:</strong> 準備期間は2営業日です。土日祝日を除く2日後から配達日を指定できます。
+          </div>
+        </div>
+
+        <!-- 3. 決済方法 -->
+        <div class="form-section">
+          <h2>
+            <span class="section-number">3</span>
+            決済方法
+          </h2>
+
+          <div class="radio-group">
+            <label class="radio-option selected" data-payment="bank_transfer">
+              <input type="radio" name="payment" value="bank_transfer" checked>
+              <div class="radio-label">
+                <div class="radio-title">銀行振込</div>
+                <div class="radio-description">3.6% 割引適用</div>
+              </div>
+              <span class="discount-badge">お得!</span>
+            </label>
+
+            <label class="radio-option" data-payment="paypay">
+              <input type="radio" name="payment" value="paypay">
+              <div class="radio-label">
+                <div class="radio-title">PayPay</div>
+                <div class="radio-description">QRコード決済 | 即時決済</div>
+              </div>
+            </label>
+
+            <label class="radio-option" data-payment="credit_card">
+              <input type="radio" name="payment" value="credit_card">
+              <div class="radio-label">
+                <div class="radio-title">クレジットカード (Stripe)</div>
+                <div class="radio-description">VISA / Mastercard / AMEX | 即時決済</div>
+              </div>
+            </label>
+          </div>
+
+          <div class="info-box" id="paymentInfo">
+            <strong>銀行振込をご選択の場合:</strong> ご注文確定後、振込先情報をメールでお送りします。入金確認後、商品を発送いたします。
+          </div>
+        </div>
+
+        <!-- 4. 備考 -->
+        <div class="form-section">
+          <h2>
+            <span class="section-number">4</span>
+            その他・備考
+          </h2>
+
+          <div class="form-group">
+            <label for="notes">配送業者への連絡事項</label>
+            <textarea id="notes" placeholder="例: 不在時は宅配ボックスに入れてください"></textarea>
+          </div>
+        </div>
+
+        <!-- ボタン -->
+        <div class="button-group">
+          <button class="btn btn-secondary" onclick="history.back()">カートに戻る</button>
+          <button class="btn btn-primary">注文を確定する</button>
+        </div>
+      </div>
+
+      <!-- 右側: 注文サマリー -->
+      <div class="order-summary">
+        <h2>注文内容</h2>
+
+        <div class="order-items">
+          <div class="order-item">
+            <div class="item-image">商品画像</div>
+            <div class="item-details">
+              <div class="item-name">86用 高性能ブレーキパッド - スタンダード（フロント）</div>
+              <div class="item-meta">数量: 2</div>
+            </div>
+            <div class="item-price">¥31,600</div>
+          </div>
+
+          <div class="order-item">
+            <div class="item-image">商品画像</div>
+            <div class="item-details">
+              <div class="item-name">86用 高性能ブレーキパッド - ハイグリップ（リア）</div>
+              <div class="item-meta">数量: 1</div>
+            </div>
+            <div class="item-price">¥26,500</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="summary-row">
+          <span class="summary-label">小計（3商品）</span>
+          <span class="summary-value">¥58,100</span>
+        </div>
+
+        <div class="summary-row">
+          <span class="summary-label">送料</span>
+          <span class="summary-value">無料</span>
+        </div>
+
+        <div class="summary-row" id="discountRow">
+          <span class="summary-label">銀行振込割引 (3.6%)</span>
+          <span class="summary-value discount-value" id="discountValue">-¥2,091</span>
+        </div>
+
+        <div class="total-row">
+          <span class="total-label">合計</span>
+          <span class="total-value" id="totalValue">¥56,009</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // 決済方法ごとの情報
+    const paymentInfo = {
+      bank_transfer: {
+        fee: 0.015,     // 1.5% (内部管理用、表示しない)
+        discount: 0.036, // 3.6% (管理画面で変更可能)
+        message: '<strong>銀行振込をご選択の場合:</strong> ご注文確定後、振込先情報をメールでお送りします。入金確認後、商品を発送いたします。'
+      },
+      paypay: {
+        fee: 0.0345,    // 3.45% (内部管理用、表示しない)
+        discount: 0,
+        message: '<strong>PayPayをご選択の場合:</strong> ご注文確定後、PayPay決済画面に遷移します。決済完了後、商品を発送いたします。'
+      },
+      credit_card: {
+        fee: 0.036,     // 3.6% (内部管理用、表示しない)
+        discount: 0,
+        message: '<strong>クレジットカードをご選択の場合:</strong> ご注文確定後、Stripe決済画面で安全にカード情報を入力いただけます。決済完了後、商品を発送いたします。'
+      }
+    };
+
+    const subtotal = 58100; // 小計
+
+    // サマリーを更新
+    function updateSummary(paymentMethod) {
+      const info = paymentInfo[paymentMethod];
+      const discount = Math.floor(subtotal * info.discount);
+      const total = subtotal - discount;
+
+      // 割引行の表示/非表示
+      const discountRow = document.getElementById('discountRow');
+      const discountValue = document.getElementById('discountValue');
+
+      if (discount > 0) {
+        discountRow.style.display = 'flex';
+        discountValue.textContent = `-¥${discount.toLocaleString()}`;
+      } else {
+        discountRow.style.display = 'none';
+      }
+
+      // 合計金額の更新
+      document.getElementById('totalValue').textContent = `¥${total.toLocaleString()}`;
+
+      // 決済方法の説明を更新
+      document.getElementById('paymentInfo').innerHTML = info.message;
+    }
+
+    // ラジオボタンの選択状態を視覚的に反映 + サマリー更新
+    document.querySelectorAll('.radio-option').forEach(option => {
+      option.addEventListener('click', function() {
+        document.querySelectorAll('.radio-option').forEach(opt => {
+          opt.classList.remove('selected');
+        });
+        this.classList.add('selected');
+        const radio = this.querySelector('input[type="radio"]');
+        radio.checked = true;
+
+        // サマリーを更新
+        updateSummary(radio.value);
+      });
+    });
+
+    // デフォルト住所チェックボックス
+    document.getElementById('useDefaultAddress').addEventListener('change', function(e) {
+      const inputs = ['name', 'postalCode', 'address', 'building', 'phone'];
+      inputs.forEach(id => {
+        document.getElementById(id).disabled = e.target.checked;
+      });
+    });
+
+    // 初期表示時にサマリーを更新
+    updateSummary('bank_transfer');
+  </script>
+</body>
+</html>

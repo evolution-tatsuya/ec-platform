@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P-008: 会員登録・ログイン | ECプラットフォーム</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    .auth-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+      animation: slideIn 0.5s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .auth-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 32px 40px;
+      text-align: center;
+    }
+
+    .auth-header h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .auth-header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .auth-body {
+      padding: 40px;
+    }
+
+    .form-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 6px;
+    }
+
+    .form-tab {
+      flex: 1;
+      padding: 12px 20px;
+      text-align: center;
+      font-weight: 600;
+      color: #718096;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      border: none;
+      background: transparent;
+    }
+
+    .form-tab:hover {
+      color: #4a5568;
+    }
+
+    .form-tab.active {
+      background: white;
+      color: #667eea;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    }
+
+    .form-content {
+      display: none;
+    }
+
+    .form-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .form-label .required {
+      color: #e53e3e;
+      margin-left: 4px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      font-size: 15px;
+      transition: all 0.3s;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: #cbd5e0;
+    }
+
+    .form-help {
+      font-size: 13px;
+      color: #a0aec0;
+      margin-top: 6px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .checkbox-input {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .checkbox-label {
+      font-size: 14px;
+      color: #4a5568;
+      cursor: pointer;
+    }
+
+    .checkbox-label a {
+      color: #667eea;
+      text-decoration: none;
+    }
+
+    .checkbox-label a:hover {
+      text-decoration: underline;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 700;
+      font-size: 16px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 32px 0;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    .divider-text {
+      font-size: 13px;
+      color: #a0aec0;
+      font-weight: 600;
+    }
+
+    .social-login {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .social-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      background: white;
+      font-weight: 600;
+      color: #4a5568;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .social-btn:hover {
+      border-color: #667eea;
+      background: #f7fafc;
+    }
+
+    .social-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    .forgot-password {
+      text-align: right;
+      margin-bottom: 24px;
+    }
+
+    .forgot-password a {
+      font-size: 14px;
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .forgot-password a:hover {
+      text-decoration: underline;
+    }
+
+    .auth-footer {
+      text-align: center;
+      padding: 24px 40px;
+      background: #f7fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .auth-footer p {
+      font-size: 14px;
+      color: #718096;
+    }
+
+    .auth-footer a {
+      color: #667eea;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .auth-footer a:hover {
+      text-decoration: underline;
+    }
+
+    .password-reset-card {
+      display: none;
+    }
+
+    .password-reset-card.active {
+      display: block;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #667eea;
+      font-weight: 600;
+      font-size: 14px;
+      text-decoration: none;
+      margin-bottom: 24px;
+      transition: all 0.3s;
+    }
+
+    .back-btn:hover {
+      color: #5a67d8;
+    }
+
+    .success-message {
+      display: none;
+      background: #d4edda;
+      color: #155724;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .success-message.active {
+      display: block;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @media (max-width: 600px) {
+      .auth-header {
+        padding: 24px 24px;
+      }
+
+      .auth-header h1 {
+        font-size: 24px;
+      }
+
+      .auth-body {
+        padding: 24px;
+      }
+
+      .social-login {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <!-- メイン認証カード -->
+    <div class="auth-card" id="mainCard">
+      <div class="auth-header">
+        <h1>ようこそ</h1>
+        <p>アカウントを作成してお買い物を始めましょう</p>
+      </div>
+
+      <div class="auth-body">
+        <!-- タブ -->
+        <div class="form-tabs">
+          <button class="form-tab active" data-tab="login">ログイン</button>
+          <button class="form-tab" data-tab="register">新規登録</button>
+        </div>
+
+        <!-- ログインフォーム -->
+        <div class="form-content active" id="login">
+          <form id="loginForm">
+            <div class="form-group">
+              <label class="form-label">
+                メールアドレス<span class="required">*</span>
+              </label>
+              <input
+                type="email"
+                class="form-input"
+                placeholder="example@email.com"
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                パスワード<span class="required">*</span>
+              </label>
+              <input
+                type="password"
+                class="form-input"
+                placeholder="••••••••"
+                required
+              >
+            </div>
+
+            <div class="forgot-password">
+              <a href="#" id="forgotPasswordLink">パスワードをお忘れの方</a>
+            </div>
+
+            <button type="submit" class="submit-btn">ログイン</button>
+          </form>
+
+          <div class="divider">
+            <div class="divider-line"></div>
+            <div class="divider-text">または</div>
+            <div class="divider-line"></div>
+          </div>
+
+          <div class="social-login">
+            <button class="social-btn">
+              <svg class="social-icon" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <span>Google</span>
+            </button>
+
+            <button class="social-btn">
+              <svg class="social-icon" viewBox="0 0 24 24">
+                <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              <span>Facebook</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 新規登録フォーム -->
+        <div class="form-content" id="register">
+          <form id="registerForm">
+            <div class="form-group">
+              <label class="form-label">
+                氏名<span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                class="form-input"
+                placeholder="山田 太郎"
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                メールアドレス<span class="required">*</span>
+              </label>
+              <input
+                type="email"
+                class="form-input"
+                placeholder="example@email.com"
+                required
+              >
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                パスワード<span class="required">*</span>
+              </label>
+              <input
+                type="password"
+                class="form-input"
+                placeholder="8文字以上"
+                required
+              >
+              <div class="form-help">英数字を含む8文字以上で設定してください</div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                パスワード（確認）<span class="required">*</span>
+              </label>
+              <input
+                type="password"
+                class="form-input"
+                placeholder="再入力してください"
+                required
+              >
+            </div>
+
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="termsAgree"
+                class="checkbox-input"
+                required
+              >
+              <label for="termsAgree" class="checkbox-label">
+                <a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意します
+              </label>
+            </div>
+
+            <button type="submit" class="submit-btn">アカウント作成</button>
+          </form>
+
+          <div class="divider">
+            <div class="divider-line"></div>
+            <div class="divider-text">または</div>
+            <div class="divider-line"></div>
+          </div>
+
+          <div class="social-login">
+            <button class="social-btn">
+              <svg class="social-icon" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              <span>Google</span>
+            </button>
+
+            <button class="social-btn">
+              <svg class="social-icon" viewBox="0 0 24 24">
+                <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              <span>Facebook</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-footer">
+        <p>
+          <a href="/">トップページに戻る</a>
+        </p>
+      </div>
+    </div>
+
+    <!-- パスワードリセットカード -->
+    <div class="auth-card password-reset-card" id="resetCard">
+      <div class="auth-header">
+        <h1>パスワードリセット</h1>
+        <p>登録済みのメールアドレスにリセットリンクを送信します</p>
+      </div>
+
+      <div class="auth-body">
+        <a href="#" class="back-btn" id="backToLogin">
+          ← ログインに戻る
+        </a>
+
+        <div class="success-message" id="resetSuccess">
+          リセットリンクを送信しました！<br>
+          メールをご確認ください。
+        </div>
+
+        <form id="resetForm">
+          <div class="form-group">
+            <label class="form-label">
+              メールアドレス<span class="required">*</span>
+            </label>
+            <input
+              type="email"
+              class="form-input"
+              placeholder="example@email.com"
+              required
+            >
+            <div class="form-help">
+              登録済みのメールアドレスを入力してください
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn">リセットリンクを送信</button>
+        </form>
+      </div>
+
+      <div class="auth-footer">
+        <p>
+          <a href="/">トップページに戻る</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // タブ切り替え
+    const tabs = document.querySelectorAll('.form-tab');
+    const contents = document.querySelectorAll('.form-content');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+
+        tabs.forEach(t => t.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+
+        tab.classList.add('active');
+        document.getElementById(targetTab).classList.add('active');
+
+        // ヘッダーテキスト更新
+        const header = document.querySelector('.auth-header');
+        if (targetTab === 'login') {
+          header.querySelector('h1').textContent = 'ようこそ';
+          header.querySelector('p').textContent = 'アカウントにログインしてください';
+        } else {
+          header.querySelector('h1').textContent = '新規登録';
+          header.querySelector('p').textContent = 'アカウントを作成してお買い物を始めましょう';
+        }
+      });
+    });
+
+    // パスワードリセットリンク
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    const backToLoginLink = document.getElementById('backToLogin');
+    const mainCard = document.getElementById('mainCard');
+    const resetCard = document.getElementById('resetCard');
+
+    forgotPasswordLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      mainCard.style.display = 'none';
+      resetCard.classList.add('active');
+    });
+
+    backToLoginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      resetCard.classList.remove('active');
+      mainCard.style.display = 'block';
+      document.getElementById('resetSuccess').classList.remove('active');
+    });
+
+    // ログインフォーム送信
+    document.getElementById('loginForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('ログイン処理を実行します\n\n実装時はAPIでログイン認証を行い、トークンを保存します。');
+    });
+
+    // 登録フォーム送信
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      alert('アカウント作成処理を実行します\n\n実装時はAPIでユーザー登録を行います。');
+    });
+
+    // パスワードリセットフォーム送信
+    document.getElementById('resetForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      document.getElementById('resetSuccess').classList.add('active');
+      e.target.reset();
+    });
+
+    // ソーシャルログインボタン
+    document.querySelectorAll('.social-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const provider = btn.textContent.trim();
+        alert(`${provider}でログインします\n\n実装時はOAuth認証フローを開始します。`);
+      });
+    });
+  </script>
+</body>
+</html>

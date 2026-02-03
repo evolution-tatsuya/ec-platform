@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useCartStore } from '../stores/useCartStore';
 import { UserRole } from '../types';
 
 interface HeaderProps {
@@ -41,13 +42,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { user, role, isAuthenticated, logout } = useAuth();
+  const { getItemCount } = useCartStore();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // モックカート件数（後でZustandと連携）
-  const cartItemCount = 3;
+  const cartItemCount = getItemCount();
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -65,11 +66,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const handleMyPage = () => {
     handleUserMenuClose();
-    if (role === UserRole.ADMIN) {
-      navigate('/admin');
-    } else {
-      navigate('/mypage');
-    }
+    navigate('/mypage');
   };
 
   const handleLogin = () => {
@@ -80,6 +77,11 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
     navigate('/cart');
   };
 
+  const handleContact = () => {
+    handleUserMenuClose();
+    navigate('/contact');
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -88,8 +90,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   };
 
   return (
-    <AppBar position="fixed" color="primary" elevation={2}>
-      <Toolbar>
+    <AppBar
+      position="fixed"
+      color="primary"
+      elevation={2}
+      sx={{ borderRadius: 0 }}
+    >
+      <Toolbar sx={{ maxWidth: 1200, mx: 'auto', width: '100%' }}>
         {/* モバイルメニューアイコン */}
         {isMobile && onMenuClick && (
           <IconButton
@@ -104,19 +111,38 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         )}
 
         {/* ロゴ */}
-        <Typography
-          variant="h6"
-          noWrap
-          component="div"
+        <Box
           sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
             cursor: 'pointer',
-            fontWeight: 700,
-            letterSpacing: 1,
           }}
           onClick={() => navigate('/')}
         >
-          EC Platform
-        </Typography>
+          {/* ロゴ画像を使用する場合は以下のコメントを外して、src属性にロゴ画像のパスを設定 */}
+          {/* <Box
+            component="img"
+            src="/path/to/logo.png"
+            alt="EC Platform"
+            sx={{
+              height: 40,
+              width: 'auto',
+              objectFit: 'contain',
+            }}
+          /> */}
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{
+              fontWeight: 700,
+              letterSpacing: 1,
+            }}
+          >
+            EC Platform
+          </Typography>
+        </Box>
 
         {/* 検索バー（モバイル非表示） */}
         {!isMobile && (
@@ -168,20 +194,18 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
         <Box sx={{ flexGrow: 1 }} />
 
-        {/* カートアイコン（会員のみ） */}
-        {isAuthenticated && role === UserRole.USER && (
-          <IconButton
-            size="large"
-            aria-label={`${cartItemCount}個の商品がカートにあります`}
-            color="inherit"
-            onClick={handleCart}
-            sx={{ mr: 1 }}
-          >
-            <Badge badgeContent={cartItemCount} color="error">
-              <ShoppingCartIcon />
-            </Badge>
-          </IconButton>
-        )}
+        {/* カートアイコン */}
+        <IconButton
+          size="large"
+          aria-label={`${cartItemCount}個の商品がカートにあります`}
+          color="inherit"
+          onClick={handleCart}
+          sx={{ mr: 1 }}
+        >
+          <Badge badgeContent={cartItemCount} color="error">
+            <ShoppingCartIcon />
+          </Badge>
+        </IconButton>
 
         {/* ユーザーアイコン */}
         <IconButton
@@ -218,9 +242,13 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 {user?.name}
               </Typography>
             </MenuItem>
-            <MenuItem onClick={handleMyPage}>
-              {role === UserRole.ADMIN ? '管理画面' : 'マイページ'}
-            </MenuItem>
+            <MenuItem onClick={handleMyPage}>マイページ</MenuItem>
+            {role === UserRole.ADMIN && (
+              <MenuItem onClick={() => { handleUserMenuClose(); navigate('/admin'); }}>
+                管理画面
+              </MenuItem>
+            )}
+            <MenuItem onClick={handleContact}>お問い合わせ</MenuItem>
             <MenuItem onClick={handleLogout}>ログアウト</MenuItem>
           </Menu>
         )}
