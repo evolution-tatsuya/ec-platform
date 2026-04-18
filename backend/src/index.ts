@@ -24,6 +24,9 @@ import adminTicketRoutes from './routes/adminTicketRoutes';
 import adminCustomerRoutes from './routes/adminCustomerRoutes';
 import adminInquiryRoutes from './routes/adminInquiryRoutes';
 import adminSettingsExtendedRoutes from './routes/adminSettingsRoutes';
+import adminNavigationAxisRoutes from './routes/adminNavigationAxisRoutes';
+import favoriteRoutes from './routes/favoriteRoutes';
+import adminFavoriteRoutes from './routes/adminFavoriteRoutes';
 
 const app = express();
 
@@ -35,8 +38,15 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3247',
+  'http://localhost:3248',
+  'http://localhost:3249',
+  'http://localhost:3250',
   'http://192.168.2.100:5173',
+  'http://192.168.2.100:3249',
+  'http://192.168.2.100:3250',
   'http://172.20.10.10:5173',
+  'http://172.20.10.10:3249',
+  'http://172.20.10.10:3250',
   config.corsOrigin,
 ];
 
@@ -69,7 +79,7 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: config.nodeEnv === 'production', // 本番環境ではHTTPSのみ
-      maxAge: 24 * 60 * 60 * 1000, // 24時間
+      maxAge: 12 * 60 * 60 * 1000, // 12時間
       sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
     },
   })
@@ -105,6 +115,7 @@ app.use('/api/shipping', shippingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/top-page', topPageRoutes);
 app.use('/api/tickets', ticketsRoutes);
+app.use('/api/favorites', favoriteRoutes);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/orders', adminOrderRouter);
 app.use('/api/admin/products', adminProductRoutes);
@@ -113,6 +124,8 @@ app.use('/api/admin', adminTicketRoutes);
 app.use('/api/admin', adminCustomerRoutes);
 app.use('/api/admin', adminInquiryRoutes);
 app.use('/api/admin', adminSettingsExtendedRoutes);
+app.use('/api/admin', adminNavigationAxisRoutes);
+app.use('/api/admin', adminFavoriteRoutes);
 
 // TODO: 他のルーターを追加
 // app.use('/api/inquiries', inquiryRoutes);

@@ -99,9 +99,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <OrdersIcon />,
     },
     {
+      label: 'チケット管理',
+      path: '/admin/tickets',
+      icon: <EventsIcon />,
+    },
+    {
       label: 'イベント管理',
       path: '/admin/events',
-      icon: <EventsIcon />,
+      icon: <EventIcon />,
     },
     {
       label: '顧客管理',

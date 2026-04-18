@@ -14,7 +14,7 @@ import {
   Paper,
   Chip,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/GridLegacy';
 import {
   LineChart,
   Line,

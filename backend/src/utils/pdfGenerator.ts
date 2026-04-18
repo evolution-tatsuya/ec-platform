@@ -14,8 +14,11 @@ const font: Font = {
   },
 };
 
+// 空白のA4 PDFベース
+const BLANK_PDF = 'data:application/pdf;base64,JVBERi0xLjcKCjEgMCBvYmogICUgZW50cnkgcG9pbnQKPDwKICAvVHlwZSAvQ2F0YWxvZwogIC9QYWdlcyAyIDAgUgo+PgplbmRvYmoKCjIgMCBvYmoKPDwKICAvVHlwZSAvUGFnZXMKICAvTWVkaWFCb3ggWyAwIDAgNTk1IDg0MiBdCiAgL0NvdW50IDEKICAvS2lkcyBbIDMgMCBSIF0KPj4KZW5kb2JqCgozIDAgb2JqCjw8CiAgL1R5cGUgL1BhZ2UKICAvUGFyZW50IDIgMCBSCiAgL1Jlc291cmNlcyA8PAogICAgL0ZvbnQgPDwKICAgICAgL0YxIDQgMCBSIAogICAgPj4KICA+PgogIC9Db250ZW50cyA1IDAgUgo+PgplbmRvYmoKCjQgMCBvYmoKPDwKICAvVHlwZSAvRm9udAogIC9TdWJ0eXBlIC9UeXBlMQogIC9CYXNlRm9udCAvSGVsdmV0aWNhCj4+CmVuZG9iagoKNSAwIG9iaiAgJSBwYWdlIGNvbnRlbnQKPDwKICAvTGVuZ3RoIDAKPj4Kc3RyZWFtCmVuZHN0cmVhbQplbmRvYmoKCnhyZWYKMCA2CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDAxMCAwMDAwMCBuIAowMDAwMDAwMDc5IDAwMDAwIG4gCjAwMDAwMDAxNzYgMDAwMDAgbiAKMDAwMDAwMDI5NSAwMDAwMCBuIAowMDAwMDAwMzY2IDAwMDAwIG4gCnRyYWlsZXIKPDwKICAvU2l6ZSA2CiAgL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjQxNQolJUVPRgo=';
+
 /**
- * 納品書PDF生成
+ * 納品書PDF生成（Amazonスタイル・改善版）
  */
 export async function generateInvoicePDF(orderData: {
   orderNumber: string;
@@ -31,91 +34,284 @@ export async function generateInvoicePDF(orderData: {
     price: number;
   }>;
   totalAmount: number;
+  shippingFee?: number;
+  paymentMethod?: string;
 }): Promise<Uint8Array> {
-  const template: Template = {
-    schemas: [
-      {
-        title: {
-          type: 'text',
-          position: { x: 20, y: 20 },
-          width: 100,
-          height: 10,
-          fontSize: 24,
-          fontName: 'NotoSansJP-Regular',
-        },
-        orderNumber: {
-          type: 'text',
-          position: { x: 20, y: 35 },
-          width: 170,
-          height: 8,
-          fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
-        },
-        date: {
-          type: 'text',
-          position: { x: 20, y: 45 },
-          width: 170,
-          height: 8,
-          fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
-        },
-        customerInfo: {
-          type: 'text',
-          position: { x: 20, y: 60 },
-          width: 170,
-          height: 40,
-          fontSize: 11,
-          fontName: 'NotoSansJP-Regular',
-        },
-        itemsHeader: {
-          type: 'text',
-          position: { x: 20, y: 110 },
-          width: 170,
-          height: 8,
-          fontSize: 10,
-          fontName: 'NotoSansJP-Regular',
-        },
-        itemsList: {
-          type: 'text',
-          position: { x: 20, y: 120 },
-          width: 170,
-          height: 100,
-          fontSize: 10,
-          fontName: 'NotoSansJP-Regular',
-        },
-        total: {
-          type: 'text',
-          position: { x: 20, y: 230 },
-          width: 170,
-          height: 10,
-          fontSize: 14,
-          fontName: 'NotoSansJP-Regular',
-        },
-      },
-    ],
-    basePdf: 'data:application/pdf;base64,JVBERi0xLjcKCjEgMCBvYmogICUgZW50cnkgcG9pbnQKPDwKICAvVHlwZSAvQ2F0YWxvZwogIC9QYWdlcyAyIDAgUgo+PgplbmRvYmoKCjIgMCBvYmoKPDwKICAvVHlwZSAvUGFnZXMKICAvTWVkaWFCb3ggWyAwIDAgMjEwIDI5NyBdCiAgL0NvdW50IDEKICAvS2lkcyBbIDMgMCBSIF0KPj4KZW5kb2JqCgozIDAgb2JqCjw8CiAgL1R5cGUgL1BhZ2UKICAvUGFyZW50IDIgMCBSCiAgL1Jlc291cmNlcyA8PAogICAgL0ZvbnQgPDwKICAgICAgL0YxIDQgMCBSIAogICAgPj4KICA+PgogIC9Db250ZW50cyA1IDAgUgo+PgplbmRvYmoKCjQgMCBvYmoKPDwKICAvVHlwZSAvRm9udAogIC9TdWJ0eXBlIC9UeXBlMQogIC9CYXNlRm9udCAvVGltZXMtUm9tYW4KPj4KZW5kb2JqCgo1IDAgb2JqICAlIHBhZ2UgY29udGVudAo8PAogIC9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCjcwIDUwIFRkCi9GMSA4IFRmCihIZWxsbywgd29ybGQhKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCgp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTAgMDAwMDAgbiAKMDAwMDAwMDA3OSAwMDAwMCBuIAowMDAwMDAwMTczIDAwMDAwIG4gCjAwMDAwMDAzMDEgMDAwMDAgbiAKMDAwMDAwMDM4MCAwMDAwMCBuIAp0cmFpbGVyCjw8CiAgL1NpemUgNgogIC9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgo0OTIKJSVFT0YK',
+  const shippingFee = orderData.shippingFee || 0;
+  const subtotal = orderData.totalAmount - shippingFee;
+
+  // 日付フォーマット
+  const dateStr = orderData.createdAt.toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'short',
+  });
+
+  // スキーマを動的に構築
+  const schema: any = {
+    // ========== 発送先セクション（上部） ==========
+    shippingLabel: {
+      type: 'text',
+      position: { x: 20, y: 15 },
+      width: 100,
+      height: 8,
+      fontSize: 11,
+    },
+    postalCode: {
+      type: 'text',
+      position: { x: 20, y: 25 },
+      width: 100,
+      height: 10,
+      fontSize: 18,
+    },
+    address: {
+      type: 'text',
+      position: { x: 20, y: 38 },
+      width: 150,
+      height: 8,
+      fontSize: 12,
+    },
+    customerName: {
+      type: 'text',
+      position: { x: 20, y: 48 },
+      width: 150,
+      height: 8,
+      fontSize: 13,
+    },
+    divider1: {
+      type: 'text',
+      position: { x: 20, y: 60 },
+      width: 170,
+      height: 5,
+      fontSize: 8,
+    },
+    orderNumber: {
+      type: 'text',
+      position: { x: 20, y: 68 },
+      width: 170,
+      height: 6,
+      fontSize: 11,
+    },
+    thankYou: {
+      type: 'text',
+      position: { x: 20, y: 76 },
+      width: 170,
+      height: 10,
+      fontSize: 9,
+    },
+    detailBoxTitle: {
+      type: 'text',
+      position: { x: 20, y: 90 },
+      width: 80,
+      height: 6,
+      fontSize: 9,
+    },
+    detailPostal: {
+      type: 'text',
+      position: { x: 20, y: 97 },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    },
+    detailAddress: {
+      type: 'text',
+      position: { x: 20, y: 104 },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    },
+    detailName: {
+      type: 'text',
+      position: { x: 20, y: 111 },
+      width: 80,
+      height: 10,
+      fontSize: 8,
+    },
+    detailDate: {
+      type: 'text',
+      position: { x: 20, y: 121 },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    },
+    detailShipping: {
+      type: 'text',
+      position: { x: 20, y: 128 },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    },
+    detailBuyer: {
+      type: 'text',
+      position: { x: 20, y: 135 },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    },
+    detailSeller: {
+      type: 'text',
+      position: { x: 20, y: 142 },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    },
+    tableHeaderQty: {
+      type: 'text',
+      position: { x: 20, y: 155 },
+      width: 20,
+      height: 6,
+      fontSize: 9,
+    },
+    tableHeaderName: {
+      type: 'text',
+      position: { x: 42, y: 155 },
+      width: 80,
+      height: 6,
+      fontSize: 9,
+    },
+    tableHeaderPrice: {
+      type: 'text',
+      position: { x: 125, y: 155 },
+      width: 30,
+      height: 6,
+      fontSize: 9,
+    },
+    tableHeaderTotal: {
+      type: 'text',
+      position: { x: 158, y: 155 },
+      width: 32,
+      height: 6,
+      fontSize: 9,
+    },
+    divider2: {
+      type: 'text',
+      position: { x: 20, y: 162 },
+      width: 170,
+      height: 4,
+      fontSize: 8,
+    },
   };
 
-  const itemsText = orderData.items
-    .map(
-      (item, index) =>
-        `${index + 1}. ${item.productName}\n   数量: ${item.quantity} × ¥${item.price.toLocaleString()} = ¥${(item.quantity * item.price).toLocaleString()}`
-    )
-    .join('\n\n');
+  // 商品行を動的に追加（最大10個）
+  let itemY = 170;
+  for (let i = 0; i < 10; i++) {
+    schema[`itemQty${i}`] = {
+      type: 'text',
+      position: { x: 20, y: itemY },
+      width: 20,
+      height: 6,
+      fontSize: 8,
+    };
+    schema[`itemName${i}`] = {
+      type: 'text',
+      position: { x: 42, y: itemY },
+      width: 80,
+      height: 6,
+      fontSize: 8,
+    };
+    schema[`itemPrice${i}`] = {
+      type: 'text',
+      position: { x: 125, y: itemY },
+      width: 30,
+      height: 6,
+      fontSize: 8,
+    };
+    schema[`itemTotal${i}`] = {
+      type: 'text',
+      position: { x: 158, y: itemY },
+      width: 32,
+      height: 6,
+      fontSize: 8,
+    };
+    itemY += 8;
+  }
 
-  const inputs = [
-    {
-      title: '納品書',
-      orderNumber: `注文番号: ${orderData.orderNumber}`,
-      date: `発行日: ${orderData.createdAt.toLocaleDateString('ja-JP')}`,
-      customerInfo: `お客様情報:\n${orderData.customerName}\n${orderData.customerEmail}\n${orderData.customerPhone}\n〒${orderData.shippingPostalCode || ''}\n${orderData.shippingAddress || ''}`,
-      itemsHeader: '商品明細:',
-      itemsList: itemsText,
-      total: `合計金額: ¥${orderData.totalAmount.toLocaleString()}`,
-    },
-  ];
+  // 金額内訳（商品数に応じて位置調整）
+  const summaryY = 170 + (Math.min(orderData.items.length, 10) * 8) + 10;
 
-  return await generate({ template, inputs, options: { font } });
+  schema['divider3'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY },
+    width: 80,
+    height: 4,
+    fontSize: 8,
+  };
+  schema['subtotalLine'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY + 7 },
+    width: 80,
+    height: 6,
+    fontSize: 9,
+  };
+  schema['shippingLine'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY + 15 },
+    width: 80,
+    height: 6,
+    fontSize: 9,
+  };
+  schema['totalLine'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY + 25 },
+    width: 80,
+    height: 7,
+    fontSize: 11,
+  };
+
+  const template: Template = {
+    schemas: [schema],
+    basePdf: BLANK_PDF,
+  };
+
+  // 入力データを作成
+  const inputs: any = {
+    shippingLabel: '発送先:',
+    postalCode: orderData.shippingPostalCode || '',
+    address: orderData.shippingAddress || '',
+    customerName: `${orderData.customerName} 様`,
+    divider1: '──────────────────────────────────────────────────────',
+    orderNumber: `注文番号：${orderData.orderNumber}`,
+    thankYou: '（それぞれの管理者ショップ名）より商品をお買い上げいただき、\nありがとうございました。',
+    detailBoxTitle: 'お届け先：',
+    detailPostal: orderData.shippingPostalCode || '',
+    detailAddress: orderData.shippingAddress || '',
+    detailName: `${orderData.customerName} 様\n`,
+    detailDate: `注文日：${dateStr}`,
+    detailShipping: '配送方法：標準',
+    detailBuyer: `購入者の名前：${orderData.customerName}`,
+    detailSeller: '出品者の名前：ECプラットフォーム',
+    tableHeaderQty: '数量',
+    tableHeaderName: '商品の詳細',
+    tableHeaderPrice: '単価',
+    tableHeaderTotal: '注文金額',
+    divider2: '──────────────────────────────────────────────────────',
+  };
+
+  // 商品行データ
+  for (let i = 0; i < 10; i++) {
+    if (i < orderData.items.length) {
+      const item = orderData.items[i];
+      const itemTotal = item.quantity * item.price;
+      inputs[`itemQty${i}`] = `${item.quantity}個`;
+      inputs[`itemName${i}`] = item.productName.substring(0, 30);
+      inputs[`itemPrice${i}`] = `¥${item.price.toLocaleString()}`;
+      inputs[`itemTotal${i}`] = `¥${itemTotal.toLocaleString()}`;
+    } else {
+      inputs[`itemQty${i}`] = '';
+      inputs[`itemName${i}`] = '';
+      inputs[`itemPrice${i}`] = '';
+      inputs[`itemTotal${i}`] = '';
+    }
+  }
+
+  // 金額内訳
+  inputs['divider3'] = '──────────────────────────';
+  inputs['subtotalLine'] = `商品の小計：¥${subtotal.toLocaleString()}`;
+  inputs['shippingLine'] = `配送料の合計：¥${shippingFee.toLocaleString()}`;
+  inputs['totalLine'] = `総計：¥${orderData.totalAmount.toLocaleString()}`;
+
+  return await generate({ template, inputs: [inputs], options: { font } });
 }
 
 /**
@@ -137,7 +333,6 @@ export async function generateReceiptPDF(orderData: {
           width: 100,
           height: 10,
           fontSize: 24,
-          fontName: 'NotoSansJP-Regular',
         },
         orderNumber: {
           type: 'text',
@@ -145,7 +340,6 @@ export async function generateReceiptPDF(orderData: {
           width: 170,
           height: 8,
           fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
         },
         date: {
           type: 'text',
@@ -153,7 +347,6 @@ export async function generateReceiptPDF(orderData: {
           width: 170,
           height: 8,
           fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
         },
         customerName: {
           type: 'text',
@@ -161,7 +354,6 @@ export async function generateReceiptPDF(orderData: {
           width: 170,
           height: 10,
           fontSize: 14,
-          fontName: 'NotoSansJP-Regular',
         },
         amount: {
           type: 'text',
@@ -169,7 +361,6 @@ export async function generateReceiptPDF(orderData: {
           width: 170,
           height: 15,
           fontSize: 18,
-          fontName: 'NotoSansJP-Regular',
         },
         paymentMethod: {
           type: 'text',
@@ -177,7 +368,6 @@ export async function generateReceiptPDF(orderData: {
           width: 170,
           height: 8,
           fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
         },
         note: {
           type: 'text',
@@ -185,11 +375,10 @@ export async function generateReceiptPDF(orderData: {
           width: 170,
           height: 20,
           fontSize: 10,
-          fontName: 'NotoSansJP-Regular',
         },
       },
     ],
-    basePdf: 'data:application/pdf;base64,JVBERi0xLjcKCjEgMCBvYmogICUgZW50cnkgcG9pbnQKPDwKICAvVHlwZSAvQ2F0YWxvZwogIC9QYWdlcyAyIDAgUgo+PgplbmRvYmoKCjIgMCBvYmoKPDwKICAvVHlwZSAvUGFnZXMKICAvTWVkaWFCb3ggWyAwIDAgMjEwIDI5NyBdCiAgL0NvdW50IDEKICAvS2lkcyBbIDMgMCBSIF0KPj4KZW5kb2JqCgozIDAgb2JqCjw8CiAgL1R5cGUgL1BhZ2UKICAvUGFyZW50IDIgMCBSCiAgL1Jlc291cmNlcyA8PAogICAgL0ZvbnQgPDwKICAgICAgL0YxIDQgMCBSIAogICAgPj4KICA+PgogIC9Db250ZW50cyA1IDAgUgo+PgplbmRvYmoKCjQgMCBvYmoKPDwKICAvVHlwZSAvRm9udAogIC9TdWJ0eXBlIC9UeXBlMQogIC9CYXNlRm9udCAvVGltZXMtUm9tYW4KPj4KZW5kb2JqCgo1IDAgb2JqICAlIHBhZ2UgY29udGVudAo8PAogIC9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCjcwIDUwIFRkCi9GMSA4IFRmCihIZWxsbywgd29ybGQhKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCgp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTAgMDAwMDAgbiAKMDAwMDAwMDA3OSAwMDAwMCBuIAowMDAwMDAwMTczIDAwMDAwIG4gCjAwMDAwMDAzMDEgMDAwMDAgbiAKMDAwMDAwMDM4MCAwMDAwMCBuIAp0cmFpbGVyCjw8CiAgL1NpemUgNgogIC9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgo0OTIKJSVFT0YK',
+    basePdf: BLANK_PDF,
   };
 
   const paymentMethodText =
@@ -231,7 +420,6 @@ export async function generateShippingLabelPDF(orderData: {
           width: 100,
           height: 10,
           fontSize: 24,
-          fontName: 'NotoSansJP-Regular',
         },
         orderNumber: {
           type: 'text',
@@ -239,7 +427,6 @@ export async function generateShippingLabelPDF(orderData: {
           width: 170,
           height: 8,
           fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
         },
         carrier: {
           type: 'text',
@@ -247,7 +434,6 @@ export async function generateShippingLabelPDF(orderData: {
           width: 170,
           height: 8,
           fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
         },
         trackingNumber: {
           type: 'text',
@@ -255,7 +441,6 @@ export async function generateShippingLabelPDF(orderData: {
           width: 170,
           height: 8,
           fontSize: 12,
-          fontName: 'NotoSansJP-Regular',
         },
         customerInfo: {
           type: 'text',
@@ -263,11 +448,10 @@ export async function generateShippingLabelPDF(orderData: {
           width: 170,
           height: 40,
           fontSize: 14,
-          fontName: 'NotoSansJP-Regular',
         },
       },
     ],
-    basePdf: 'data:application/pdf;base64,JVBERi0xLjcKCjEgMCBvYmogICUgZW50cnkgcG9pbnQKPDwKICAvVHlwZSAvQ2F0YWxvZwogIC9QYWdlcyAyIDAgUgo+PgplbmRvYmoKCjIgMCBvYmoKPDwKICAvVHlwZSAvUGFnZXMKICAvTWVkaWFCb3ggWyAwIDAgMjEwIDI5NyBdCiAgL0NvdW50IDEKICAvS2lkcyBbIDMgMCBSIF0KPj4KZW5kb2JqCgozIDAgb2JqCjw8CiAgL1R5cGUgL1BhZ2UKICAvUGFyZW50IDIgMCBSCiAgL1Jlc291cmNlcyA8PAogICAgL0ZvbnQgPDwKICAgICAgL0YxIDQgMCBSIAogICAgPj4KICA+PgogIC9Db250ZW50cyA1IDAgUgo+PgplbmRvYmoKCjQgMCBvYmoKPDwKICAvVHlwZSAvRm9udAogIC9TdWJ0eXBlIC9UeXBlMQogIC9CYXNlRm9udCAvVGltZXMtUm9tYW4KPj4KZW5kb2JqCgo1IDAgb2JqICAlIHBhZ2UgY29udGVudAo8PAogIC9MZW5ndGggNDQKPj4Kc3RyZWFtCkJUCjcwIDUwIFRkCi9GMSA4IFRmCihIZWxsbywgd29ybGQhKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCgp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTAgMDAwMDAgbiAKMDAwMDAwMDA3OSAwMDAwMCBuIAowMDAwMDAwMTczIDAwMDAwIG4gCjAwMDAwMDAzMDEgMDAwMDAgbiAKMDAwMDAwMDM4MCAwMDAwMCBuIAp0cmFpbGVyCjw8CiAgL1NpemUgNgogIC9Sb290IDEgMCBSCj4+CnN0YXJ0eHJlZgo0OTIKJSVFT0YK',
+    basePdf: BLANK_PDF,
   };
 
   const carrierText = orderData.carrier

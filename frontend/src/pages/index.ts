@@ -18,3 +18,6 @@ export { default as AdminTicketsPage } from './AdminTicketsPage';
 export { default as AdminCustomersPage } from './AdminCustomersPage';
 export { default as AdminInquiriesPage } from './AdminInquiriesPage';
 export { default as AdminSettingsPage } from './AdminSettingsPage';
+export { default as AdminNavigationAxesPage } from './AdminNavigationAxesPage';
+export { default as AdminLoginPage } from './AdminLoginPage';
+export { default as AdminEventsPage } from './AdminEventsPage';

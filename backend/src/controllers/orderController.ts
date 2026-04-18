@@ -938,6 +938,8 @@ export async function generateInvoice(req: Request, res: Response) {
         price: item.price,
       })),
       totalAmount: order.totalAmount,
+      shippingFee: order.shippingFee,
+      paymentMethod: order.paymentMethod,
     });
 
     // PDFをレスポンスとして返す

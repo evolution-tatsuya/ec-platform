@@ -8,7 +8,7 @@ import {
   CardActionArea,
   CardContent,
 } from '@mui/material';
-import Grid from '@mui/material/Grid';
+import Grid from '@mui/material/GridLegacy';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import EventIcon from '@mui/icons-material/Event';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';

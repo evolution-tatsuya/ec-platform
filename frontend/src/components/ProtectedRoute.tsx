@@ -14,9 +14,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 }) => {
   const { isAuthenticated, role } = useAuth();
 
-  // 認証されていない場合、ログインページへリダイレクト
+  // 認証されていない場合、管理者用ログインページへリダイレクト
   if (!isAuthenticated) {
-    return <Navigate to="/auth/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
   // 必要な権限がある場合、権限チェック

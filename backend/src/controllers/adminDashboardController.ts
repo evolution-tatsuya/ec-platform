@@ -78,7 +78,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
           select: {
             id: true,
             email: true,
-            displayName: true,
+            name: true,
           },
         },
       },
@@ -98,7 +98,6 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             id: true,
             name: true,
             price: true,
-            mainImageUrl: true,
           },
         },
       },
@@ -213,7 +212,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
           ? {
               id: order.user.id,
               email: order.user.email,
-              displayName: order.user.displayName,
+              name: order.user.name,
             }
           : null,
       })),

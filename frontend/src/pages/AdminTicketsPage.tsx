@@ -13,17 +13,18 @@ import {
   Paper,
   Card,
   CardContent,
-  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Snackbar,
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
-import { CheckCircle, Cancel, QrCode2, Refresh } from '@mui/icons-material';
-import { adminAPI, DigitalTicket } from '../lib/api';
+import { CheckCircle, QrCode2, Refresh } from '@mui/icons-material';
+import { adminAPI } from '../lib/api';
+import type { DigitalTicket } from '../types';
 import { Header } from '../components';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -55,7 +56,7 @@ const AdminTicketsPage = () => {
       if (statusFilter !== 'all') params.isUsed = statusFilter === 'used';
 
       const { tickets: data } = await adminAPI.getTickets(params);
-      setTickets(data);
+      setTickets(data as any);
     } catch (error: any) {
       showSnackbar(error.message || 'チケット一覧の取得に失敗しました', 'error');
     } finally {
@@ -119,26 +120,24 @@ const AdminTicketsPage = () => {
       field: 'ticketCode',
       headerName: 'チケットコード',
       width: 200,
-      fontFamily: 'monospace',
     },
     {
       field: 'productName',
       headerName: 'イベント名',
       width: 250,
-      valueGetter: (value, row) => row.product.name,
+      valueGetter: (_value, row) => row.product.name,
     },
     {
       field: 'userName',
       headerName: '購入者',
       width: 180,
-      valueGetter: (value, row) => row.order.user?.name || row.order.user?.email || 'ゲスト',
+      valueGetter: (_value, row) => row.order.user?.name || row.order.user?.email || 'ゲスト',
     },
     {
       field: 'orderNumber',
       headerName: '注文番号',
       width: 150,
-      valueGetter: (value, row) => row.order.orderNumber,
-      fontFamily: 'monospace',
+      valueGetter: (_value, row) => row.order.orderNumber,
     },
     {
       field: 'isUsed',
@@ -157,7 +156,7 @@ const AdminTicketsPage = () => {
       field: 'usedAt',
       headerName: '使用日時',
       width: 180,
-      valueGetter: (value, row) =>
+      valueGetter: (_value, row) =>
         row.usedAt ? format(new Date(row.usedAt), 'yyyy/MM/dd HH:mm', { locale: ja }) : '-',
     },
     {
@@ -213,7 +212,7 @@ const AdminTicketsPage = () => {
 
         {/* 統計カード */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">
@@ -225,7 +224,7 @@ const AdminTicketsPage = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">
@@ -237,7 +236,7 @@ const AdminTicketsPage = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">
@@ -249,7 +248,7 @@ const AdminTicketsPage = () => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid xs={12} sm={6} md={3}>
             <Card>
               <CardContent>
                 <Typography variant="body2" color="text.secondary">
@@ -342,7 +341,7 @@ const AdminTicketsPage = () => {
                   <Typography variant="caption" color="text.secondary">
                     イベント名
                   </Typography>
-                  <Typography variant="body1">{selectedTicket.product.name}</Typography>
+                  <Typography variant="body1">{(selectedTicket as any).product?.name || 'N/A'}</Typography>
                 </Box>
 
                 <Box sx={{ mb: 2 }}>
@@ -350,7 +349,7 @@ const AdminTicketsPage = () => {
                     購入者
                   </Typography>
                   <Typography variant="body1">
-                    {selectedTicket.order.user?.name || selectedTicket.order.user?.email || 'ゲスト'}
+                    {(selectedTicket as any).order?.user?.name || (selectedTicket as any).order?.user?.email || 'ゲスト'}
                   </Typography>
                 </Box>
 
@@ -359,7 +358,7 @@ const AdminTicketsPage = () => {
                     注文番号
                   </Typography>
                   <Typography variant="body1" fontFamily="monospace">
-                    {selectedTicket.order.orderNumber}
+                    {(selectedTicket as any).order?.orderNumber || 'N/A'}
                   </Typography>
                 </Box>
 

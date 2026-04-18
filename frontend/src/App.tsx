@@ -23,6 +23,9 @@ import {
   AdminCustomersPage,
   AdminInquiriesPage,
   AdminSettingsPage,
+  AdminNavigationAxesPage,
+  AdminLoginPage,
+  AdminEventsPage,
 } from './pages';
 import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
@@ -31,6 +34,7 @@ import AuthPage from './pages/AuthPage';
 import { UserRole } from './types';
 import { Box } from '@mui/material';
 import { Header } from './components';
+import TestPage from './TestPage';
 
 function App() {
   return (
@@ -39,9 +43,35 @@ function App() {
       <Router>
         <AuthProvider>
           <Routes>
+            {/* テストページ（デバッグ用） */}
+            <Route path="/test" element={<TestPage />} />
+
             {/* 受付QRスキャナー（認証不要） */}
             <Route path="/checkin" element={<AdminCheckinPage />} />
             <Route path="/admin/checkin" element={<AdminCheckinPage />} />
+
+            {/* 管理者ログインページ（認証不要、独自レイアウト） */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
+
+            {/* 商品管理ページ（要管理者権限、独自レイアウト） */}
+            <Route
+              path="/admin/products"
+              element={
+                <ProtectedRoute requiredRole={UserRole.ADMIN}>
+                  <AdminProductsPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ナビゲーション軸設定ページ（要管理者権限、独自レイアウト） */}
+            <Route
+              path="/admin/navigation"
+              element={
+                <ProtectedRoute requiredRole={UserRole.ADMIN}>
+                  <AdminNavigationAxesPage />
+                </ProtectedRoute>
+              }
+            />
 
             {/* トップページ（独自レイアウト） */}
             <Route
@@ -189,14 +219,6 @@ function App() {
                 }
               />
               <Route
-                path="/admin/products"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminProductsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/admin/orders"
                 element={
                   <ProtectedRoute requiredRole={UserRole.ADMIN}>
@@ -233,6 +255,14 @@ function App() {
                 element={
                   <ProtectedRoute requiredRole={UserRole.ADMIN}>
                     <AdminSettingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/events"
+                element={
+                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
+                    <AdminEventsPage />
                   </ProtectedRoute>
                 }
               />

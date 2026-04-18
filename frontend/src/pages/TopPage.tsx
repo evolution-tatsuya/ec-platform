@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Swiper from 'swiper';
 import { Autoplay, EffectFade } from 'swiper/modules';
 import 'swiper/swiper-bundle.css';
-import { topPageAPI, type TopPageData } from '../lib/api';
+import { topPageAPI } from '../lib/api';
+import type { TopPageData } from '../types';
 
 // モックデータ（フォールバック用）
 const mockTopPageData = {
@@ -184,7 +185,7 @@ export default function TopPage() {
         setLoading(true);
         setError(null);
         const response = await topPageAPI.getTopPageData();
-        setTopPageData(response.data);
+        setTopPageData(response.data as any);
       } catch (err) {
         console.error('トップページデータ取得エラー:', err);
         setError('データの読み込みに失敗しました');
@@ -240,9 +241,9 @@ export default function TopPage() {
     }
   }, [topPageData]);
 
-  const handleProductClick = () => {
+  const handleProductClick = (productId: string) => {
     // TODO: 実際の商品データが実装されたら商品詳細ページに遷移
-    navigate('/cars/parts/categories');
+    navigate(`/products/${productId}`);
   };
 
   const handleCategoryClick = (linkUrl: string) => {
@@ -317,9 +318,15 @@ export default function TopPage() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
         }}
       >
-        <Box className="swiper-wrapper">
+        <Box className="swiper-wrapper" sx={{ height: '100%' }}>
           {topPageData.heroSlides.map((slide) => (
-            <Box key={slide.id} className="swiper-slide">
+            <Box
+              key={slide.id}
+              className="swiper-slide"
+              sx={{
+                height: '100%',
+              }}
+            >
               <Box
                 sx={{
                   width: '100%',
@@ -327,13 +334,16 @@ export default function TopPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: slide.gradient,
+                  background: slide.imageUrl
+                    ? `url(${slide.imageUrl}) center/cover no-repeat`
+                    : (slide as any).gradient ||
+                      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   color: 'white',
                   fontSize: 48,
                   fontWeight: 700,
                 }}
               >
-                {slide.title}
+                {!slide.imageUrl && slide.title}
               </Box>
             </Box>
           ))}
@@ -487,7 +497,7 @@ export default function TopPage() {
             {topPageData.pickupProducts.map((product) => (
               <Box key={product.id} className="swiper-slide">
                 <Box
-                  onClick={() => handleProductClick()}
+                  onClick={() => handleProductClick(product.id)}
                   sx={{
                     background: 'white',
                     borderRadius: 1,
@@ -504,7 +514,11 @@ export default function TopPage() {
                     sx={{
                       width: '100%',
                       height: 180,
-                      background: product.gradient,
+                      background:
+                        (product as any).gradient ||
+                        (product.product.images && product.product.images[0]
+                          ? `url(${product.product.images[0]}) center/cover no-repeat`
+                          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -513,7 +527,9 @@ export default function TopPage() {
                       fontWeight: 500,
                     }}
                   >
-                    商品画像 {product.id}
+                    {!(product as any).gradient &&
+                      (!product.product.images || !product.product.images[0]) &&
+                      `商品画像 ${product.id}`}
                   </Box>
                   <Box sx={{ p: 2 }}>
                     <Typography
@@ -524,7 +540,7 @@ export default function TopPage() {
                         color: '#333',
                       }}
                     >
-                      {product.name}
+                      {product.product.name}
                     </Typography>
                     <Typography
                       sx={{
@@ -533,7 +549,7 @@ export default function TopPage() {
                         color: '#1976d2',
                       }}
                     >
-                      ¥{product.price.toLocaleString()}
+                      ¥{product.product.price.toLocaleString()}
                     </Typography>
                   </Box>
                 </Box>
@@ -594,7 +610,11 @@ export default function TopPage() {
                 sx={{
                   width: '100%',
                   height: 180,
-                  background: product.gradient,
+                  background:
+                    (product as any).gradient ||
+                    (product.images && product.images[0]
+                      ? `url(${product.images[0]}) center/cover no-repeat`
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -603,7 +623,9 @@ export default function TopPage() {
                   fontWeight: 500,
                 }}
               >
-                新着 {product.id}
+                {!(product as any).gradient &&
+                  (!product.images || !product.images[0]) &&
+                  `新着 ${product.id}`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -682,7 +704,11 @@ export default function TopPage() {
                 sx={{
                   width: '100%',
                   height: 180,
-                  background: product.gradient,
+                  background:
+                    (product as any).gradient ||
+                    (product.images && product.images[0]
+                      ? `url(${product.images[0]}) center/cover no-repeat`
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -691,7 +717,9 @@ export default function TopPage() {
                   fontWeight: 500,
                 }}
               >
-                セール {product.id}
+                {!(product as any).gradient &&
+                  (!product.images || !product.images[0]) &&
+                  `セール ${product.id}`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -770,7 +798,11 @@ export default function TopPage() {
                 sx={{
                   width: '100%',
                   height: 180,
-                  background: product.gradient,
+                  background:
+                    (product as any).gradient ||
+                    (product.images && product.images[0]
+                      ? `url(${product.images[0]}) center/cover no-repeat`
+                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -779,7 +811,9 @@ export default function TopPage() {
                   fontWeight: 500,
                 }}
               >
-                人気 {product.id}
+                {!(product as any).gradient &&
+                  (!product.images || !product.images[0]) &&
+                  `人気 ${product.id}`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -865,7 +899,7 @@ export default function TopPage() {
                   minWidth: 120,
                 }}
               >
-                {newsItem.date}
+                {new Date(newsItem.publishedAt).toLocaleDateString('ja-JP')}
               </Typography>
               <Typography
                 sx={{

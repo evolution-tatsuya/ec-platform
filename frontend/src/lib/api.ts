@@ -832,4 +832,296 @@ export const adminAPI = {
       body: JSON.stringify({ newOrder }),
     });
   },
+
+  // ========================================
+  // お気に入り API（顧客向け）
+  // ========================================
+
+  /**
+   * ログインユーザーのお気に入り一覧取得
+   */
+  getFavorites: async (): Promise<any[]> => {
+    return fetchAPI('/api/favorites');
+  },
+
+  /**
+   * お気に入り追加
+   */
+  addFavorite: async (productId: string): Promise<any> => {
+    return fetchAPI('/api/favorites', {
+      method: 'POST',
+      body: JSON.stringify({ productId }),
+    });
+  },
+
+  /**
+   * お気に入り削除
+   */
+  removeFavorite: async (productId: string): Promise<{ message: string }> => {
+    return fetchAPI(`/api/favorites/${productId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * 特定商品がお気に入りに入っているかチェック
+   */
+  checkFavorite: async (productId: string): Promise<{ isFavorite: boolean }> => {
+    return fetchAPI(`/api/favorites/check/${productId}`);
+  },
+
+  // ========================================
+  // お気に入り API（管理者向け）
+  // ========================================
+
+  /**
+   * 全ユーザーのお気に入り一覧取得（管理者用）
+   */
+  getAllFavorites: async (): Promise<any[]> => {
+    return fetchAPI('/api/admin/favorites');
+  },
+
+  /**
+   * 特定ユーザーのお気に入り一覧取得（管理者用）
+   */
+  getUserFavorites: async (userId: string): Promise<any[]> => {
+    return fetchAPI(`/api/admin/favorites/user/${userId}`);
+  },
+
+  /**
+   * お気に入り統計情報取得（管理者用）
+   */
+  getFavoriteStats: async (): Promise<{
+    totalFavorites: number;
+    uniqueUserCount: number;
+    popularProducts: any[];
+  }> => {
+    return fetchAPI('/api/admin/favorites/stats');
+  },
+
+  // ========================================
+  // 商品管理 API（管理者向け）
+  // ========================================
+
+  /**
+   * 管理者用商品一覧取得
+   */
+  getAdminProducts: async (params?: {
+    search?: string;
+    categoryType?: string;
+    productType?: string;
+    isActive?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<{ products: any[]; pagination: any; totalStock: any }> => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.categoryType) query.append('categoryType', params.categoryType);
+    if (params?.productType) query.append('productType', params.productType);
+    if (params?.isActive !== undefined) query.append('isActive', String(params.isActive));
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+
+    return fetchAPI(`/api/admin/products?${query.toString()}`);
+  },
+
+  /**
+   * 商品追加（管理者用）
+   */
+  createAdminProduct: async (data: any): Promise<{ success: boolean; message: string; product: any }> => {
+    return fetchAPI('/api/admin/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * 商品更新（管理者用）
+   */
+  updateAdminProduct: async (productId: string, data: any): Promise<{ success: boolean; message: string; product: any }> => {
+    return fetchAPI(`/api/admin/products/${productId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * 商品削除（管理者用）
+   */
+  deleteAdminProduct: async (productId: string): Promise<{ success: boolean; message: string }> => {
+    return fetchAPI(`/api/admin/products/${productId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * 在庫調整（管理者用）
+   */
+  adjustInventory: async (productId: string, data: {
+    quantity: number;
+    type: 'stock_in' | 'stock_out' | 'manual_adjustment' | 'correction';
+    reason?: string;
+  }): Promise<{ success: boolean; message: string; log: any }> => {
+    return fetchAPI(`/api/admin/products/${productId}/inventory`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * 在庫ログ取得（管理者用）
+   */
+  getInventoryLogs: async (productId: string): Promise<{ success: boolean; logs: any[]; currentStock: number }> => {
+    return fetchAPI(`/api/admin/products/${productId}/inventory-logs`);
+  },
+
+  // ========================================
+  // 注文管理 API（管理者向け）
+  // ========================================
+
+  /**
+   * 管理者用注文一覧取得
+   */
+  getAdminOrders: async (params?: {
+    search?: string;
+    status?: string;
+    paymentMethod?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ orders: any[]; pagination: any; stats: any }> => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append('search', params.search);
+    if (params?.status) query.append('status', params.status);
+    if (params?.paymentMethod) query.append('paymentMethod', params.paymentMethod);
+    if (params?.startDate) query.append('startDate', params.startDate);
+    if (params?.endDate) query.append('endDate', params.endDate);
+    if (params?.page) query.append('page', String(params.page));
+    if (params?.limit) query.append('limit', String(params.limit));
+
+    return fetchAPI(`/api/admin/orders?${query.toString()}`);
+  },
+
+  /**
+   * 注文詳細取得（管理者用）
+   */
+  getAdminOrderById: async (orderId: string): Promise<{ success: boolean; order: any }> => {
+    return fetchAPI(`/api/admin/orders/${orderId}`);
+  },
+
+  /**
+   * 注文ステータス更新（管理者用）
+   */
+  updateOrderStatus: async (orderId: string, data: {
+    status: string;
+    note?: string;
+  }): Promise<{ success: boolean; message: string; order: any }> => {
+    return fetchAPI(`/api/admin/orders/${orderId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * 注文発送処理（管理者用）
+   */
+  shipOrder: async (orderId: string, data: {
+    carrier: string;
+    trackingNumber: string;
+  }): Promise<{ success: boolean; message: string; order: any }> => {
+    return fetchAPI(`/api/admin/orders/${orderId}/ship`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * 注文キャンセル（管理者用）
+   */
+  cancelOrder: async (orderId: string, data: {
+    reason: string;
+  }): Promise<{ success: boolean; message: string; order: any }> => {
+    return fetchAPI(`/api/admin/orders/${orderId}/cancel`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// ========================================
+// ナビゲーション軸管理API（管理者）
+// ========================================
+
+export const navigationAPI = {
+  /**
+   * 全カテゴリーの軸取得（管理者）
+   * @API_INTEGRATION
+   */
+  getAdminNavigationAxes: async (): Promise<any> => {
+    throw new Error('API not implemented');
+  },
+
+  /**
+   * カテゴリー別軸取得（管理者）
+   * @API_INTEGRATION
+   */
+  getAdminNavigationAxesByCategory: async (_category: string): Promise<any> => {
+    throw new Error('API not implemented');
+  },
+
+  /**
+   * 軸追加（管理者）
+   * @API_INTEGRATION
+   */
+  createAdminNavigationAxis: async (_data: {
+    categoryType: string;
+    axisName: string;
+    axisKey: string;
+    order: number;
+    axisType: string;
+    options: string[];
+    displayType: string;
+    icon?: string;
+    placeholder?: string;
+    parentAxisKey?: string;
+  }): Promise<any> => {
+    throw new Error('API not implemented');
+  },
+
+  /**
+   * 軸更新（管理者）
+   * @API_INTEGRATION
+   */
+  updateAdminNavigationAxis: async (_id: string, _data: {
+    axisName?: string;
+    axisKey?: string;
+    order?: number;
+    axisType?: string;
+    options?: string[];
+    displayType?: string;
+    icon?: string;
+    placeholder?: string;
+    parentAxisKey?: string;
+  }): Promise<any> => {
+    throw new Error('API not implemented');
+  },
+
+  /**
+   * 軸削除（管理者）
+   * @API_INTEGRATION
+   */
+  deleteAdminNavigationAxis: async (_id: string): Promise<any> => {
+    throw new Error('API not implemented');
+  },
+
+  /**
+   * 軸順序変更（管理者）
+   * @API_INTEGRATION
+   */
+  updateAdminNavigationAxisOrder: async (_id: string, _data: {
+    newOrder: number;
+  }): Promise<any> => {
+    throw new Error('API not implemented');
+  },
 };

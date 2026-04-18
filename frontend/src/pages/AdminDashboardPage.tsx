@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   Container,
-  Grid,
   Table,
   TableBody,
   TableCell,
@@ -16,6 +15,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import Grid from '@mui/material/GridLegacy';
 import {
   TrendingUp,
   TrendingDown,
@@ -113,7 +113,7 @@ export default function AdminDashboardPage() {
         {/* 統計カード */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {/* 今月の売上 */}
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -159,7 +159,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* 今月の注文数 */}
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -205,7 +205,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* 平均注文額 */}
-          <Grid item xs={12} sm={6} md={4}>
+          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -241,7 +241,7 @@ export default function AdminDashboardPage() {
 
         <Grid container spacing={3}>
           {/* 売上推移グラフ */}
-          <Grid item xs={12} lg={8}>
+          <Grid size={{ xs: 12, lg: 8 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -293,7 +293,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* カテゴリー別売上 */}
-          <Grid item xs={12} lg={4}>
+          <Grid size={{ xs: 12, lg: 4 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -327,7 +327,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* トップ売れ筋商品 */}
-          <Grid item xs={12} lg={6}>
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -387,7 +387,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* 最近の注文 */}
-          <Grid item xs={12} lg={6}>
+          <Grid size={{ xs: 12, lg: 6 }}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">

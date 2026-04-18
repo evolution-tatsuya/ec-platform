@@ -18,8 +18,8 @@ import type {
   InquiryRequest,
   InquiryResponse,
   InquiryHistory,
-  InquiryStatus,
 } from '../../types';
+import { InquiryStatus } from '../../types';
 
 // ========================================
 // モックデータ
@@ -31,11 +31,9 @@ const MOCK_INQUIRIES: Inquiry[] = [
     userId: 'user-1',
     name: '山田太郎',
     email: 'demo@example.com',
-    orderNumber: 'ORD-20251220-0001',
     question: '配送状況を教えてください',
     aiResponse:
       'ご注文の配送状況についてお答えします。注文番号ORD-20251220-0001の商品は現在配送中です。お届け予定日は12月25日となっております。配送業者は佐川急便で、追跡番号は123456789です。最新の配送状況は佐川急便の公式サイトからご確認いただけます。',
-    aiModel: 'Gemini 2.0 Flash',
     isSatisfied: true,
     isEscalated: false,
     status: 'AI_RESOLVED' as InquiryStatus,
@@ -47,11 +45,9 @@ const MOCK_INQUIRIES: Inquiry[] = [
     userId: 'user-1',
     name: '山田太郎',
     email: 'demo@example.com',
-    orderNumber: 'ORD-20251218-0002',
     question: '返品手続きについて教えてください',
     aiResponse:
       '返品手続きについてご案内します。商品到着後14日以内であれば返品可能です。未使用・未開封の商品に限ります。返品をご希望の場合は、マイページの注文履歴から「返品申請」ボタンをクリックし、必要事項を入力してください。',
-    aiModel: 'GPT-4o mini',
     isSatisfied: false,
     isEscalated: true,
     status: 'PENDING' as InquiryStatus,
@@ -66,7 +62,6 @@ const MOCK_INQUIRIES: Inquiry[] = [
     question: '商品の在庫確認をしたい',
     aiResponse:
       '在庫確認についてお答えします。商品詳細ページに在庫数が表示されております。在庫がない場合は「在庫切れ」と表示されます。在庫が復活した際にメール通知をご希望の場合は、「入荷通知を受け取る」ボタンをクリックしてください。',
-    aiModel: 'Gemini 2.0 Flash',
     isSatisfied: true,
     isEscalated: false,
     status: 'AI_RESOLVED' as InquiryStatus,
@@ -123,7 +118,7 @@ export const submitInquiry = async (
   let aiResponse: string | undefined = undefined;
   let aiModel: string | undefined = undefined;
   let isEscalated = false;
-  let status: InquiryStatus = 'PENDING';
+  let status: InquiryStatus = InquiryStatus.AI_RESOLVED;
 
   // ログイン時のみAI回答を生成
   if (isAuthenticated) {
@@ -134,16 +129,20 @@ export const submitInquiry = async (
 
     aiResponse = matchedResponse
       ? matchedResponse.response
-          .replace('{orderNumber}', data.orderNumber || 'ORD-20251223-XXXX')
+          .replace('{orderNumber}', 'ORD-20251223-XXXX')
           .replace('{deliveryDate}', '12月25日')
           .replace('{trackingNumber}', '123456789')
       : '申し訳ございません。この質問は自動回答できませんでした。オペレーターにおつなぎします。';
 
     aiModel = matchedResponse ? matchedResponse.model : undefined;
     isEscalated = !matchedResponse; // AI回答できない場合は自動エスカレーション
+    if (isEscalated) {
+      status = InquiryStatus.PENDING;
+    }
   } else {
     // ゲストの場合は即座にオペレーターにエスカレーション
     isEscalated = true;
+    status = InquiryStatus.PENDING;
   }
 
   const newInquiry: Inquiry = {
@@ -151,10 +150,8 @@ export const submitInquiry = async (
     userId: undefined, // ゲスト可
     name: data.name,
     email: data.email,
-    orderNumber: data.orderNumber,
     question: data.question,
     aiResponse: aiResponse,
-    aiModel: aiModel,
     isSatisfied: undefined,
     isEscalated: isEscalated,
     status: status,
@@ -170,6 +167,8 @@ export const submitInquiry = async (
   sessionStorage.setItem('mock_inquiries', JSON.stringify(inquiries));
 
   return {
+    success: true,
+    message: '問い合わせを送信しました',
     inquiry: newInquiry,
     aiResponse: aiResponse,
     aiModel: aiModel,
@@ -247,9 +246,15 @@ export const getInquiryHistory = async (
 
   return allInquiries.map((i) => ({
     id: i.id,
-    createdAt: i.createdAt,
+    userId: i.userId,
+    name: i.name,
+    email: i.email,
     question: i.question,
-    status: i.status,
     aiResponse: i.aiResponse,
+    isSatisfied: i.isSatisfied,
+    isEscalated: i.isEscalated,
+    status: i.status,
+    createdAt: i.createdAt,
+    updatedAt: i.updatedAt,
   }));
 };

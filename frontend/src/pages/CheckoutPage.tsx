@@ -407,7 +407,7 @@ ${notes ? `【備考】${notes}` : ''}
                   <DatePicker
                     label="配達希望日"
                     value={deliveryDate}
-                    onChange={(newValue) => setDeliveryDate(newValue)}
+                    onChange={(newValue) => setDeliveryDate(newValue as any)}
                     minDate={dayjs().add(2, 'day')}
                     slotProps={{
                       textField: {

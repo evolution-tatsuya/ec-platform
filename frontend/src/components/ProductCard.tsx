@@ -62,19 +62,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* 商品画像 */}
       <CardMedia
         sx={{
-          height: 220,
+          height: 180,
           background: imageUrl
             ? 'none'
-            : 'linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%)',
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#999',
-          fontSize: 14,
+          color: 'white',
+          fontSize: 18,
+          fontWeight: 500,
         }}
         image={imageUrl}
       >
-        {!imageUrl && '商品画像'}
+        {!imageUrl && name}
       </CardMedia>
 
       {/* 商品情報 */}
