@@ -2,11 +2,44 @@
 // 顧客管理API（管理者向け）
 // ========================================
 
+import axios from 'axios';
 import type {
   CustomerWithStats,
   CustomerDetail,
   UpdateCustomerTagsRequest,
 } from '../../types';
+
+// 環境変数からAPIベースURLを取得
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8432';
+
+// ========================================
+// 型定義
+// ========================================
+
+/**
+ * 顧客一覧取得のクエリパラメータ
+ */
+export interface CustomerFilterParams {
+  search?: string;
+  hasOrders?: 'true' | 'false';
+  page?: number;
+  limit?: number;
+  sortBy?: 'createdAt' | 'name' | 'email';
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * 顧客一覧取得のレスポンス
+ */
+interface GetCustomersResponse {
+  customers: CustomerWithStats[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 // ========================================
 // API関数
@@ -15,29 +48,63 @@ import type {
 /**
  * 顧客一覧取得（管理者）
  * 検索・絞り込み条件に基づいて顧客リストを取得
- * @API_INTEGRATION
  */
-export const getAdminCustomers = async (): Promise<CustomerWithStats[]> => {
-  throw new Error('API not implemented');
+export const getAdminCustomers = async (
+  filters?: CustomerFilterParams
+): Promise<CustomerWithStats[]> => {
+  try {
+    const response = await axios.get<GetCustomersResponse>(
+      `${API_BASE_URL}/api/admin/customers`,
+      {
+        params: filters,
+        withCredentials: true,
+      }
+    );
+    return response.data.customers;
+  } catch (error: any) {
+    console.error('顧客一覧取得エラー:', error);
+    throw new Error(error.response?.data?.message || '顧客一覧の取得に失敗しました');
+  }
 };
 
 /**
  * 顧客詳細取得（管理者）
  * 基本情報、購入履歴、統計情報を含む詳細データを取得
- * @API_INTEGRATION
  */
-export const getAdminCustomerById = async (_id: string): Promise<CustomerDetail> => {
-  throw new Error('API not implemented');
+export const getAdminCustomerById = async (id: string): Promise<CustomerDetail> => {
+  try {
+    const response = await axios.get<CustomerDetail>(
+      `${API_BASE_URL}/api/admin/customers/${id}`,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data;
+  } catch (error: any) {
+    console.error('顧客詳細取得エラー:', error);
+    throw new Error(error.response?.data?.message || '顧客詳細の取得に失敗しました');
+  }
 };
 
 /**
  * 顧客タグ更新（管理者）
  * VIP、リピーター等のタグを更新
- * @API_INTEGRATION
  */
 export const updateCustomerTags = async (
-  _id: string,
-  _data: UpdateCustomerTagsRequest
+  id: string,
+  data: UpdateCustomerTagsRequest
 ): Promise<CustomerDetail> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.put<{ customer: CustomerDetail }>(
+      `${API_BASE_URL}/api/admin/customers/${id}/tags`,
+      data,
+      {
+        withCredentials: true,
+      }
+    );
+    return response.data.customer;
+  } catch (error: any) {
+    console.error('顧客タグ更新エラー:', error);
+    throw new Error(error.response?.data?.message || '顧客タグの更新に失敗しました');
+  }
 };

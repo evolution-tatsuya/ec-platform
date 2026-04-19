@@ -106,9 +106,10 @@ export enum PaymentStatus {
 }
 
 export enum InquiryStatus {
-  AI_RESOLVED = 'AI_RESOLVED',
   PENDING = 'PENDING',
-  RESOLVED = 'RESOLVED',
+  REPLIED = 'REPLIED',
+  CLOSED = 'CLOSED',
+  AI_RESOLVED = 'AI_RESOLVED',
 }
 
 export enum UserRole {
@@ -380,8 +381,21 @@ export interface Inquiry {
   isSatisfied?: boolean;
   isEscalated: boolean;
   status: InquiryStatus;
+  reply?: string;
+  repliedAt?: Date;
+  repliedBy?: string;
   createdAt: Date;
   updatedAt: Date;
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+  repliedByUser?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
 }
 
 export interface InquiryRequest {
@@ -766,6 +780,104 @@ export interface UpdateImageOptimizationRequest {
   webpEnabled?: boolean;
   compressionQuality?: number;
   thumbnailSize?: number;
+}
+
+// ========================================
+// ダッシュボード統計（スライス13）
+// ========================================
+
+export interface DashboardStats {
+  stats: {
+    revenue: {
+      current: number;
+      growth: number;
+    };
+    orders: {
+      current: number;
+      growth: number;
+    };
+    averageOrderValue: number;
+  };
+  recentOrders: RecentOrder[];
+  topProducts: TopProduct[];
+  salesTrend: SalesData[];
+  categoryDistribution: CategorySalesData[];
+}
+
+export interface RecentOrder {
+  id: string;
+  orderNumber: string;
+  totalAmount: number;
+  status: string;
+  createdAt: Date;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+  } | null;
+}
+
+export interface TopProduct {
+  id: string;
+  name: string;
+  price: number;
+  totalQuantity: number;
+  totalRevenue: number;
+}
+
+export interface SalesData {
+  date: string;
+  revenue: number;
+  orderCount: number;
+}
+
+export interface CategorySalesData {
+  name: string;
+  value: number;
+}
+
+// ========================================
+// ナビゲーション軸API（スライス8-B）
+// ========================================
+
+export interface CreateNavigationAxisRequest {
+  categoryType: CategoryType;
+  axisName: string;
+  axisKey: string;
+  axisType: AxisType;
+  displayType: DisplayType;
+  icon?: string;
+  options?: string[];
+}
+
+export interface UpdateNavigationAxisRequest {
+  axisName?: string;
+  axisKey?: string;
+  axisType?: AxisType;
+  displayType?: DisplayType;
+  icon?: string;
+  isActive?: boolean;
+  options?: string[];
+}
+
+export interface UpdateAxisOrderRequest {
+  newOrder: number;
+}
+
+export interface NavigationAxisResponse {
+  success: boolean;
+  axis: CategoryNavigationAxis;
+  message?: string;
+}
+
+export interface NavigationAxesListResponse {
+  success: boolean;
+  axes: CategoryNavigationAxis[];
+}
+
+export interface DeleteNavigationAxisResponse {
+  success: boolean;
+  message: string;
 }
 
 // ========================================

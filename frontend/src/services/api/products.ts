@@ -2,7 +2,11 @@
 // 商品管理API（管理者向け）
 // ========================================
 
+import axios from 'axios';
 import type { Product, InventoryLog } from '../../types';
+
+// 環境変数からAPIベースURLを取得
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8432';
 
 // ========================================
 // 型定義
@@ -73,17 +77,45 @@ export interface ProductFilterParams {
  * @API_INTEGRATION
  */
 export const getAdminProducts = async (
-  _filters?: ProductFilterParams
+  filters?: ProductFilterParams
 ): Promise<Product[]> => {
-  throw new Error('API not implemented');
+  try {
+    const params: Record<string, string> = {};
+
+    if (filters?.categoryType) params.categoryType = filters.categoryType;
+    if (filters?.productType) params.productType = filters.productType;
+    if (filters?.isActive !== undefined) params.isActive = String(filters.isActive);
+    if (filters?.search) params.search = filters.search;
+    if (filters?.stockStatus) params.stockStatus = filters.stockStatus;
+    if (filters?.tags && filters.tags.length > 0) params.tags = filters.tags.join(',');
+
+    const response = await axios.get(`${API_BASE_URL}/api/admin/products`, {
+      params,
+      withCredentials: true,
+    });
+
+    return response.data.products || [];
+  } catch (error) {
+    console.error('商品一覧取得エラー:', error);
+    throw error;
+  }
 };
 
 /**
  * 商品詳細取得（管理者）
  * @API_INTEGRATION
  */
-export const getAdminProductById = async (_id: string): Promise<Product> => {
-  throw new Error('API not implemented');
+export const getAdminProductById = async (id: string): Promise<Product> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/admin/products/${id}`, {
+      withCredentials: true,
+    });
+
+    return response.data.product;
+  } catch (error) {
+    console.error('商品詳細取得エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -91,9 +123,47 @@ export const getAdminProductById = async (_id: string): Promise<Product> => {
  * @API_INTEGRATION
  */
 export const createAdminProduct = async (
-  _data: CreateProductRequest
+  data: CreateProductRequest
 ): Promise<Product> => {
-  throw new Error('API not implemented');
+  try {
+    const formData = new FormData();
+
+    // 必須項目
+    formData.append('name', data.name);
+    formData.append('price', String(data.price));
+    formData.append('productType', data.productType);
+    formData.append('categoryType', data.categoryType);
+
+    // オプション項目
+    if (data.description) formData.append('description', data.description);
+    if (data.externalUrl) formData.append('externalUrl', data.externalUrl);
+    if (data.preparationDays !== undefined) formData.append('preparationDays', String(data.preparationDays));
+    if (data.allowWeekendDelivery !== undefined) formData.append('allowWeekendDelivery', String(data.allowWeekendDelivery));
+    if (data.initialStock !== undefined) formData.append('initialStock', String(data.initialStock));
+
+    // 属性とタグはJSON文字列として送信
+    if (data.attributes) formData.append('attributes', JSON.stringify(data.attributes));
+    if (data.tags && data.tags.length > 0) formData.append('tags', JSON.stringify(data.tags));
+
+    // 画像は既にFormDataに含まれている想定（外部から渡される）
+    if (data.images && data.images.length > 0) {
+      data.images.forEach((image) => {
+        formData.append('images', image);
+      });
+    }
+
+    const response = await axios.post(`${API_BASE_URL}/api/admin/products`, formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.product;
+  } catch (error) {
+    console.error('商品追加エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -101,42 +171,119 @@ export const createAdminProduct = async (
  * @API_INTEGRATION
  */
 export const updateAdminProduct = async (
-  _id: string,
-  _data: UpdateProductRequest
+  id: string,
+  data: UpdateProductRequest
 ): Promise<Product> => {
-  throw new Error('API not implemented');
+  try {
+    const formData = new FormData();
+
+    // 更新項目のみ追加
+    if (data.name !== undefined) formData.append('name', data.name);
+    if (data.price !== undefined) formData.append('price', String(data.price));
+    if (data.description !== undefined) formData.append('description', data.description);
+    if (data.isActive !== undefined) formData.append('isActive', String(data.isActive));
+    if (data.externalUrl !== undefined) formData.append('externalUrl', data.externalUrl);
+    if (data.preparationDays !== undefined) formData.append('preparationDays', String(data.preparationDays));
+    if (data.allowWeekendDelivery !== undefined) formData.append('allowWeekendDelivery', String(data.allowWeekendDelivery));
+
+    // 属性とタグ
+    if (data.attributes !== undefined) formData.append('attributes', JSON.stringify(data.attributes));
+    if (data.tags !== undefined) formData.append('tags', JSON.stringify(data.tags));
+
+    // 画像
+    if (data.images && data.images.length > 0) {
+      data.images.forEach((image) => {
+        formData.append('images', image);
+      });
+    }
+
+    const response = await axios.put(`${API_BASE_URL}/api/admin/products/${id}`, formData, {
+      withCredentials: true,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data.product;
+  } catch (error) {
+    console.error('商品更新エラー:', error);
+    throw error;
+  }
 };
 
 /**
  * 商品削除（管理者）
  * @API_INTEGRATION
  */
-export const deleteAdminProduct = async (_id: string): Promise<void> => {
-  throw new Error('API not implemented');
+export const deleteAdminProduct = async (id: string): Promise<void> => {
+  try {
+    await axios.delete(`${API_BASE_URL}/api/admin/products/${id}`, {
+      withCredentials: true,
+    });
+  } catch (error) {
+    console.error('商品削除エラー:', error);
+    throw error;
+  }
 };
 
 /**
  * 商品一括公開（管理者）
  * @API_INTEGRATION
  */
-export const bulkPublishProducts = async (_ids: string[]): Promise<void> => {
-  throw new Error('API not implemented');
+export const bulkPublishProducts = async (ids: string[]): Promise<void> => {
+  try {
+    // 各商品を個別に更新（一括エンドポイントがないため）
+    await Promise.all(
+      ids.map((id) =>
+        axios.put(
+          `${API_BASE_URL}/api/admin/products/${id}`,
+          { isActive: true },
+          { withCredentials: true }
+        )
+      )
+    );
+  } catch (error) {
+    console.error('商品一括公開エラー:', error);
+    throw error;
+  }
 };
 
 /**
  * 商品一括非公開（管理者）
  * @API_INTEGRATION
  */
-export const bulkUnpublishProducts = async (_ids: string[]): Promise<void> => {
-  throw new Error('API not implemented');
+export const bulkUnpublishProducts = async (ids: string[]): Promise<void> => {
+  try {
+    // 各商品を個別に更新（一括エンドポイントがないため）
+    await Promise.all(
+      ids.map((id) =>
+        axios.put(
+          `${API_BASE_URL}/api/admin/products/${id}`,
+          { isActive: false },
+          { withCredentials: true }
+        )
+      )
+    );
+  } catch (error) {
+    console.error('商品一括非公開エラー:', error);
+    throw error;
+  }
 };
 
 /**
  * 商品一括削除（管理者）
  * @API_INTEGRATION
  */
-export const bulkDeleteProducts = async (_ids: string[]): Promise<void> => {
-  throw new Error('API not implemented');
+export const bulkDeleteProducts = async (ids: string[]): Promise<void> => {
+  try {
+    // 各商品を個別に削除（一括エンドポイントがないため）
+    await Promise.all(
+      ids.map((id) => axios.delete(`${API_BASE_URL}/api/admin/products/${id}`, { withCredentials: true }))
+    );
+  } catch (error) {
+    console.error('商品一括削除エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -144,9 +291,24 @@ export const bulkDeleteProducts = async (_ids: string[]): Promise<void> => {
  * @API_INTEGRATION
  */
 export const getAdminInventoryLogs = async (
-  _productId?: string
+  productId?: string
 ): Promise<InventoryLog[]> => {
-  throw new Error('API not implemented');
+  try {
+    if (productId) {
+      // 特定商品の在庫ログ取得
+      const response = await axios.get(
+        `${API_BASE_URL}/api/admin/products/${productId}/inventory-logs`,
+        { withCredentials: true }
+      );
+      return response.data.logs || [];
+    } else {
+      // 全商品の在庫ログ取得（実装されていない場合は空配列を返す）
+      return [];
+    }
+  } catch (error) {
+    console.error('在庫ログ取得エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -154,9 +316,24 @@ export const getAdminInventoryLogs = async (
  * @API_INTEGRATION
  */
 export const createAdminInventoryLog = async (
-  _data: CreateInventoryLogRequest
+  data: CreateInventoryLogRequest
 ): Promise<InventoryLog> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/admin/products/${data.productId}/inventory`,
+      {
+        quantity: data.quantity,
+        type: data.type,
+        note: data.reason,
+      },
+      { withCredentials: true }
+    );
+
+    return response.data.inventoryLog;
+  } catch (error) {
+    console.error('在庫調整エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -164,7 +341,17 @@ export const createAdminInventoryLog = async (
  * @API_INTEGRATION
  */
 export const getProductCurrentStock = async (
-  _productId: string
+  productId: string
 ): Promise<number> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/admin/products/${productId}/inventory-logs`,
+      { withCredentials: true }
+    );
+
+    return response.data.currentStock || 0;
+  } catch (error) {
+    console.error('在庫数取得エラー:', error);
+    throw error;
+  }
 };

@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query';
 import {
   Box,
   Card,
@@ -38,8 +37,8 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { adminAPI } from '../lib/api';
 import { Header } from '../components';
+import { useAdminDashboard } from '../hooks/useDashboard';
 
 // カラーパレット
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
@@ -66,11 +65,7 @@ const statusColorMap: Record<string, 'default' | 'primary' | 'success' | 'error'
 
 export default function AdminDashboardPage() {
   // ダッシュボードデータ取得
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['admin', 'dashboard'],
-    queryFn: adminAPI.getDashboard,
-    refetchInterval: 60000, // 1分ごとに自動更新
-  });
+  const { data, isLoading, error } = useAdminDashboard();
 
   if (isLoading) {
     return (
@@ -413,7 +408,7 @@ export default function AdminDashboardPage() {
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" noWrap>
-                              {order.user?.displayName || order.user?.email || 'ゲスト'}
+                              {order.user?.name || order.user?.email || 'ゲスト'}
                             </Typography>
                           </TableCell>
                           <TableCell align="right">

@@ -2,12 +2,16 @@
 // 注文管理API（管理者向け）
 // ========================================
 
+import axios from 'axios';
 import type {
   Order,
   AdminOrderFilterParams,
   ShipOrderRequest,
   DocumentGenerationResponse,
 } from '../../types';
+
+// 環境変数からAPIベースURLを取得
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8432';
 
 // ========================================
 // API関数
@@ -18,17 +22,54 @@ import type {
  * @API_INTEGRATION
  */
 export const getAdminOrders = async (
-  _filters?: AdminOrderFilterParams
+  filters?: AdminOrderFilterParams
 ): Promise<Order[]> => {
-  throw new Error('API not implemented');
+  try {
+    const params: Record<string, string> = {};
+
+    if (filters?.status && filters.status !== 'all') {
+      params.status = filters.status;
+    }
+    if (filters?.paymentMethod && filters.paymentMethod !== 'all') {
+      params.paymentMethod = filters.paymentMethod;
+    }
+    if (filters?.startDate) {
+      params.startDate = filters.startDate;
+    }
+    if (filters?.endDate) {
+      params.endDate = filters.endDate;
+    }
+    if (filters?.search) {
+      params.search = filters.search;
+    }
+
+    const response = await axios.get(`${API_BASE_URL}/api/admin/orders`, {
+      params,
+      withCredentials: true,
+    });
+
+    return response.data.orders || [];
+  } catch (error) {
+    console.error('注文一覧取得エラー:', error);
+    throw error;
+  }
 };
 
 /**
  * 注文詳細取得（管理者）
  * @API_INTEGRATION
  */
-export const getAdminOrderById = async (_id: string): Promise<Order> => {
-  throw new Error('API not implemented');
+export const getAdminOrderById = async (id: string): Promise<Order> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/admin/orders/${id}`, {
+      withCredentials: true,
+    });
+
+    return response.data.order;
+  } catch (error) {
+    console.error('注文詳細取得エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -38,10 +79,23 @@ export const getAdminOrderById = async (_id: string): Promise<Order> => {
  * @API_INTEGRATION
  */
 export const shipOrder = async (
-  _id: string,
-  _data: ShipOrderRequest
+  id: string,
+  data: ShipOrderRequest
 ): Promise<Order> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.put(
+      `${API_BASE_URL}/api/admin/orders/${id}/ship`,
+      data,
+      {
+        withCredentials: true,
+      }
+    );
+
+    return response.data.order;
+  } catch (error) {
+    console.error('発送処理エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -50,9 +104,32 @@ export const shipOrder = async (
  * @API_INTEGRATION
  */
 export const generateInvoice = async (
-  _id: string
+  id: string
 ): Promise<DocumentGenerationResponse> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/admin/orders/${id}/documents/invoice`,
+      {
+        responseType: 'blob',
+        withCredentials: true,
+      }
+    );
+
+    // BlobからURLを生成
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const documentUrl = URL.createObjectURL(blob);
+    const fileName = `invoice-${id}.pdf`;
+
+    return {
+      success: true,
+      documentUrl,
+      documentType: 'invoice',
+      fileName,
+    };
+  } catch (error) {
+    console.error('納品書生成エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -61,9 +138,32 @@ export const generateInvoice = async (
  * @API_INTEGRATION
  */
 export const generateReceipt = async (
-  _id: string
+  id: string
 ): Promise<DocumentGenerationResponse> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/admin/orders/${id}/documents/receipt`,
+      {
+        responseType: 'blob',
+        withCredentials: true,
+      }
+    );
+
+    // BlobからURLを生成
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const documentUrl = URL.createObjectURL(blob);
+    const fileName = `receipt-${id}.pdf`;
+
+    return {
+      success: true,
+      documentUrl,
+      documentType: 'receipt',
+      fileName,
+    };
+  } catch (error) {
+    console.error('領収書生成エラー:', error);
+    throw error;
+  }
 };
 
 /**
@@ -72,7 +172,30 @@ export const generateReceipt = async (
  * @API_INTEGRATION
  */
 export const generateQuote = async (
-  _id: string
+  id: string
 ): Promise<DocumentGenerationResponse> => {
-  throw new Error('API not implemented');
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/api/admin/orders/${id}/documents/quote`,
+      {
+        responseType: 'blob',
+        withCredentials: true,
+      }
+    );
+
+    // BlobからURLを生成
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const documentUrl = URL.createObjectURL(blob);
+    const fileName = `quote-${id}.pdf`;
+
+    return {
+      success: true,
+      documentUrl,
+      documentType: 'quote',
+      fileName,
+    };
+  } catch (error) {
+    console.error('見積書生成エラー:', error);
+    throw error;
+  }
 };

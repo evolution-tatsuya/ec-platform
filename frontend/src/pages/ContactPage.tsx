@@ -38,8 +38,8 @@ import type {
   InquiryRequest,
   InquiryResponse,
   InquiryHistory,
-  InquiryStatus,
 } from '../types';
+import { InquiryStatus } from '../types';
 import {
   submitInquiry,
   submitFeedback,
@@ -306,11 +306,11 @@ const ContactPage = () => {
   // ステータス表示用関数
   const getStatusLabel = (status: InquiryStatus) => {
     switch (status) {
-      case 'AI_RESOLVED':
+      case InquiryStatus.AI_RESOLVED:
         return { label: '解決済み', color: 'success' as const };
-      case 'PENDING':
+      case InquiryStatus.PENDING:
         return { label: 'オペレーター対応中', color: 'warning' as const };
-      case 'RESOLVED':
+      case InquiryStatus.REPLIED:
         return { label: '解決済み', color: 'success' as const };
       default:
         return { label: '不明', color: 'default' as const };
