@@ -55,13 +55,13 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
     req.session.userId = user.id;
     req.session.isAdmin = user.isAdmin;
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: '会員登録が完了しました',
       user,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -98,7 +98,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     req.session.userId = user.id;
     req.session.isAdmin = user.isAdmin;
 
-    res.json({
+    return res.json({
       success: true,
       message: 'ログインしました',
       user: {
@@ -111,7 +111,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -127,13 +127,13 @@ export const logout = async (req: Request, res: Response, next: NextFunction) =>
       }
 
       res.clearCookie('connect.sid');
-      res.json({
+      return res.json({
         success: true,
         message: 'ログアウトしました',
       });
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -174,13 +174,13 @@ export const getSession = async (req: Request, res: Response, next: NextFunction
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       isAuthenticated: true,
       user,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -257,13 +257,13 @@ export const requestPasswordReset = async (
       }
     }
 
-    res.json({
+    return res.json({
       success: true,
       message:
         'パスワードリセットメールを送信しました。メールをご確認ください。',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -325,11 +325,11 @@ export const confirmPasswordReset = async (
       }),
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       message: 'パスワードをリセットしました。新しいパスワードでログインしてください。',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

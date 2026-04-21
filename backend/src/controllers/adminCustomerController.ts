@@ -4,6 +4,15 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 /**
+ * ヘルパー関数: クエリパラメータからstring型を取得
+ */
+const getStringParam = (value: any): string | undefined => {
+  if (Array.isArray(value)) return value[0];
+  if (typeof value === 'string') return value;
+  return undefined;
+};
+
+/**
  * GET /api/admin/customers
  * 顧客一覧を取得（検索・フィルタリング）
  */
@@ -27,10 +36,11 @@ export const getCustomers = async (req: Request, res: Response) => {
       isAdmin: false, // 管理者を除外
     };
 
-    if (search) {
+    const searchStr = getStringParam(search);
+    if (searchStr) {
       where.OR = [
-        { email: { contains: search as string, mode: 'insensitive' } },
-        { name: { contains: search as string, mode: 'insensitive' } },
+        { email: { contains: searchStr, mode: 'insensitive' } },
+        { name: { contains: searchStr, mode: 'insensitive' } },
       ];
     }
 
@@ -90,12 +100,12 @@ export const getCustomers = async (req: Request, res: Response) => {
         return {
           ...customer,
           orderCount: customer._count.orders,
-          totalPurchase: orderStats._sum.totalAmount || 0,
+          totalPurchase: orderStats._sum?.totalAmount || 0,
         };
       })
     );
 
-    res.json({
+    return res.json({
       customers: customersWithStats,
       pagination: {
         total,
@@ -106,7 +116,7 @@ export const getCustomers = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('顧客一覧取得エラー:', error);
-    res.status(500).json({ error: '顧客一覧の取得に失敗しました' });
+    return res.status(500).json({ error: '顧客一覧の取得に失敗しました' });
   }
 };
 
@@ -116,7 +126,11 @@ export const getCustomers = async (req: Request, res: Response) => {
  */
 export const getCustomerById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+
+    if (!id) {
+      return res.status(400).json({ message: '顧客IDが必要です' });
+    }
 
     const customer = await prisma.user.findUnique({
       where: { id },
@@ -139,7 +153,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
             createdAt: true,
             _count: {
               select: {
-                orderItems: true,
+                items: true,
               },
             },
           },
@@ -151,7 +165,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
     });
 
     if (!customer) {
-      return res.status(404).json({ error: '顧客が見つかりません' });
+      return res.status(404).json({ message: '顧客が見つかりません' });
     }
 
     // 合計購入金額
@@ -165,14 +179,14 @@ export const getCustomerById = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       ...customer,
-      totalPurchase: orderStats._sum.totalAmount || 0,
+      totalPurchase: orderStats._sum?.totalAmount || 0,
       orderCount: customer.orders.length,
     });
   } catch (error) {
     console.error('顧客詳細取得エラー:', error);
-    res.status(500).json({ error: '顧客詳細の取得に失敗しました' });
+    return res.status(500).json({ message: '顧客詳細の取得に失敗しました' });
   }
 };
 
@@ -180,7 +194,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
  * GET /api/admin/customers/stats
  * 顧客統計情報取得
  */
-export const getCustomerStats = async (req: Request, res: Response) => {
+export const getCustomerStats = async (_req: Request, res: Response) => {
   try {
     // 全顧客数（管理者除く）
     const totalCustomers = await prisma.user.count({
@@ -253,7 +267,7 @@ export const getCustomerStats = async (req: Request, res: Response) => {
       orderCount: Number(customer.orderCount),
     }));
 
-    res.json({
+    return res.json({
       totalCustomers,
       newCustomersThisMonth,
       customersWithOrders,
@@ -262,7 +276,7 @@ export const getCustomerStats = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('顧客統計取得エラー:', error);
-    res.status(500).json({ error: '顧客統計の取得に失敗しました' });
+    return res.status(500).json({ error: '顧客統計の取得に失敗しました' });
   }
 };
 
@@ -272,8 +286,12 @@ export const getCustomerStats = async (req: Request, res: Response) => {
  */
 export const updateCustomer = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
     const { name, defaultAddress, defaultPostalCode, defaultPhone } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: '顧客IDが必要です' });
+    }
 
     // 顧客存在確認
     const customer = await prisma.user.findUnique({
@@ -305,12 +323,116 @@ export const updateCustomer = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       message: '顧客情報を更新しました',
       customer: updatedCustomer,
     });
   } catch (error) {
     console.error('顧客情報更新エラー:', error);
-    res.status(500).json({ error: '顧客情報の更新に失敗しました' });
+    return res.status(500).json({ error: '顧客情報の更新に失敗しました' });
+  }
+};
+
+/**
+ * PUT /api/admin/customers/:id/tags
+ * 顧客タグ付け
+ *
+ * リクエストボディ:
+ * - tags: string[] - タグ配列（例: ['VIP', 'リピーター', '要注意']）
+ *
+ * 注: 現在のスキーマにはtagsフィールドがないため、
+ * 将来的にスキーマを拡張する必要があります。
+ * 暫定的に、nameフィールドの末尾にタグ情報を付加する方式を採用。
+ * または、別途TagモデルやUserMetadataモデルを作成することを推奨。
+ */
+export const updateCustomerTags = async (req: Request, res: Response) => {
+  try {
+    const id = getStringParam(req.params.id);
+    const { tags } = req.body;
+
+    // バリデーション
+    if (!Array.isArray(tags)) {
+      return res.status(400).json({
+        success: false,
+        message: 'tagsは配列である必要があります',
+      });
+    }
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: '顧客IDが必要です',
+      });
+    }
+
+    // 顧客存在確認
+    const customer = await prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        isAdmin: true,
+      },
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: '顧客が見つかりません',
+      });
+    }
+
+    if (customer.isAdmin) {
+      return res.status(400).json({
+        success: false,
+        message: '管理者にはタグを付けられません',
+      });
+    }
+
+    // TODO: 現在のスキーマにはtagsフィールドがないため、
+    // 将来的にUser.tags: String[]フィールドを追加する必要があります。
+    // 暫定的に、タグ情報はメモリ上で管理するか、
+    // 別途CustomerTagテーブルを作成することを推奨します。
+    //
+    // 理想的な実装:
+    // const updatedCustomer = await prisma.user.update({
+    //   where: { id },
+    //   data: { tags },
+    // });
+
+    // 暫定実装: 501 Not Implemented を返す
+    return res.status(501).json({
+      success: false,
+      message: 'タグ機能は実装準備中です（スキーマにtagsフィールドを追加する必要があります）',
+      requestedTags: tags,
+      note: 'User.tags: String[]フィールドをPrismaスキーマに追加後に本実装予定',
+    });
+
+    // 将来の実装例（スキーマ拡張後）:
+    // const updatedCustomer = await prisma.user.update({
+    //   where: { id },
+    //   data: { tags },
+    //   select: {
+    //     id: true,
+    //     email: true,
+    //     name: true,
+    //     tags: true,
+    //     createdAt: true,
+    //     updatedAt: true,
+    //   },
+    // });
+    //
+    // return res.json({
+    //   success: true,
+    //   message: 'タグを更新しました',
+    //   customer: updatedCustomer,
+    // });
+  } catch (error: any) {
+    console.error('顧客タグ更新エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'タグの更新に失敗しました',
+    });
   }
 };

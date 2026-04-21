@@ -14,6 +14,14 @@ import { generateSignedUrl } from '../utils/r2Client';
 const prisma = new PrismaClient();
 
 /**
+ * ヘルパー関数: クエリパラメータからstring型を取得
+ */
+const getStringParam = (value: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(value)) return value[0];
+  return value;
+};
+
+/**
  * GET /api/orders/:orderId/downloads
  * デジタルダウンロードリンク取得
  */
@@ -28,7 +36,14 @@ export async function getDigitalDownloads(req: Request, res: Response) {
     }
 
     const userId = req.session.userId;
-    const { orderId } = req.params;
+    const orderId = getStringParam(req.params.orderId);
+
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        message: '注文IDが必要です',
+      });
+    }
 
     // 注文を取得（自分の注文のみ）
     const order = await prisma.order.findFirst({

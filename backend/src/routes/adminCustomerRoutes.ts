@@ -4,6 +4,7 @@ import {
   getCustomerById,
   getCustomerStats,
   updateCustomer,
+  updateCustomerTags,
 } from '../controllers/adminCustomerController';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 
@@ -24,5 +25,8 @@ router.get('/customers/:id', getCustomerById);
 
 // PUT /api/admin/customers/:id - 顧客情報更新
 router.put('/customers/:id', updateCustomer);
+
+// PUT /api/admin/customers/:id/tags - 顧客タグ付け
+router.put('/customers/:id/tags', updateCustomerTags);
 
 export default router;

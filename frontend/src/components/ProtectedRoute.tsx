@@ -12,7 +12,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
   requiredRole,
 }) => {
-  const { isAuthenticated, role } = useAuth();
+  const { isAuthenticated, isLoading, role } = useAuth();
+
+  // ローディング中は何も表示しない（またはローディングインジケーターを表示）
+  if (isLoading) {
+    return null;
+  }
 
   // 認証されていない場合、管理者用ログインページへリダイレクト
   if (!isAuthenticated) {

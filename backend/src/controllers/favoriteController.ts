@@ -28,10 +28,10 @@ export const getFavorites = async (req: Request, res: Response) => {
       },
     });
 
-    res.json(favorites);
+    return res.json(favorites);
   } catch (error) {
     console.error('お気に入り一覧取得エラー:', error);
-    res.status(500).json({ message: 'お気に入り一覧の取得に失敗しました' });
+    return res.status(500).json({ message: 'お気に入り一覧の取得に失敗しました' });
   }
 };
 
@@ -85,10 +85,10 @@ export const addFavorite = async (req: Request, res: Response) => {
       },
     });
 
-    res.status(201).json(favorite);
+    return res.status(201).json(favorite);
   } catch (error) {
     console.error('お気に入り追加エラー:', error);
-    res.status(500).json({ message: 'お気に入りの追加に失敗しました' });
+    return res.status(500).json({ message: 'お気に入りの追加に失敗しました' });
   }
 };
 
@@ -102,7 +102,7 @@ export const removeFavorite = async (req: Request, res: Response) => {
       return res.status(401).json({ message: '認証が必要です' });
     }
 
-    const { productId } = req.params;
+    const productId = typeof req.params.productId === 'string' ? req.params.productId : req.params.productId[0];
 
     // お気に入りの存在確認
     const favorite = await prisma.favorite.findUnique({
@@ -128,10 +128,10 @@ export const removeFavorite = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({ message: 'お気に入りから削除しました' });
+    return res.json({ message: 'お気に入りから削除しました' });
   } catch (error) {
     console.error('お気に入り削除エラー:', error);
-    res.status(500).json({ message: 'お気に入りの削除に失敗しました' });
+    return res.status(500).json({ message: 'お気に入りの削除に失敗しました' });
   }
 };
 
@@ -145,7 +145,7 @@ export const checkFavorite = async (req: Request, res: Response) => {
       return res.json({ isFavorite: false });
     }
 
-    const { productId } = req.params;
+    const productId = typeof req.params.productId === 'string' ? req.params.productId : req.params.productId[0];
 
     const favorite = await prisma.favorite.findUnique({
       where: {
@@ -156,9 +156,9 @@ export const checkFavorite = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({ isFavorite: !!favorite });
+    return res.json({ isFavorite: !!favorite });
   } catch (error) {
     console.error('お気に入りチェックエラー:', error);
-    res.status(500).json({ message: 'お気に入りチェックに失敗しました' });
+    return res.status(500).json({ message: 'お気に入りチェックに失敗しました' });
   }
 };

@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import theme from './theme';
 import { AuthProvider } from './contexts/AuthContext';
 import { MainLayout } from './layouts';
-import { ProtectedRoute } from './components';
+import { ProtectedRoute, AdminLayout } from './components';
 import {
   HomePage,
   NotFoundPage,
@@ -53,25 +53,25 @@ function App() {
             {/* 管理者ログインページ（認証不要、独自レイアウト） */}
             <Route path="/admin/login" element={<AdminLoginPage />} />
 
-            {/* 商品管理ページ（要管理者権限、独自レイアウト） */}
+            {/* 管理画面（AdminLayoutで統一） */}
             <Route
-              path="/admin/products"
+              path="/admin"
               element={
                 <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                  <AdminProductsPage />
+                  <AdminLayout />
                 </ProtectedRoute>
               }
-            />
-
-            {/* ナビゲーション軸設定ページ（要管理者権限、独自レイアウト） */}
-            <Route
-              path="/admin/navigation"
-              element={
-                <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                  <AdminNavigationAxesPage />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="products" element={<AdminProductsPage />} />
+              <Route path="navigation" element={<AdminNavigationAxesPage />} />
+              <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="tickets" element={<AdminTicketsPage />} />
+              <Route path="customers" element={<AdminCustomersPage />} />
+              <Route path="inquiries" element={<AdminInquiriesPage />} />
+              <Route path="settings" element={<AdminSettingsPage />} />
+              <Route path="events" element={<AdminEventsPage />} />
+            </Route>
 
             {/* トップページ（独自レイアウト） */}
             <Route
@@ -208,64 +208,6 @@ function App() {
             {/* メインページ（MainLayout） */}
             <Route element={<MainLayout />}>
               <Route path="/home" element={<HomePage />} />
-
-              {/* 管理画面（要管理者権限） */}
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminDashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/orders"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminOrdersPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/tickets"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminTicketsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/customers"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminCustomersPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/inquiries"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminInquiriesPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/settings"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminSettingsPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/admin/events"
-                element={
-                  <ProtectedRoute requiredRole={UserRole.ADMIN}>
-                    <AdminEventsPage />
-                  </ProtectedRoute>
-                }
-              />
 
               {/* 404 Not Found */}
               <Route path="*" element={<NotFoundPage />} />

@@ -80,7 +80,7 @@ export const getAvailableDates = async (
       availableDates.push(date.toISOString().split('T')[0]);
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         availableDates,
@@ -89,7 +89,7 @@ export const getAvailableDates = async (
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -100,7 +100,7 @@ export const getAvailableDates = async (
  * ヤマト運輸の標準時間帯を返却
  */
 export const getTimeSlots = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -114,13 +114,13 @@ export const getTimeSlots = async (
       { value: '19:00-21:00', label: '19:00-21:00' },
     ];
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         timeSlots,
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

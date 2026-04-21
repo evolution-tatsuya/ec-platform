@@ -18,7 +18,7 @@ import { prisma } from '../config/prisma';
  * - news: ニュース（公開済みのみ、最新5件）
  */
 export const getTopPageData = async (
-  req: Request,
+  _req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -106,7 +106,7 @@ export const getTopPageData = async (
     // セール商品は現時点では未実装（将来的にsalePriceフィールドを追加予定）
     const saleProducts: any[] = [];
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         heroSlides,
@@ -119,6 +119,6 @@ export const getTopPageData = async (
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

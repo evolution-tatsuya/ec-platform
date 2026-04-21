@@ -3,9 +3,11 @@
 
 import { Router } from 'express';
 import { requireAdmin } from '../middleware/auth';
+import { upload } from '../config/multer';
 import {
   getAdminProducts,
   createProduct,
+  getProductById,
   updateProduct,
   deleteProduct,
   adjustInventory,
@@ -21,13 +23,17 @@ router.use(requireAdmin);
 // GET /api/admin/products
 router.get('/', getAdminProducts);
 
-// ===== 商品登録 =====
+// ===== 商品登録（画像アップロード対応） =====
 // POST /api/admin/products
-router.post('/', createProduct);
+router.post('/', upload.single('image'), createProduct);
 
-// ===== 商品更新 =====
+// ===== 商品詳細取得 =====
+// GET /api/admin/products/:id
+router.get('/:id', getProductById);
+
+// ===== 商品更新（画像アップロード対応） =====
 // PUT /api/admin/products/:id
-router.put('/:id', updateProduct);
+router.put('/:id', upload.single('image'), updateProduct);
 
 // ===== 商品削除 =====
 // DELETE /api/admin/products/:id

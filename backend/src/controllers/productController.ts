@@ -2,6 +2,7 @@
 // 目的: 商品一覧取得、商品詳細取得
 
 import { Request, Response, NextFunction } from 'express';
+
 import { prisma } from '../config/prisma';
 import { createError } from '../middleware/errorHandler';
 
@@ -58,7 +59,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       prisma.product.count({ where }),
     ]);
 
-    res.json({
+    return res.json({
       success: true,
       products,
       pagination: {
@@ -69,7 +70,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -82,7 +83,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
     const { id } = req.params;
 
     const product = await prisma.product.findUnique({
-      where: { id },
+      where: { id: typeof id === 'string' ? id : id[0] },
       include: {
         category: true,
         inventoryLogs: {
@@ -104,13 +105,13 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
 
     // 在庫数を計算（イミュータブルデータモデル）
     const inventorySum = await prisma.inventoryLog.aggregate({
-      where: { productId: id },
+      where: { productId: typeof id === 'string' ? id : id[0] },
       _sum: { quantity: true },
     });
 
-    const currentStock = inventorySum._sum.quantity || 0;
+    const currentStock = inventorySum._sum?.quantity || 0;
 
-    res.json({
+    return res.json({
       success: true,
       product: {
         ...product,
@@ -118,7 +119,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -154,11 +155,11 @@ export const searchProducts = async (req: Request, res: Response, next: NextFunc
       take: parseInt(limit as string, 10),
     });
 
-    res.json({
+    return res.json({
       success: true,
       products,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

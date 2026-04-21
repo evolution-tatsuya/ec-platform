@@ -70,7 +70,7 @@ export const getInquiries = async (req: Request, res: Response) => {
       prisma.inquiry.count({ where }),
     ]);
 
-    res.json({
+    return res.json({
       inquiries,
       pagination: {
         total,
@@ -81,7 +81,7 @@ export const getInquiries = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('問い合わせ一覧取得エラー:', error);
-    res.status(500).json({ error: '問い合わせ一覧の取得に失敗しました' });
+    return res.status(500).json({ message: '問い合わせ一覧の取得に失敗しました' });
   }
 };
 
@@ -94,7 +94,7 @@ export const getInquiryById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const inquiry = await prisma.inquiry.findUnique({
-      where: { id },
+      where: { id: id as string },
       include: {
         user: {
           select: {
@@ -114,13 +114,13 @@ export const getInquiryById = async (req: Request, res: Response) => {
     });
 
     if (!inquiry) {
-      return res.status(404).json({ error: '問い合わせが見つかりません' });
+      return res.status(404).json({ message: '問い合わせが見つかりません' });
     }
 
-    res.json(inquiry);
+    return res.json(inquiry);
   } catch (error) {
     console.error('問い合わせ詳細取得エラー:', error);
-    res.status(500).json({ error: '問い合わせ詳細の取得に失敗しました' });
+    return res.status(500).json({ message: '問い合わせ詳細の取得に失敗しました' });
   }
 };
 
@@ -128,7 +128,7 @@ export const getInquiryById = async (req: Request, res: Response) => {
  * GET /api/admin/inquiries/stats
  * 問い合わせ統計情報取得
  */
-export const getInquiryStats = async (req: Request, res: Response) => {
+export const getInquiryStats = async (_req: Request, res: Response) => {
   try {
     // 全問い合わせ数
     const totalInquiries = await prisma.inquiry.count();
@@ -176,7 +176,7 @@ export const getInquiryStats = async (req: Request, res: Response) => {
       averageReplyTimeHours = totalHours / repliedInquiries.length;
     }
 
-    res.json({
+    return res.json({
       totalInquiries,
       pendingCount,
       repliedCount,
@@ -186,7 +186,76 @@ export const getInquiryStats = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('問い合わせ統計取得エラー:', error);
-    res.status(500).json({ error: '問い合わせ統計の取得に失敗しました' });
+    return res.status(500).json({ message: '問い合わせ統計の取得に失敗しました' });
+  }
+};
+
+/**
+ * GET /api/admin/inquiries/trends
+ * 問い合わせトレンド取得（日別・週別）
+ */
+export const getInquiryTrends = async (req: Request, res: Response) => {
+  try {
+    const { period = 'week' } = req.query; // 'week' or 'month'
+
+    const days = period === 'month' ? 30 : 7;
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
+
+    // 日別問い合わせ数
+    const inquiries = await prisma.inquiry.findMany({
+      where: {
+        createdAt: { gte: startDate },
+      },
+      select: {
+        createdAt: true,
+        status: true,
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    // 日付ごとにグループ化
+    const trendData: Record<string, { date: string; total: number; pending: number; replied: number; closed: number }> = {};
+
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      trendData[dateStr] = {
+        date: dateStr,
+        total: 0,
+        pending: 0,
+        replied: 0,
+        closed: 0,
+      };
+    }
+
+    // データ集計
+    inquiries.forEach((inquiry) => {
+      const dateStr = new Date(inquiry.createdAt).toISOString().split('T')[0];
+      if (trendData[dateStr]) {
+        trendData[dateStr].total++;
+        if (inquiry.status === 'pending') trendData[dateStr].pending++;
+        else if (inquiry.status === 'replied') trendData[dateStr].replied++;
+        else if (inquiry.status === 'closed') trendData[dateStr].closed++;
+      }
+    });
+
+    const trends = Object.values(trendData).sort((a, b) =>
+      a.date.localeCompare(b.date)
+    );
+
+    return res.json({
+      period,
+      days,
+      trends,
+    });
+  } catch (error) {
+    console.error('問い合わせトレンド取得エラー:', error);
+    return res.status(500).json({ message: '問い合わせトレンドの取得に失敗しました' });
   }
 };
 
@@ -201,21 +270,21 @@ export const replyToInquiry = async (req: Request, res: Response) => {
     const adminId = (req as any).session.userId; // 管理者ID
 
     if (!reply) {
-      return res.status(400).json({ error: '返信内容が必要です' });
+      return res.status(400).json({ message: '返信内容が必要です' });
     }
 
     // 問い合わせ存在確認
     const inquiry = await prisma.inquiry.findUnique({
-      where: { id },
+      where: { id: id as string },
     });
 
     if (!inquiry) {
-      return res.status(404).json({ error: '問い合わせが見つかりません' });
+      return res.status(404).json({ message: '問い合わせが見つかりません' });
     }
 
     // 返信を保存
     const updatedInquiry = await prisma.inquiry.update({
-      where: { id },
+      where: { id: id as string },
       data: {
         reply,
         status: 'replied',
@@ -243,13 +312,13 @@ export const replyToInquiry = async (req: Request, res: Response) => {
     // TODO: メール送信処理（Resend SDK使用）
     // await sendInquiryReplyEmail(inquiry.email, reply);
 
-    res.json({
+    return res.json({
       message: '返信を送信しました',
       inquiry: updatedInquiry,
     });
   } catch (error) {
     console.error('問い合わせ返信エラー:', error);
-    res.status(500).json({ error: '問い合わせへの返信に失敗しました' });
+    return res.status(500).json({ message: '問い合わせへの返信に失敗しました' });
   }
 };
 
@@ -263,21 +332,21 @@ export const updateInquiryStatus = async (req: Request, res: Response) => {
     const { status } = req.body;
 
     if (!['pending', 'replied', 'closed'].includes(status)) {
-      return res.status(400).json({ error: '無効なステータスです' });
+      return res.status(400).json({ message: '無効なステータスです' });
     }
 
     // 問い合わせ存在確認
     const inquiry = await prisma.inquiry.findUnique({
-      where: { id },
+      where: { id: id as string },
     });
 
     if (!inquiry) {
-      return res.status(404).json({ error: '問い合わせが見つかりません' });
+      return res.status(404).json({ message: '問い合わせが見つかりません' });
     }
 
     // ステータス更新
     const updatedInquiry = await prisma.inquiry.update({
-      where: { id },
+      where: { id: id as string },
       data: { status },
       include: {
         user: {
@@ -297,13 +366,13 @@ export const updateInquiryStatus = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       message: 'ステータスを更新しました',
       inquiry: updatedInquiry,
     });
   } catch (error) {
     console.error('ステータス更新エラー:', error);
-    res.status(500).json({ error: 'ステータスの更新に失敗しました' });
+    return res.status(500).json({ message: 'ステータスの更新に失敗しました' });
   }
 };
 
@@ -317,21 +386,21 @@ export const deleteInquiry = async (req: Request, res: Response) => {
 
     // 問い合わせ存在確認
     const inquiry = await prisma.inquiry.findUnique({
-      where: { id },
+      where: { id: id as string },
     });
 
     if (!inquiry) {
-      return res.status(404).json({ error: '問い合わせが見つかりません' });
+      return res.status(404).json({ message: '問い合わせが見つかりません' });
     }
 
     // 削除
     await prisma.inquiry.delete({
-      where: { id },
+      where: { id: id as string },
     });
 
-    res.json({ message: '問い合わせを削除しました' });
+    return res.json({ message: '問い合わせを削除しました' });
   } catch (error) {
     console.error('問い合わせ削除エラー:', error);
-    res.status(500).json({ error: '問い合わせの削除に失敗しました' });
+    return res.status(500).json({ message: '問い合わせの削除に失敗しました' });
   }
 };

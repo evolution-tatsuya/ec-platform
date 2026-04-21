@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
  * GET /api/admin/dashboard
  * ダッシュボード統計データを取得
  */
-export const getDashboardStats = async (req: Request, res: Response) => {
+export const getDashboardStats = async (_req: Request, res: Response) => {
   try {
     // 現在の日時
     const now = new Date();
@@ -190,7 +190,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     }));
 
     // レスポンス
-    res.json({
+    return res.json({
       stats: {
         revenue: {
           current: currentMonthRevenue,
@@ -222,6 +222,6 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);
-    res.status(500).json({ error: 'ダッシュボード統計の取得に失敗しました' });
+    return res.status(500).json({ error: 'ダッシュボード統計の取得に失敗しました' });
   }
 };

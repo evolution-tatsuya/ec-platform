@@ -27,150 +27,6 @@ import type {
   CategoryType,
 } from '../types';
 
-// @MOCK_TO_API: ProductDetailPageData
-// 本番環境では GET /api/products/:id から取得
-const mockProductDetail: ProductDetail = {
-  id: '1',
-  name: '86用 高性能ブレーキパッド',
-  price: 15800, // ベース価格（最安値）
-  salePrice: undefined,
-  description:
-    'トヨタ86専用に開発された高性能ブレーキパッドです。\nサーキット走行にも対応した高い制動力と耐久性を実現。\n純正比で約30%の制動距離短縮を実現しています。\n\n主な特徴:\n• 高温時でも安定した制動力\n• ダストが少なく、ホイールの汚れを軽減\n• 低ノイズ設計で快適な走行\n• 車検対応',
-  productType: 'PHYSICAL' as ProductType,
-  categoryType: 'cars' as CategoryType,
-  images: ['', '', '', ''], // 実際はCloudflare R2のURL
-  stockQuantity: 0, // バリエーションごとに在庫管理
-  shippingSettings: {
-    allowWeekendDelivery: true,
-    allowDateSelection: true,
-    allowTimeSelection: true,
-    preparationDays: 2,
-  },
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  attributes: [],
-  tags: [
-    { id: '1', name: '#トヨタ' },
-    { id: '2', name: '#86' },
-    { id: '3', name: '#ブレーキ' },
-    { id: '4', name: '#サーキット' },
-  ],
-
-  // バリエーション選択肢
-  variantOptions: [
-    {
-      name: 'グレード',
-      key: 'grade',
-      required: true,
-      values: [
-        { value: 'standard', label: 'スタンダード' },
-        { value: 'high-grip', label: 'ハイグリップ' },
-        { value: 'racing', label: 'レーシング' },
-      ],
-    },
-    {
-      name: '取付位置',
-      key: 'position',
-      required: true,
-      values: [
-        { value: 'front', label: 'フロント' },
-        { value: 'rear', label: 'リア' },
-      ],
-    },
-  ],
-
-  // バリエーション一覧
-  variants: [
-    {
-      id: 'brake-pad-standard-front',
-      name: '86用 高性能ブレーキパッド - スタンダード（フロント）',
-      price: 15800,
-      stockQuantity: 20,
-      sku: 'BRK-STD-FRT',
-      selectedOptions: { grade: 'standard', position: 'front' },
-    },
-    {
-      id: 'brake-pad-standard-rear',
-      name: '86用 高性能ブレーキパッド - スタンダード（リア）',
-      price: 13800,
-      stockQuantity: 15,
-      sku: 'BRK-STD-RER',
-      selectedOptions: { grade: 'standard', position: 'rear' },
-    },
-    {
-      id: 'brake-pad-high-grip-front',
-      name: '86用 高性能ブレーキパッド - ハイグリップ（フロント）',
-      price: 28800,
-      salePrice: 25800,
-      stockQuantity: 12,
-      sku: 'BRK-HG-FRT',
-      selectedOptions: { grade: 'high-grip', position: 'front' },
-    },
-    {
-      id: 'brake-pad-high-grip-rear',
-      name: '86用 高性能ブレーキパッド - ハイグリップ（リア）',
-      price: 24800,
-      stockQuantity: 8,
-      sku: 'BRK-HG-RER',
-      selectedOptions: { grade: 'high-grip', position: 'rear' },
-    },
-    {
-      id: 'brake-pad-racing-front',
-      name: '86用 高性能ブレーキパッド - レーシング（フロント）',
-      price: 45000,
-      stockQuantity: 5,
-      sku: 'BRK-RC-FRT',
-      selectedOptions: { grade: 'racing', position: 'front' },
-    },
-    {
-      id: 'brake-pad-racing-rear',
-      name: '86用 高性能ブレーキパッド - レーシング（リア）',
-      price: 38000,
-      stockQuantity: 3,
-      sku: 'BRK-RC-RER',
-      selectedOptions: { grade: 'racing', position: 'rear' },
-    },
-  ],
-
-  relatedProducts: [
-    {
-      id: '2',
-      name: '86用 スポーツマフラー',
-      price: 89800,
-      imageUrl: '',
-      categoryType: 'cars' as CategoryType,
-    },
-    {
-      id: '3',
-      name: '86用 車高調キット',
-      price: 128000,
-      imageUrl: '',
-      categoryType: 'cars' as CategoryType,
-    },
-    {
-      id: '4',
-      name: '86用 エアフィルター',
-      price: 12800,
-      imageUrl: '',
-      categoryType: 'cars' as CategoryType,
-    },
-    {
-      id: '5',
-      name: '86用 オイルフィルター',
-      price: 3200,
-      imageUrl: '',
-      categoryType: 'cars' as CategoryType,
-    },
-  ],
-};
-
-const mockBreadcrumb = [
-  { label: 'トップ', url: '/' },
-  { label: '車パーツ', url: '/cars' },
-  { label: 'トヨタ', url: '/cars/toyota' },
-  { label: '86用 高性能ブレーキパッド' }, // 最後はリンクなし
-];
-
 export default function ProductDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -213,10 +69,9 @@ export default function ProductDetailPage() {
     },
   });
 
-  // バックエンドデータをProductDetail型に変換（バリエーション機能は今後実装）
-  const product: ProductDetail = productData?.product
+  // バックエンドデータをProductDetail型に変換
+  const product: ProductDetail | null = productData?.product
     ? {
-        ...mockProductDetail, // バリエーション設定などはモックから継承
         id: productData.product.id,
         name: productData.product.name,
         price: productData.product.price,
@@ -224,23 +79,42 @@ export default function ProductDetailPage() {
         productType: productData.product.productType as ProductType,
         categoryType: (productData.product.category?.categoryType || 'cars') as CategoryType,
         images: productData.product.images || [],
-        stockQuantity: productData.product.isActive ? 10 : 0, // 在庫管理は今後実装
+        stockQuantity: productData.product.isActive ? 10 : 0, // TODO: 在庫管理機能は未実装
+        shippingSettings: {
+          allowWeekendDelivery: true,
+          allowDateSelection: true,
+          allowTimeSelection: true,
+          preparationDays: 2,
+        },
         createdAt: new Date(productData.product.createdAt),
         updatedAt: new Date(productData.product.updatedAt),
+        attributes: [],
+        tags: [],
+        // TODO: バリエーション機能は未実装
+        variantOptions: [],
+        variants: [],
+        relatedProducts: [],
       }
-    : mockProductDetail;
+    : null;
 
-  const breadcrumb = mockBreadcrumb;
+  // TODO: パンくずリスト生成機能は未実装
+  const breadcrumb = product
+    ? [
+        { label: 'トップ', url: '/' },
+        { label: 'すべての商品', url: '/products' },
+        { label: product.name },
+      ]
+    : [];
 
   // 選択されたバリエーションを取得
-  const selectedVariant = product.variants?.find((variant) => {
+  const selectedVariant = product?.variants?.find((variant) => {
     return Object.keys(selectedVariantOptions).every(
       (key) => variant.selectedOptions[key] === selectedVariantOptions[key]
     );
   });
 
   // 表示用の商品情報（バリエーション選択時は上書き）
-  const displayProduct = selectedVariant
+  const displayProduct = selectedVariant && product
     ? {
         ...product,
         name: selectedVariant.name,
@@ -252,7 +126,7 @@ export default function ProductDetailPage() {
 
   // すべての必須オプションが選択されているか
   const isAllRequiredOptionsSelected =
-    !product.variantOptions ||
+    !product?.variantOptions ||
     product.variantOptions
       .filter((opt) => opt.required)
       .every((opt) => selectedVariantOptions[opt.key]);
@@ -267,7 +141,7 @@ export default function ProductDetailPage() {
   const handleQuantityChange = (delta: number) => {
     const newQuantity = quantity + delta;
     // バリエーション選択時のみ在庫上限をチェック
-    const maxQuantity = isAllRequiredOptionsSelected ? displayProduct.stockQuantity : 99;
+    const maxQuantity = isAllRequiredOptionsSelected ? (displayProduct?.stockQuantity ?? 99) : 99;
     if (newQuantity >= 1 && newQuantity <= maxQuantity) {
       setQuantity(newQuantity);
     }
@@ -276,6 +150,11 @@ export default function ProductDetailPage() {
   const handleAddToCart = async () => {
     if (!isAllRequiredOptionsSelected) {
       alert('すべての選択肢を選んでください');
+      return;
+    }
+
+    if (!product || !displayProduct) {
+      alert('商品情報の取得に失敗しました');
       return;
     }
 
@@ -302,12 +181,13 @@ export default function ProductDetailPage() {
     if (!isAllRequiredOptionsSelected) {
       return { text: 'オプションを選択してください', color: 'warning' as const };
     }
-    if (displayProduct.stockQuantity === 0) {
+    const stockQuantity = displayProduct?.stockQuantity ?? 0;
+    if (stockQuantity === 0) {
       return { text: '在庫切れ', color: 'error' as const };
-    } else if (displayProduct.stockQuantity <= 5) {
-      return { text: `残りわずか（残り${displayProduct.stockQuantity}個）`, color: 'warning' as const };
+    } else if (stockQuantity <= 5) {
+      return { text: `残りわずか（残り${stockQuantity}個）`, color: 'warning' as const };
     } else {
-      return { text: `在庫あり（残り${displayProduct.stockQuantity}個）`, color: 'success' as const };
+      return { text: `在庫あり（残り${stockQuantity}個）`, color: 'success' as const };
     }
   };
 
@@ -335,7 +215,7 @@ export default function ProductDetailPage() {
   }
 
   // エラー状態
-  if (error) {
+  if (error || !product) {
     return (
       <Box
         sx={{
@@ -349,7 +229,7 @@ export default function ProductDetailPage() {
       >
         <Box sx={{ textAlign: 'center' }}>
           <Typography variant="h6" color="error" gutterBottom>
-            商品データの取得に失敗しました
+            {error ? '商品データの取得に失敗しました' : '商品が見つかりませんでした'}
           </Typography>
           <Button variant="contained" onClick={() => navigate(-1)} sx={{ mt: 2 }}>
             戻る
@@ -437,7 +317,7 @@ export default function ProductDetailPage() {
               gap: 1.5,
             }}
           >
-            {product.images.map((_, index) => (
+            {product?.images?.map((_, index) => (
               <Box
                 key={index}
                 onClick={() => setSelectedImageIndex(index)}
@@ -469,11 +349,11 @@ export default function ProductDetailPage() {
 
           {/* 商品名 */}
           <Typography variant="h4" component="h1" fontWeight={700}>
-            {displayProduct.name}
+            {displayProduct?.name ?? product?.name ?? '商品名'}
           </Typography>
 
           {/* バリエーション選択 */}
-          {product.variantOptions && product.variantOptions.length > 0 && (
+          {product?.variantOptions && product.variantOptions.length > 0 && (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {product.variantOptions.map((option) => (
                 <FormControl key={option.key} fullWidth required={option.required}>
@@ -499,7 +379,7 @@ export default function ProductDetailPage() {
 
           {/* 価格 */}
           <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-            {isAllRequiredOptionsSelected ? (
+            {isAllRequiredOptionsSelected && displayProduct ? (
               <>
                 <Typography variant="h3" fontWeight={700} color="primary">
                   ¥{(displayProduct.salePrice || displayProduct.price).toLocaleString()}
@@ -552,18 +432,18 @@ export default function ProductDetailPage() {
               borderRadius: 0.5,
             }}
           >
-            {product.description}
+            {product?.description ?? ''}
           </Typography>
 
           {/* タグ */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-            {product.tags.map((tag) => (
+            {product?.tags?.map((tag) => (
               <Chip key={tag.id} label={tag.name} size="small" />
             ))}
           </Box>
 
           {/* 配送オプション */}
-          {product.shippingSettings && (
+          {product?.shippingSettings && (
             <Box
               sx={{
                 padding: 2,
@@ -575,15 +455,15 @@ export default function ProductDetailPage() {
                 配送オプション
               </Typography>
               <Box component="ul" sx={{ margin: 0, paddingLeft: 2.5 }}>
-                {product.shippingSettings.allowWeekendDelivery && (
+                {product.shippingSettings?.allowWeekendDelivery && (
                   <li>土日配達可能</li>
                 )}
-                {product.shippingSettings.allowDateSelection && (
+                {product.shippingSettings?.allowDateSelection && (
                   <li>日時指定可能</li>
                 )}
                 <li>
-                  通常{product.shippingSettings.preparationDays}〜
-                  {product.shippingSettings.preparationDays + 1}営業日でお届け
+                  通常{product.shippingSettings?.preparationDays ?? 2}〜
+                  {(product.shippingSettings?.preparationDays ?? 2) + 1}営業日でお届け
                 </li>
                 <li>全国送料無料（一部地域を除く）</li>
               </Box>
@@ -629,7 +509,7 @@ export default function ProductDetailPage() {
                   onClick={() => handleQuantityChange(1)}
                   disabled={
                     isAllRequiredOptionsSelected
-                      ? quantity >= displayProduct.stockQuantity
+                      ? quantity >= (displayProduct?.stockQuantity ?? 0)
                       : quantity >= 99
                   }
                   sx={{
@@ -655,7 +535,7 @@ export default function ProductDetailPage() {
               onClick={handleAddToCart}
               disabled={
                 !isAllRequiredOptionsSelected ||
-                displayProduct.stockQuantity === 0 ||
+                (displayProduct?.stockQuantity ?? 0) === 0 ||
                 addToCartMutation.isPending
               }
               sx={{
@@ -679,7 +559,7 @@ export default function ProductDetailPage() {
                 ? 'カートに追加中...'
                 : !isAllRequiredOptionsSelected
                 ? 'オプションを選択してください'
-                : displayProduct.stockQuantity === 0
+                : (displayProduct?.stockQuantity ?? 0) === 0
                 ? '在庫切れ'
                 : 'カートに追加'}
             </Button>

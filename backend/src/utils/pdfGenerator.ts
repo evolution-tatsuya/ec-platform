@@ -324,6 +324,7 @@ export async function generateReceiptPDF(orderData: {
   createdAt: Date;
   paymentMethod: string;
 }): Promise<Uint8Array> {
+  // pdfmeライブラリの型定義制限のため、カスタムプロパティ名に型アサーションが必要
   const template: Template = {
     schemas: [
       {
@@ -376,7 +377,7 @@ export async function generateReceiptPDF(orderData: {
           height: 20,
           fontSize: 10,
         },
-      },
+      } as any,
     ],
     basePdf: BLANK_PDF,
   };
@@ -411,6 +412,7 @@ export async function generateShippingLabelPDF(orderData: {
   carrier: string | null;
   trackingNumber: string | null;
 }): Promise<Uint8Array> {
+  // pdfmeライブラリの型定義制限のため、カスタムプロパティ名に型アサーションが必要
   const template: Template = {
     schemas: [
       {
@@ -449,7 +451,7 @@ export async function generateShippingLabelPDF(orderData: {
           height: 40,
           fontSize: 14,
         },
-      },
+      } as any,
     ],
     basePdf: BLANK_PDF,
   };
@@ -471,6 +473,190 @@ export async function generateShippingLabelPDF(orderData: {
       carrier: `配送業者: ${carrierText}`,
       trackingNumber: `追跡番号: ${orderData.trackingNumber || '未設定'}`,
       customerInfo: `お届け先:\n〒${orderData.shippingPostalCode || ''}\n${orderData.shippingAddress || ''}\n${orderData.customerName} 様\n${orderData.customerPhone}`,
+    },
+  ];
+
+  return await generate({ template, inputs, options: { font } });
+}
+
+/**
+ * 見積書PDF生成
+ */
+export async function generateQuotePDF(orderData: {
+  orderNumber: string;
+  customerName: string;
+  customerEmail: string;
+  items: Array<{ productName: string; quantity: number; price: number }>;
+  totalAmount: number;
+  shippingFee?: number;
+  validUntil: Date;
+}): Promise<Uint8Array> {
+  const shippingFee = orderData.shippingFee || 0;
+  const subtotal = orderData.totalAmount - shippingFee;
+
+  // 商品明細テーブル生成（最大10行）
+  const itemRows = [];
+  for (let i = 0; i < 10; i++) {
+    const item = orderData.items[i];
+    if (item) {
+      itemRows.push({
+        productName: item.productName,
+        quantity: `${item.quantity}`,
+        price: `¥${item.price.toLocaleString()}`,
+      });
+    } else {
+      itemRows.push({ productName: '', quantity: '', price: '' });
+    }
+  }
+
+  // pdfmeライブラリの型定義制限のため、カスタムプロパティ名に型アサーションが必要
+  const template: Template = {
+    basePdf: { width: 210, height: 297, padding: [20, 20, 20, 20] },
+    schemas: [
+      // タイトル
+      {
+        title: {
+          type: 'text',
+          position: { x: 20, y: 20 },
+          width: 170,
+          height: 15,
+          alignment: 'center',
+          fontSize: 20,
+          fontColor: '#333333',
+        },
+      } as any,
+      // 見積番号・有効期限
+      {
+        orderNumber: {
+          type: 'text',
+          position: { x: 20, y: 40 },
+          width: 170,
+          height: 8,
+          fontSize: 12,
+          fontColor: '#333333',
+        },
+        validUntil: {
+          type: 'text',
+          position: { x: 20, y: 50 },
+          width: 170,
+          height: 8,
+          fontSize: 12,
+          fontColor: '#333333',
+        },
+      } as any,
+      // お客様情報
+      {
+        customerInfo: {
+          type: 'text',
+          position: { x: 20, y: 65 },
+          width: 170,
+          height: 20,
+          fontSize: 11,
+          fontColor: '#333333',
+        },
+      } as any,
+      // 商品明細ヘッダー
+      {
+        itemsHeader: {
+          type: 'text',
+          position: { x: 20, y: 95 },
+          width: 170,
+          height: 8,
+          fontSize: 11,
+          fontColor: '#333333',
+        },
+      } as any,
+      // 商品明細（10行分）
+      ...itemRows.map((_, index) => ({
+        [`item${index}_name`]: {
+          type: 'text',
+          position: { x: 20, y: 105 + index * 8 },
+          width: 90,
+          height: 8,
+          fontSize: 10,
+          fontColor: '#333333',
+        },
+        [`item${index}_qty`]: {
+          type: 'text',
+          position: { x: 110, y: 105 + index * 8 },
+          width: 30,
+          height: 8,
+          fontSize: 10,
+          fontColor: '#333333',
+          alignment: 'right',
+        },
+        [`item${index}_price`]: {
+          type: 'text',
+          position: { x: 140, y: 105 + index * 8 },
+          width: 50,
+          height: 8,
+          fontSize: 10,
+          fontColor: '#333333',
+          alignment: 'right',
+        },
+      } as any)),
+      // 合計金額
+      {
+        subtotal: {
+          type: 'text',
+          position: { x: 110, y: 195 },
+          width: 80,
+          height: 8,
+          fontSize: 11,
+          fontColor: '#333333',
+          alignment: 'right',
+        },
+        shippingFee: {
+          type: 'text',
+          position: { x: 110, y: 205 },
+          width: 80,
+          height: 8,
+          fontSize: 11,
+          fontColor: '#333333',
+          alignment: 'right',
+        },
+        total: {
+          type: 'text',
+          position: { x: 110, y: 215 },
+          width: 80,
+          height: 10,
+          fontSize: 14,
+          fontColor: '#FF5722',
+          alignment: 'right',
+        },
+      } as any,
+      // フッター
+      {
+        footer: {
+          type: 'text',
+          position: { x: 20, y: 270 },
+          width: 170,
+          height: 20,
+          fontSize: 9,
+          fontColor: '#666666',
+          alignment: 'center',
+        },
+      } as any,
+    ],
+  };
+
+  const inputs = [
+    {
+      title: '御見積書',
+      orderNumber: `見積番号: ${orderData.orderNumber}`,
+      validUntil: `有効期限: ${orderData.validUntil.toLocaleDateString('ja-JP')}`,
+      customerInfo: `お客様名: ${orderData.customerName}\nメールアドレス: ${orderData.customerEmail}`,
+      itemsHeader: '商品名                                                  数量              金額',
+      ...itemRows.reduce((acc, item, index) => {
+        acc[`item${index}_name`] = item.productName;
+        acc[`item${index}_qty`] = item.quantity;
+        acc[`item${index}_price`] = item.price;
+        return acc;
+      }, {} as Record<string, string>),
+      subtotal: `小計: ¥${subtotal.toLocaleString()}`,
+      shippingFee: `送料: ¥${shippingFee.toLocaleString()}`,
+      total: `合計金額: ¥${orderData.totalAmount.toLocaleString()}`,
+      footer: `この見積書は${orderData.validUntil.toLocaleDateString('ja-JP')}まで有効です。\nご不明な点がございましたら、お気軽にお問い合わせください。`,
     },
   ];
 

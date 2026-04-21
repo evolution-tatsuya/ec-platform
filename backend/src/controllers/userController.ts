@@ -39,12 +39,12 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
       return next(createError('ユーザーが見つかりません', 404));
     }
 
-    res.json({
+    return res.json({
       success: true,
       user,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -112,13 +112,13 @@ export const updateMe = async (req: Request, res: Response, next: NextFunction) 
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'ユーザー情報を更新しました',
       user,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -179,12 +179,12 @@ export const updatePassword = async (req: Request, res: Response, next: NextFunc
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'パスワードを変更しました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -213,7 +213,7 @@ export const getDefaultAddress = async (req: Request, res: Response, next: NextF
       return next(createError('ユーザーが見つかりません', 404));
     }
 
-    res.json({
+    return res.json({
       success: true,
       defaultAddress: {
         address: user.defaultAddress || '',
@@ -222,6 +222,6 @@ export const getDefaultAddress = async (req: Request, res: Response, next: NextF
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

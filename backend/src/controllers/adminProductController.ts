@@ -4,6 +4,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import { createError } from '../middleware/errorHandler';
+import { validateImageFormat, generateMultipleSizes } from '../utils/imageProcessor';
+import { uploadFile, deleteFile } from '../utils/r2Client';
+
+// ヘルパー関数: string | string[] を string に変換
+const getStringParam = (param: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(param)) return param[0];
+  return param;
+};
 
 /**
  * 管理者用商品一覧取得
@@ -85,12 +93,12 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
         });
         return {
           ...product,
-          currentStock: inventorySum._sum.quantity || 0,
+          currentStock: inventorySum._sum?.quantity || 0,
         };
       })
     );
 
-    res.json({
+    return res.json({
       success: true,
       products: productsWithStock,
       pagination: {
@@ -102,7 +110,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -124,6 +132,11 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       allowWeekendDelivery = true,
       initialStock = 0,
     } = req.body;
+
+    // multipart/form-dataの場合、全て文字列として送信されるので変換
+    const parsedAllowWeekendDelivery = typeof allowWeekendDelivery === 'string'
+      ? allowWeekendDelivery === 'true'
+      : allowWeekendDelivery;
 
     // バリデーション
     if (!name || !slug || !categoryId || !productType) {
@@ -152,6 +165,34 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return next(createError('指定されたカテゴリーが存在しません', 404));
     }
 
+    // 画像アップロード処理
+    let imageKeys: { thumbnail: string; list: string; detail: string } | null = null;
+
+    if (req.file) {
+      // 画像形式バリデーション
+      const isValid = await validateImageFormat(req.file.buffer);
+      if (!isValid) {
+        return next(createError('サポートされていない画像形式です（JPEG, PNG, WebPのみ）', 400));
+      }
+
+      // 3サイズのWebP画像を生成
+      const images = await generateMultipleSizes(req.file.buffer);
+
+      // R2にアップロード（仮のproductIdで保存、後でトランザクション内で実際のIDに置き換え）
+      const tempId = Date.now().toString();
+      imageKeys = {
+        thumbnail: `products/${tempId}/thumbnail.webp`,
+        list: `products/${tempId}/list.webp`,
+        detail: `products/${tempId}/detail.webp`,
+      };
+
+      await Promise.all([
+        uploadFile(imageKeys.thumbnail, images.thumbnail, 'image/webp'),
+        uploadFile(imageKeys.list, images.list, 'image/webp'),
+        uploadFile(imageKeys.detail, images.detail, 'image/webp'),
+      ]);
+    }
+
     // トランザクション処理
     const product = await prisma.$transaction(async (tx) => {
       // 商品作成
@@ -164,13 +205,66 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
           categoryId,
           productType,
           preparationDays: parseInt(preparationDays, 10),
-          allowWeekendDelivery,
+          allowWeekendDelivery: parsedAllowWeekendDelivery,
           isActive: true,
         },
         include: {
           category: true,
         },
       });
+
+      // 画像がアップロードされている場合、R2の画像キーを更新してProductImageレコード作成
+      if (imageKeys) {
+        const actualImageKeys = {
+          thumbnail: `products/${newProduct.id}/thumbnail.webp`,
+          list: `products/${newProduct.id}/list.webp`,
+          detail: `products/${newProduct.id}/detail.webp`,
+        };
+
+        // 仮キーから実際のキーにR2上でコピー（実際にはキーを変更できないので削除して再アップロード）
+        // ここでは簡略化のため、実際のキーで最初からアップロードし直す
+        const images = await generateMultipleSizes(req.file!.buffer);
+        await Promise.all([
+          uploadFile(actualImageKeys.thumbnail, images.thumbnail, 'image/webp'),
+          uploadFile(actualImageKeys.list, images.list, 'image/webp'),
+          uploadFile(actualImageKeys.detail, images.detail, 'image/webp'),
+        ]);
+
+        // 仮キーを削除
+        await Promise.all([
+          deleteFile(imageKeys.thumbnail),
+          deleteFile(imageKeys.list),
+          deleteFile(imageKeys.detail),
+        ]);
+
+        // ProductImageレコード作成
+        await Promise.all([
+          tx.productImage.create({
+            data: {
+              productId: newProduct.id,
+              imageKey: actualImageKeys.thumbnail,
+              sizeType: 'thumbnail',
+              order: 0,
+            },
+          }),
+          tx.productImage.create({
+            data: {
+              productId: newProduct.id,
+              imageKey: actualImageKeys.list,
+              sizeType: 'list',
+              order: 0,
+            },
+          }),
+          tx.productImage.create({
+            data: {
+              productId: newProduct.id,
+              imageKey: actualImageKeys.detail,
+              sizeType: 'detail',
+              order: 0,
+            },
+          }),
+        ]);
+      }
 
       // 初期在庫がある場合、在庫ログ作成
       if (initialStock > 0) {
@@ -187,13 +281,52 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return newProduct;
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       product,
       message: '商品を登録しました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
+  }
+};
+
+/**
+ * 商品詳細取得
+ * GET /api/admin/products/:id
+ */
+export const getProductById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = getStringParam(req.params.id);
+    if (!id) return next(createError('商品IDが必要です', 400));
+
+    // 商品取得
+    const product = await prisma.product.findUnique({
+      where: { id },
+      include: {
+        category: true,
+      },
+    });
+
+    if (!product) {
+      return next(createError('商品が見つかりません', 404));
+    }
+
+    // 在庫数を計算
+    const inventorySum = await prisma.inventoryLog.aggregate({
+      where: { productId: id },
+      _sum: { quantity: true },
+    });
+
+    return res.json({
+      success: true,
+      product: {
+        ...product,
+        currentStock: inventorySum._sum?.quantity || 0,
+      },
+    });
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -204,7 +337,9 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
  */
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) return next(createError('商品IDが必要です', 400));
+
     const {
       name,
       slug,
@@ -248,6 +383,69 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       }
     }
 
+    // 画像アップロード処理
+    if (req.file) {
+      // 画像形式バリデーション
+      const isValid = await validateImageFormat(req.file.buffer);
+      if (!isValid) {
+        return next(createError('サポートされていない画像形式です（JPEG, PNG, WebPのみ）', 400));
+      }
+
+      // 既存の画像を削除
+      const existingImages = await prisma.productImage.findMany({
+        where: { productId: id },
+      });
+
+      for (const img of existingImages) {
+        await deleteFile(img.imageKey);
+        await prisma.productImage.delete({ where: { id: img.id } });
+      }
+
+      // 3サイズのWebP画像を生成
+      const images = await generateMultipleSizes(req.file.buffer);
+
+      // R2にアップロード
+      const imageKeys = {
+        thumbnail: `products/${id}/thumbnail.webp`,
+        list: `products/${id}/list.webp`,
+        detail: `products/${id}/detail.webp`,
+      };
+
+      await Promise.all([
+        uploadFile(imageKeys.thumbnail, images.thumbnail, 'image/webp'),
+        uploadFile(imageKeys.list, images.list, 'image/webp'),
+        uploadFile(imageKeys.detail, images.detail, 'image/webp'),
+      ]);
+
+      // ProductImageレコード作成
+      await Promise.all([
+        prisma.productImage.create({
+          data: {
+            productId: id,
+            imageKey: imageKeys.thumbnail,
+            sizeType: 'thumbnail',
+            order: 0,
+          },
+        }),
+        prisma.productImage.create({
+          data: {
+            productId: id,
+            imageKey: imageKeys.list,
+            sizeType: 'list',
+            order: 0,
+          },
+        }),
+        prisma.productImage.create({
+          data: {
+            productId: id,
+            imageKey: imageKeys.detail,
+            sizeType: 'detail',
+            order: 0,
+          },
+        }),
+      ]);
+    }
+
     // 商品更新
     const updatedProduct = await prisma.product.update({
       where: { id },
@@ -273,16 +471,16 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       _sum: { quantity: true },
     });
 
-    res.json({
+    return res.json({
       success: true,
       product: {
         ...updatedProduct,
-        currentStock: inventorySum._sum.quantity || 0,
+        currentStock: inventorySum._sum?.quantity || 0,
       },
       message: '商品を更新しました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -293,7 +491,8 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
  */
 export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) return next(createError('商品IDが必要です', 400));
 
     // 商品存在チェック
     const existingProduct = await prisma.product.findUnique({
@@ -330,13 +529,13 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
       data: { isActive: false },
     });
 
-    res.json({
+    return res.json({
       success: true,
       product: updatedProduct,
       message: '商品を削除しました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -347,7 +546,9 @@ export const deleteProduct = async (req: Request, res: Response, next: NextFunct
  */
 export const adjustInventory = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) return next(createError('商品IDが必要です', 400));
+
     const { quantity, type = 'adjustment', note } = req.body;
 
     // バリデーション
@@ -380,16 +581,16 @@ export const adjustInventory = async (req: Request, res: Response, next: NextFun
       _sum: { quantity: true },
     });
 
-    const currentStock = inventorySum._sum.quantity || 0;
+    const currentStock = inventorySum._sum?.quantity || 0;
 
-    res.json({
+    return res.json({
       success: true,
       inventoryLog,
       currentStock,
       message: '在庫を調整しました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -402,7 +603,9 @@ export const adjustInventory = async (req: Request, res: Response, next: NextFun
  */
 export const getInventoryLogs = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) return next(createError('商品IDが必要です', 400));
+
     const { limit = '50', offset = '0' } = req.query;
 
     const limitNum = parseInt(limit as string, 10);
@@ -436,9 +639,9 @@ export const getInventoryLogs = async (req: Request, res: Response, next: NextFu
       _sum: { quantity: true },
     });
 
-    const currentStock = inventorySum._sum.quantity || 0;
+    const currentStock = inventorySum._sum?.quantity || 0;
 
-    res.json({
+    return res.json({
       success: true,
       logs,
       currentStock,
@@ -450,6 +653,6 @@ export const getInventoryLogs = async (req: Request, res: Response, next: NextFu
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

@@ -12,8 +12,8 @@ export const getNavigationAxes = async (req: Request, res: Response) => {
     const { categoryType } = req.query;
 
     const where: any = {};
-    if (categoryType) {
-      where.categoryType = categoryType as string;
+    if (categoryType && typeof categoryType === 'string') {
+      where.categoryType = categoryType;
     }
 
     const axes = await prisma.navigationAxis.findMany({
@@ -26,10 +26,10 @@ export const getNavigationAxes = async (req: Request, res: Response) => {
       orderBy: { order: 'asc' },
     });
 
-    res.json({ axes });
+    return res.json({ axes });
   } catch (error) {
     console.error('ナビゲーション軸一覧取得エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸一覧の取得に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸一覧の取得に失敗しました' });
   }
 };
 
@@ -39,7 +39,7 @@ export const getNavigationAxes = async (req: Request, res: Response) => {
  */
 export const getNavigationAxisById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const axis = await prisma.navigationAxis.findUnique({
       where: { id },
@@ -54,10 +54,10 @@ export const getNavigationAxisById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'ナビゲーション軸が見つかりません' });
     }
 
-    res.json(axis);
+    return res.json(axis);
   } catch (error) {
     console.error('ナビゲーション軸詳細取得エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸詳細の取得に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸詳細の取得に失敗しました' });
   }
 };
 
@@ -112,10 +112,10 @@ export const createNavigationAxis = async (req: Request, res: Response) => {
       });
     });
 
-    res.status(201).json({ message: 'ナビゲーション軸を作成しました', axis });
+    return res.status(201).json({ message: 'ナビゲーション軸を作成しました', axis });
   } catch (error) {
     console.error('ナビゲーション軸作成エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の作成に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の作成に失敗しました' });
   }
 };
 
@@ -125,7 +125,7 @@ export const createNavigationAxis = async (req: Request, res: Response) => {
  */
 export const updateNavigationAxis = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { categoryType, axisName, axisKey, axisType, displayType, icon, order, isActive, options } = req.body;
 
     // 軸の存在確認
@@ -140,7 +140,7 @@ export const updateNavigationAxis = async (req: Request, res: Response) => {
     // トランザクションで更新
     const axis = await prisma.$transaction(async (tx) => {
       // 軸を更新
-      const updatedAxis = await tx.navigationAxis.update({
+      await tx.navigationAxis.update({
         where: { id },
         data: {
           categoryType,
@@ -185,10 +185,10 @@ export const updateNavigationAxis = async (req: Request, res: Response) => {
       });
     });
 
-    res.json({ message: 'ナビゲーション軸を更新しました', axis });
+    return res.json({ message: 'ナビゲーション軸を更新しました', axis });
   } catch (error) {
     console.error('ナビゲーション軸更新エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の更新に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の更新に失敗しました' });
   }
 };
 
@@ -198,7 +198,7 @@ export const updateNavigationAxis = async (req: Request, res: Response) => {
  */
 export const deleteNavigationAxis = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // 軸の存在確認
     const existingAxis = await prisma.navigationAxis.findUnique({
@@ -214,10 +214,10 @@ export const deleteNavigationAxis = async (req: Request, res: Response) => {
       where: { id },
     });
 
-    res.json({ message: 'ナビゲーション軸を削除しました' });
+    return res.json({ message: 'ナビゲーション軸を削除しました' });
   } catch (error) {
     console.error('ナビゲーション軸削除エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の削除に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の削除に失敗しました' });
   }
 };
 
@@ -243,9 +243,9 @@ export const reorderNavigationAxes = async (req: Request, res: Response) => {
       )
     );
 
-    res.json({ message: 'ナビゲーション軸の順序を更新しました' });
+    return res.json({ message: 'ナビゲーション軸の順序を更新しました' });
   } catch (error) {
     console.error('ナビゲーション軸並び替えエラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の並び替えに失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の並び替えに失敗しました' });
   }
 };

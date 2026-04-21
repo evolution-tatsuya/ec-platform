@@ -94,6 +94,7 @@ model Product {
 
   // リレーション
   category         Category?          @relation(fields: [categoryId], references: [id])
+  images           ProductImage[]
   inventoryLogs    InventoryLog[]
   orderItems       OrderItem[]
   cartItems        CartItem[]
@@ -106,6 +107,24 @@ model Product {
   @@index([categoryId])
   @@index([productType])
   @@map("products")
+}
+
+// ===== 商品画像モデル =====
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String   @map("product_id")
+  imageKey  String   @map("image_key") // R2のファイルキー（例: products/xxx/thumbnail.webp）
+  sizeType  String   @map("size_type") // 'thumbnail' | 'list' | 'detail'
+  order     Int      @default(0) // 表示順序
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // リレーション
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productId, order])
+  @@map("product_images")
 }
 
 // ===== 在庫管理モデル（イミュータブル） =====

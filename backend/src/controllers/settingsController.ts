@@ -15,7 +15,7 @@ const prisma = new PrismaClient();
  * GET /api/settings
  * サイト設定取得（誰でもアクセス可能）
  */
-export async function getSettings(req: Request, res: Response) {
+export async function getSettings(_req: Request, res: Response) {
   try {
     // 最初の設定レコードを取得（通常1件のみ）
     let settings = await prisma.siteSettings.findFirst();
@@ -50,7 +50,7 @@ export async function getSettings(req: Request, res: Response) {
  * GET /api/settings/payment-providers
  * 決済プロバイダー設定取得（誰でもアクセス可能）
  */
-export async function getPaymentProviders(req: Request, res: Response) {
+export async function getPaymentProviders(_req: Request, res: Response) {
   try {
     // 環境変数から決済プロバイダーの有効/無効を判定
     const stripeEnabled = !!(

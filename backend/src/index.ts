@@ -19,6 +19,7 @@ import usersRoutes from './routes/users';
 import topPageRoutes from './routes/topPageRoutes';
 import ticketsRoutes from './routes/tickets';
 import adminProductRoutes from './routes/adminProductRoutes';
+import adminInventoryRoutes from './routes/adminInventoryRoutes';
 import adminDashboardRoutes from './routes/adminDashboardRoutes';
 import adminTicketRoutes from './routes/adminTicketRoutes';
 import adminCustomerRoutes from './routes/adminCustomerRoutes';
@@ -27,6 +28,7 @@ import adminSettingsExtendedRoutes from './routes/adminSettingsRoutes';
 import adminNavigationAxisRoutes from './routes/adminNavigationAxisRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
 import adminFavoriteRoutes from './routes/adminFavoriteRoutes';
+import adminEventRoutes from './routes/adminEventRoutes';
 
 const app = express();
 
@@ -41,6 +43,8 @@ const allowedOrigins = [
   'http://localhost:3248',
   'http://localhost:3249',
   'http://localhost:3250',
+  'http://localhost:3251',
+  'http://localhost:3252',
   'http://192.168.2.100:5173',
   'http://192.168.2.100:3249',
   'http://192.168.2.100:3250',
@@ -86,7 +90,7 @@ app.use(
 );
 
 // ===== ヘルスチェックエンドポイント =====
-app.get('/api/health', async (req, res) => {
+app.get('/api/health', async (_req, res) => {
   try {
     // データベース接続確認
     await prisma.$queryRaw`SELECT 1`;
@@ -119,6 +123,7 @@ app.use('/api/favorites', favoriteRoutes);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/orders', adminOrderRouter);
 app.use('/api/admin/products', adminProductRoutes);
+app.use('/api/admin/inventory-logs', adminInventoryRoutes);
 app.use('/api/admin', adminDashboardRoutes);
 app.use('/api/admin', adminTicketRoutes);
 app.use('/api/admin', adminCustomerRoutes);
@@ -126,13 +131,14 @@ app.use('/api/admin', adminInquiryRoutes);
 app.use('/api/admin', adminSettingsExtendedRoutes);
 app.use('/api/admin', adminNavigationAxisRoutes);
 app.use('/api/admin', adminFavoriteRoutes);
+app.use('/api/admin/events', adminEventRoutes);
 
 // TODO: 他のルーターを追加
 // app.use('/api/inquiries', inquiryRoutes);
 // app.use('/api/admin', adminRoutes);
 
 // ===== 404エラーハンドリング =====
-app.use((req, res) => {
+app.use((_req, res) => {
   res.status(404).json({
     success: false,
     message: 'Not Found',

@@ -33,7 +33,7 @@ import {
   ArrowDownward,
   Close,
 } from '@mui/icons-material';
-import { Header } from '../components';
+
 import { CategoryType, AxisType, DisplayType } from '../types';
 
 // ダミーデータ: ナビゲーション軸
@@ -306,7 +306,7 @@ export default function AdminNavigationAxesPage() {
 
   return (
     <>
-      <Header />
+      
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" fontWeight="bold">
@@ -422,12 +422,12 @@ export default function AdminNavigationAxesPage() {
           <DialogContent dividers>
             <Grid container spacing={2}>
               {/* 基本情報 */}
-              <Grid size={{ xs: 12 }}>
+              <Grid xs={12}>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                   基本情報
                 </Typography>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="軸名"
@@ -438,7 +438,7 @@ export default function AdminNavigationAxesPage() {
                   helperText="表示される名前（日本語）"
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="軸キー"
@@ -451,12 +451,12 @@ export default function AdminNavigationAxesPage() {
               </Grid>
 
               {/* 軸設定 */}
-              <Grid size={{ xs: 12 }}>
+              <Grid xs={12}>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 2 }}>
                   軸設定
                 </Typography>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid xs={12} sm={6}>
                 <FormControl fullWidth required>
                   <InputLabel>軸種別</InputLabel>
                   <Select
@@ -471,7 +471,7 @@ export default function AdminNavigationAxesPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid xs={12} sm={6}>
                 <FormControl fullWidth required>
                   <InputLabel>表示形式</InputLabel>
                   <Select
@@ -485,7 +485,7 @@ export default function AdminNavigationAxesPage() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label="アイコン（絵文字）"
@@ -495,7 +495,7 @@ export default function AdminNavigationAxesPage() {
                   helperText="絵文字1文字"
                 />
               </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              <Grid xs={12} sm={6}>
                 <FormControl fullWidth>
                   <InputLabel>親軸（任意）</InputLabel>
                   <Select
@@ -514,12 +514,12 @@ export default function AdminNavigationAxesPage() {
               </Grid>
 
               {/* 選択肢 */}
-              <Grid size={{ xs: 12 }}>
+              <Grid xs={12}>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ mt: 2 }}>
                   選択肢
                 </Typography>
               </Grid>
-              <Grid size={{ xs: 12 }}>
+              <Grid xs={12}>
                 <TextField
                   fullWidth
                   label="選択肢（1行に1つ）"

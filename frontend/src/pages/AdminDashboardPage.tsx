@@ -37,7 +37,6 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Header } from '../components';
 import { useAdminDashboard } from '../hooks/useDashboard';
 
 // カラーパレット
@@ -69,25 +68,19 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
-            <CircularProgress />
-          </Box>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+          <CircularProgress />
+        </Box>
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Alert severity="error">ダッシュボードデータの取得に失敗しました</Alert>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Alert severity="error">ダッシュボードデータの取得に失敗しました</Alert>
+      </Container>
     );
   }
 
@@ -98,9 +91,7 @@ export default function AdminDashboardPage() {
   const { stats, recentOrders, topProducts, salesTrend, categoryDistribution } = data;
 
   return (
-    <>
-      <Header />
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
         <Typography variant="h4" gutterBottom fontWeight="bold">
           ダッシュボード
         </Typography>
@@ -108,7 +99,7 @@ export default function AdminDashboardPage() {
         {/* 統計カード */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           {/* 今月の売上 */}
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid item xs={12} sm={6} md={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -154,7 +145,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* 今月の注文数 */}
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid item xs={12} sm={6} md={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -200,7 +191,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* 平均注文額 */}
-          <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+          <Grid item xs={12} sm={6} md={4}>
             <Card>
               <CardContent>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
@@ -236,7 +227,7 @@ export default function AdminDashboardPage() {
 
         <Grid container spacing={3}>
           {/* 売上推移グラフ */}
-          <Grid size={{ xs: 12, lg: 8 }}>
+          <Grid item xs={12} lg={8}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -288,7 +279,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* カテゴリー別売上 */}
-          <Grid size={{ xs: 12, lg: 4 }}>
+          <Grid item xs={12} lg={4}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -322,7 +313,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* トップ売れ筋商品 */}
-          <Grid size={{ xs: 12, lg: 6 }}>
+          <Grid item xs={12} lg={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -382,7 +373,7 @@ export default function AdminDashboardPage() {
           </Grid>
 
           {/* 最近の注文 */}
-          <Grid size={{ xs: 12, lg: 6 }}>
+          <Grid item xs={12} lg={6}>
             <Card>
               <CardContent>
                 <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -440,6 +431,5 @@ export default function AdminDashboardPage() {
           </Grid>
         </Grid>
       </Container>
-    </>
   );
 }

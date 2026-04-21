@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
  * 全ユーザーのお気に入り一覧を取得
  * GET /api/admin/favorites
  */
-export const getAllFavorites = async (req: Request, res: Response) => {
+export const getAllFavorites = async (_req: Request, res: Response) => {
   try {
     const favorites = await prisma.favorite.findMany({
       include: {
@@ -30,10 +30,10 @@ export const getAllFavorites = async (req: Request, res: Response) => {
       },
     });
 
-    res.json(favorites);
+    return res.json(favorites);
   } catch (error) {
     console.error('全お気に入り一覧取得エラー:', error);
-    res.status(500).json({ message: '全お気に入り一覧の取得に失敗しました' });
+    return res.status(500).json({ message: '全お気に入り一覧の取得に失敗しました' });
   }
 };
 
@@ -43,7 +43,7 @@ export const getAllFavorites = async (req: Request, res: Response) => {
  */
 export const getUserFavorites = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params;
+    const userId = typeof req.params.userId === 'string' ? req.params.userId : req.params.userId[0];
 
     const favorites = await prisma.favorite.findMany({
       where: { userId },
@@ -55,10 +55,10 @@ export const getUserFavorites = async (req: Request, res: Response) => {
       },
     });
 
-    res.json(favorites);
+    return res.json(favorites);
   } catch (error) {
     console.error('ユーザーお気に入り一覧取得エラー:', error);
-    res.status(500).json({ message: 'ユーザーお気に入り一覧の取得に失敗しました' });
+    return res.status(500).json({ message: 'ユーザーお気に入り一覧の取得に失敗しました' });
   }
 };
 
@@ -66,7 +66,7 @@ export const getUserFavorites = async (req: Request, res: Response) => {
  * お気に入り統計情報を取得
  * GET /api/admin/favorites/stats
  */
-export const getFavoriteStats = async (req: Request, res: Response) => {
+export const getFavoriteStats = async (_req: Request, res: Response) => {
   try {
     // 総お気に入り数
     const totalFavorites = await prisma.favorite.count();
@@ -104,13 +104,13 @@ export const getFavoriteStats = async (req: Request, res: Response) => {
       })
     );
 
-    res.json({
+    return res.json({
       totalFavorites,
       uniqueUserCount,
       popularProducts: productDetails,
     });
   } catch (error) {
     console.error('お気に入り統計取得エラー:', error);
-    res.status(500).json({ message: 'お気に入り統計の取得に失敗しました' });
+    return res.status(500).json({ message: 'お気に入り統計の取得に失敗しました' });
   }
 };

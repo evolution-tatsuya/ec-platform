@@ -9,12 +9,23 @@
  */
 
 import { Request, Response } from 'express';
+
+/**
+ * ヘルパー関数: クエリパラメータからstring型を取得
+ */
+const getStringParam = (value: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(value)) return value[0];
+  return value;
+};
+
 import { PrismaClient } from '@prisma/client';
 import {
   generateInvoicePDF,
   generateReceiptPDF,
   generateShippingLabelPDF,
+  generateQuotePDF,
 } from '../utils/pdfGenerator';
+import { sendShippingNotificationEmail } from '../utils/emailService';
 
 const prisma = new PrismaClient();
 
@@ -43,7 +54,7 @@ async function getStockQuantity(
     where: { productId },
     _sum: { quantity: true },
   });
-  return result._sum.quantity || 0;
+  return result._sum?.quantity || 0;
 }
 
 /**
@@ -125,7 +136,7 @@ export async function createOrder(req: Request, res: Response) {
       }
 
       // 4. 注文番号を生成（ユニークになるまでリトライ）
-      let orderNumber: string;
+      let orderNumber: string = '';
       let attempts = 0;
       const MAX_ATTEMPTS = 10;
 
@@ -141,19 +152,25 @@ export async function createOrder(req: Request, res: Response) {
         attempts++;
       }
 
-      if (attempts >= MAX_ATTEMPTS) {
+      if (attempts >= MAX_ATTEMPTS || !orderNumber) {
         throw new Error('注文番号の生成に失敗しました');
       }
 
-      // 5. 注文を作成
+      // 5. 注文を作成（customerName, customerEmail, customerPhoneをリクエストから取得）
+      const { customerName, customerEmail, customerPhone, shippingPostalCode } = req.body;
+
       const newOrder = await tx.order.create({
         data: {
-          orderNumber: orderNumber!,
+          orderNumber,
           userId,
+          customerName: customerName || '',
+          customerEmail: customerEmail || '',
+          customerPhone: customerPhone || '',
           status: paymentMethod === 'bank_transfer' ? 'pending' : 'paid',
           paymentMethod,
           totalAmount,
           shippingAddress,
+          shippingPostalCode: shippingPostalCode || null,
         },
       });
 
@@ -278,7 +295,7 @@ export async function getOrderByOrderNumber(req: Request, res: Response) {
     }
 
     const userId = req.session.userId;
-    const { orderNumber } = req.params;
+    const orderNumber = getStringParam(req.params.orderNumber);
 
     const order = await prisma.order.findFirst({
       where: {
@@ -336,11 +353,11 @@ export async function checkinOrder(req: Request, res: Response) {
       }
     }
 
-    const { orderNumber } = req.params;
+    const orderNumber = getStringParam(req.params.orderNumber);
 
     // 注文を取得
     const order = await prisma.order.findUnique({
-      where: { orderNumber },
+      where: { orderNumber: orderNumber || '' },
       include: {
         items: {
           include: {
@@ -374,7 +391,7 @@ export async function checkinOrder(req: Request, res: Response) {
 
     // 受付処理
     const updatedOrder = await prisma.order.update({
-      where: { orderNumber },
+      where: { orderNumber: orderNumber || '' },
       data: {
         checkedIn: true,
         checkedInAt: new Date(),
@@ -426,9 +443,10 @@ export async function reorder(req: Request, res: Response) {
     const { orderId } = req.params;
 
     // 注文を取得（自分の注文のみ）
+    const orderIdString = getStringParam(orderId);
     const order = await prisma.order.findFirst({
       where: {
-        id: orderId,
+        id: orderIdString,
         userId,
       },
       include: {
@@ -646,7 +664,7 @@ export async function adminGetOrders(req: Request, res: Response) {
  */
 export async function adminGetOrderById(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
 
     const order = await prisma.order.findUnique({
       where: { id },
@@ -696,7 +714,7 @@ export async function adminGetOrderById(req: Request, res: Response) {
  */
 export async function shipOrder(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
     const {
       carrier,
       trackingNumber,
@@ -776,8 +794,20 @@ export async function shipOrder(req: Request, res: Response) {
       },
     });
 
-    // TODO: 発送完了メールを送信（Resend SDK使用）
-    // await sendShippingNotificationEmail(updatedOrder);
+    // 発送完了メールを送信（Resend SDK使用）
+    try {
+      await sendShippingNotificationEmail({
+        to: updatedOrder.customerEmail,
+        customerName: updatedOrder.customerName,
+        orderNumber: updatedOrder.orderNumber,
+        carrier,
+        trackingNumber,
+        shippedAt: updatedOrder.shippedAt!,
+      });
+    } catch (emailError) {
+      console.error('発送通知メール送信エラー:', emailError);
+      // メール送信失敗しても発送処理は成功とする
+    }
 
     return res.json({
       success: true,
@@ -799,7 +829,7 @@ export async function shipOrder(req: Request, res: Response) {
  */
 export async function cancelOrder(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
     const { cancelReason }: { cancelReason: string } = req.body;
 
     // バリデーション
@@ -903,7 +933,7 @@ export async function cancelOrder(req: Request, res: Response) {
  */
 export async function generateInvoice(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
 
     const order = await prisma.order.findUnique({
       where: { id },
@@ -929,8 +959,8 @@ export async function generateInvoice(req: Request, res: Response) {
       customerName: order.customerName,
       customerEmail: order.customerEmail,
       customerPhone: order.customerPhone,
-      shippingAddress: order.shippingAddress,
-      shippingPostalCode: order.shippingPostalCode,
+      shippingAddress: order.shippingAddress || '',
+      shippingPostalCode: order.shippingPostalCode || '',
       createdAt: order.createdAt,
       items: order.items.map((item) => ({
         productName: item.product.name,
@@ -938,7 +968,7 @@ export async function generateInvoice(req: Request, res: Response) {
         price: item.price,
       })),
       totalAmount: order.totalAmount,
-      shippingFee: order.shippingFee,
+      shippingFee: 0, // Order model doesn't have shippingFee field
       paymentMethod: order.paymentMethod,
     });
 
@@ -948,7 +978,7 @@ export async function generateInvoice(req: Request, res: Response) {
       'Content-Disposition',
       `attachment; filename="invoice-${order.orderNumber}.pdf"`
     );
-    res.send(Buffer.from(pdfBytes));
+    return res.send(Buffer.from(pdfBytes));
   } catch (error: any) {
     console.error('納品書生成エラー:', error);
     return res.status(500).json({
@@ -964,7 +994,7 @@ export async function generateInvoice(req: Request, res: Response) {
  */
 export async function generateReceipt(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
 
     const order = await prisma.order.findUnique({
       where: { id },
@@ -992,7 +1022,7 @@ export async function generateReceipt(req: Request, res: Response) {
       'Content-Disposition',
       `attachment; filename="receipt-${order.orderNumber}.pdf"`
     );
-    res.send(Buffer.from(pdfBytes));
+    return res.send(Buffer.from(pdfBytes));
   } catch (error: any) {
     console.error('領収書生成エラー:', error);
     return res.status(500).json({
@@ -1008,7 +1038,7 @@ export async function generateReceipt(req: Request, res: Response) {
  */
 export async function generateShippingLabel(req: Request, res: Response) {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
 
     const order = await prisma.order.findUnique({
       where: { id },
@@ -1038,12 +1068,74 @@ export async function generateShippingLabel(req: Request, res: Response) {
       'Content-Disposition',
       `attachment; filename="shipping-label-${order.orderNumber}.pdf"`
     );
-    res.send(Buffer.from(pdfBytes));
+    return res.send(Buffer.from(pdfBytes));
   } catch (error: any) {
     console.error('送り状生成エラー:', error);
     return res.status(500).json({
       success: false,
       message: error.message || '送り状の生成に失敗しました',
+    });
+  }
+}
+
+/**
+ * 見積書PDF生成
+ * GET /api/admin/orders/:id/documents/quote
+ */
+export async function generateQuote(req: Request, res: Response) {
+  try {
+    const id = getStringParam(req.params.id);
+
+    // 注文情報取得
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: '注文が見つかりません',
+      });
+    }
+
+    // 有効期限を30日後に設定
+    const validUntil = new Date();
+    validUntil.setDate(validUntil.getDate() + 30);
+
+    // PDF生成
+    const pdfBytes = await generateQuotePDF({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      customerEmail: order.customerEmail,
+      items: order.items.map((item) => ({
+        productName: item.product.name,
+        quantity: item.quantity,
+        price: item.price * item.quantity,
+      })),
+      totalAmount: order.totalAmount,
+      shippingFee: 0, // Order model doesn't have shippingFee field
+      validUntil,
+    });
+
+    // PDFをレスポンスとして返す
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="quote-${order.orderNumber}.pdf"`
+    );
+    return res.send(Buffer.from(pdfBytes));
+  } catch (error: any) {
+    console.error('見積書生成エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || '見積書の生成に失敗しました',
     });
   }
 }

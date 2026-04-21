@@ -10,6 +10,7 @@ import type {
   EventParticipant,
   EventParticipantListResponse,
 } from '../../types';
+import { ProductType, CategoryType } from '../../types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8432';
 
@@ -172,8 +173,8 @@ export const getAdminEvents = async (
     slug: event.id,
     price: event.price,
     description: event.description,
-    productType: 'DIGITAL_TICKET' as const,
-    categoryType: 'events' as const,
+    productType: ProductType.DIGITAL_TICKET,
+    categoryType: CategoryType.EVENTS,
     images: event.images.map((img) => img.url),
     isActive: event.isActive,
     currentStock: event.participantCount,
@@ -201,8 +202,8 @@ export const getAdminEventById = async (id: string): Promise<Product> => {
     slug: event.slug,
     price: event.price,
     description: event.description,
-    productType: 'DIGITAL_TICKET' as const,
-    categoryType: 'events' as const,
+    productType: ProductType.DIGITAL_TICKET,
+    categoryType: CategoryType.EVENTS,
     images: event.images.map((img) => img.url),
     isActive: event.isActive,
     currentStock: event.participantCount,

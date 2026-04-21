@@ -24,9 +24,10 @@ import {
   generateInvoice,
   generateReceipt,
   generateShippingLabel,
+  generateQuote,
 } from '../controllers/orderController';
 import { getDigitalDownloads } from '../controllers/downloadController';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 
 const router = Router();
 
@@ -48,6 +49,9 @@ router.get('/:orderId/downloads', requireAuth, getDigitalDownloads);
 // ===== 管理者用ルーター =====
 export const adminOrderRouter = Router();
 
+// 全ての管理者用ルートに認証ミドルウェアを適用
+adminOrderRouter.use(requireAuth, requireAdmin);
+
 // GET /api/admin/orders - 注文一覧取得
 adminOrderRouter.get('/', adminGetOrders);
 
@@ -60,13 +64,16 @@ adminOrderRouter.put('/:id/ship', shipOrder);
 // PUT /api/admin/orders/:id/cancel - キャンセル処理
 adminOrderRouter.put('/:id/cancel', cancelOrder);
 
-// GET /api/admin/orders/:id/invoice - 納品書PDF生成
-adminOrderRouter.get('/:id/invoice', generateInvoice);
+// GET /api/admin/orders/:id/documents/invoice - 納品書PDF生成
+adminOrderRouter.get('/:id/documents/invoice', generateInvoice);
 
-// GET /api/admin/orders/:id/receipt - 領収書PDF生成
-adminOrderRouter.get('/:id/receipt', generateReceipt);
+// GET /api/admin/orders/:id/documents/receipt - 領収書PDF生成
+adminOrderRouter.get('/:id/documents/receipt', generateReceipt);
 
-// GET /api/admin/orders/:id/shipping-label - 送り状PDF生成
+// GET /api/admin/orders/:id/documents/quote - 見積書PDF生成
+adminOrderRouter.get('/:id/documents/quote', generateQuote);
+
+// GET /api/admin/orders/:id/shipping-label - 送り状PDF生成（旧形式、後方互換性のため残す）
 adminOrderRouter.get('/:id/shipping-label', generateShippingLabel);
 
 // POST /api/admin/orders/:orderNumber/checkin - 受付処理

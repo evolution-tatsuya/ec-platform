@@ -47,7 +47,7 @@
 環境変数:
   設定ファイル: .env.local（ルートディレクトリ）
   必須項目:
-    - DATABASE_URL (Neon接続文字列)
+    - DATABASE_URL (Neon接続文字列 - 開発用)
     - SESSION_SECRET (ランダム文字列、32文字以上推奨)
     - R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME
     - STRIPE_PUBLIC_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
@@ -56,6 +56,47 @@
     - GEMINI_API_KEY
     - FRONTEND_URL (http://localhost:3247)
     - BACKEND_URL (http://localhost:8432)
+
+## 本番環境
+```yaml
+環境分離要件:
+  データベース分離: 必須
+    - 開発環境と本番環境で別のデータベースを使用
+    - Neonブランチ機能またはプロジェクト分離を推奨
+    - 環境変数でDATABASE_URLを切り替え
+
+  実装必須項目:
+    - NODE_ENV=production時に本番用DATABASE_URLを参照
+    - 開発データが本番に混入しない仕組み
+    - マイグレーション実行時の環境確認
+
+環境変数:
+  設定場所: Vercel/Cloud Run環境変数設定
+  本番用必須項目:
+    - NODE_ENV=production
+    - DATABASE_URL (本番用Neon接続文字列)
+    - SESSION_SECRET (本番用、開発と異なる値)
+    - R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME (本番用)
+    - STRIPE_PUBLIC_KEY, STRIPE_SECRET_KEY (本番モードキー)
+    - STRIPE_WEBHOOK_SECRET (本番Webhook)
+    - RESEND_API_KEY, RESEND_FROM_EMAIL (本番ドメイン)
+    - OPENAI_API_KEY (本番用、使用量制限設定推奨)
+    - GEMINI_API_KEY (本番用)
+    - FRONTEND_URL (本番フロントエンドURL)
+    - BACKEND_URL (本番バックエンドURL)
+    - CORS_ORIGIN (本番フロントエンドURL)
+
+データベース設定:
+  開発環境:
+    - Neon mainブランチ または dev専用プロジェクト
+    - テストデータ自由に追加・削除可能
+    - スキーマ変更実験可能
+
+  本番環境:
+    - Neon productionブランチ または prod専用プロジェクト
+    - マイグレーションは慎重に実行
+    - バックアップ必須
+    - Neon無料プラン: 0.5GB、月190時間CPU
 ```
 
 ## テスト認証情報

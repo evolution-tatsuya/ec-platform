@@ -13,7 +13,7 @@ declare module 'express-session' {
 }
 
 // ログイン必須
-export const requireAuth = (req: Request, res: Response, next: NextFunction) => {
+export const requireAuth = (req: Request, _res: Response, next: NextFunction) => {
   if (!req.session.userId) {
     return next(createError('認証が必要です', 401));
   }
@@ -21,7 +21,7 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
 };
 
 // 管理者権限必須
-export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+export const requireAdmin = (req: Request, _res: Response, next: NextFunction) => {
   if (!req.session.userId) {
     return next(createError('認証が必要です', 401));
   }
@@ -32,7 +32,7 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
 };
 
 // オプショナル認証（ログインしていればユーザー情報を取得、していなくてもOK）
-export const optionalAuth = (req: Request, res: Response, next: NextFunction) => {
+export const optionalAuth = (_req: Request, _res: Response, next: NextFunction) => {
   // セッション情報があればそのまま、なくてもnextを呼ぶ
   next();
 };

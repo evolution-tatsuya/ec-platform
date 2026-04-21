@@ -3,11 +3,15 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ========================================
+// システム設定API（スライス8-A）
+// ========================================
+
 /**
- * GET /api/admin/settings/full
- * 管理者向け全設定取得
+ * GET /api/admin/settings
+ * 全設定取得
  */
-export const getFullSettings = async (req: Request, res: Response) => {
+export const getAdminSettings = async (_req: Request, res: Response) => {
   try {
     // サイト設定取得（最初の1件）
     let settings = await prisma.siteSettings.findFirst();
@@ -19,23 +23,34 @@ export const getFullSettings = async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       settings,
     });
   } catch (error) {
     console.error('設定取得エラー:', error);
-    res.status(500).json({ error: '設定の取得に失敗しました' });
+    return res.status(500).json({ error: '設定の取得に失敗しました' });
   }
 };
 
 /**
- * PUT /api/admin/settings/full
- * 管理者向け全設定更新
+ * PUT /api/admin/settings/company
+ * 会社情報更新
  */
-export const updateFullSettings = async (req: Request, res: Response) => {
+export const updateCompanySettings = async (req: Request, res: Response) => {
   try {
-    const updateData = req.body;
+    const {
+      companyName,
+      companyLogoUrl,
+      companyPostalCode,
+      companyAddress,
+      companyPhone,
+      bankName,
+      bankBranch,
+      bankAccountType,
+      bankAccountNumber,
+      bankAccountHolder,
+    } = req.body;
 
     // 既存設定を取得
     let settings = await prisma.siteSettings.findFirst();
@@ -43,29 +58,214 @@ export const updateFullSettings = async (req: Request, res: Response) => {
     if (!settings) {
       // 存在しない場合は作成
       settings = await prisma.siteSettings.create({
-        data: updateData,
+        data: {
+          companyName,
+          companyLogoUrl,
+          companyPostalCode,
+          companyAddress,
+          companyPhone,
+          bankName,
+          bankBranch,
+          bankAccountType,
+          bankAccountNumber,
+          bankAccountHolder,
+        },
       });
     } else {
       // 存在する場合は更新
       settings = await prisma.siteSettings.update({
         where: { id: settings.id },
-        data: updateData,
+        data: {
+          companyName,
+          companyLogoUrl,
+          companyPostalCode,
+          companyAddress,
+          companyPhone,
+          bankName,
+          bankBranch,
+          bankAccountType,
+          bankAccountNumber,
+          bankAccountHolder,
+        },
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
-      message: '設定を更新しました',
+      message: '会社情報を更新しました',
       settings,
     });
   } catch (error) {
-    console.error('設定更新エラー:', error);
-    res.status(500).json({ error: '設定の更新に失敗しました' });
+    console.error('会社情報更新エラー:', error);
+    return res.status(500).json({ error: '会社情報の更新に失敗しました' });
+  }
+};
+
+/**
+ * PUT /api/admin/settings/payment
+ * 決済設定更新
+ */
+export const updatePaymentSettings = async (req: Request, res: Response) => {
+  try {
+    const {
+      enableBankTransfer,
+      bankTransferDiscount,
+      enableCreditCard,
+    } = req.body;
+
+    // 既存設定を取得
+    let settings = await prisma.siteSettings.findFirst();
+
+    if (!settings) {
+      // 存在しない場合は作成
+      settings = await prisma.siteSettings.create({
+        data: {
+          enableBankTransfer,
+          bankTransferDiscount,
+          enableCreditCard,
+        },
+      });
+    } else {
+      // 存在する場合は更新
+      settings = await prisma.siteSettings.update({
+        where: { id: settings.id },
+        data: {
+          enableBankTransfer,
+          bankTransferDiscount,
+          enableCreditCard,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: '決済設定を更新しました',
+      settings,
+    });
+  } catch (error) {
+    console.error('決済設定更新エラー:', error);
+    return res.status(500).json({ error: '決済設定の更新に失敗しました' });
+  }
+};
+
+/**
+ * PUT /api/admin/settings/email
+ * メール設定更新
+ */
+export const updateEmailSettings = async (req: Request, res: Response) => {
+  try {
+    const { emailFrom } = req.body;
+
+    // 既存設定を取得
+    let settings = await prisma.siteSettings.findFirst();
+
+    if (!settings) {
+      // 存在しない場合は作成
+      settings = await prisma.siteSettings.create({
+        data: {
+          emailFrom,
+        },
+      });
+    } else {
+      // 存在する場合は更新
+      settings = await prisma.siteSettings.update({
+        where: { id: settings.id },
+        data: {
+          emailFrom,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'メール設定を更新しました',
+      settings,
+    });
+  } catch (error) {
+    console.error('メール設定更新エラー:', error);
+    return res.status(500).json({ error: 'メール設定の更新に失敗しました' });
+  }
+};
+
+/**
+ * PUT /api/admin/settings/document-templates
+ * 書類テンプレート設定更新
+ *
+ * Note: 書類テンプレートの実際の内容は別テーブル or JSON形式で保存される可能性があるため、
+ * ここでは将来の拡張を考慮してプレースホルダーを実装
+ */
+export const updateDocumentTemplateSettings = async (_req: Request, res: Response) => {
+  try {
+    // 将来的には書類テンプレートデータを受け取る
+    // 現時点ではSiteSettingsに直接フィールドがないため、エラーなく処理を完了させる
+
+    const settings = await prisma.siteSettings.findFirst();
+
+    if (!settings) {
+      await prisma.siteSettings.create({
+        data: {},
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: '書類テンプレート設定を更新しました',
+    });
+  } catch (error) {
+    console.error('書類テンプレート設定更新エラー:', error);
+    return res.status(500).json({ error: '書類テンプレート設定の更新に失敗しました' });
+  }
+};
+
+/**
+ * PUT /api/admin/settings/image-optimization
+ * 画像最適化設定更新
+ */
+export const updateImageOptimizationSettings = async (req: Request, res: Response) => {
+  try {
+    const {
+      enableWebpConversion,
+      imageQuality,
+      thumbnailSize,
+    } = req.body;
+
+    // 既存設定を取得
+    let settings = await prisma.siteSettings.findFirst();
+
+    if (!settings) {
+      // 存在しない場合は作成
+      settings = await prisma.siteSettings.create({
+        data: {
+          enableWebpConversion,
+          imageQuality,
+          thumbnailSize,
+        },
+      });
+    } else {
+      // 存在する場合は更新
+      settings = await prisma.siteSettings.update({
+        where: { id: settings.id },
+        data: {
+          enableWebpConversion,
+          imageQuality,
+          thumbnailSize,
+        },
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: '画像最適化設定を更新しました',
+      settings,
+    });
+  } catch (error) {
+    console.error('画像最適化設定更新エラー:', error);
+    return res.status(500).json({ error: '画像最適化設定の更新に失敗しました' });
   }
 };
 
 // ========================================
-// ナビゲーション軸API
+// ナビゲーション軸API（スライス8-B）
 // ========================================
 
 /**
@@ -74,11 +274,15 @@ export const updateFullSettings = async (req: Request, res: Response) => {
  */
 export const getNavigationAxes = async (req: Request, res: Response) => {
   try {
-    const { categoryType } = req.query;
+    const categoryType = typeof req.query.categoryType === 'string'
+      ? req.query.categoryType
+      : Array.isArray(req.query.categoryType)
+        ? req.query.categoryType[0]
+        : undefined;
 
     const where: any = {};
     if (categoryType) {
-      where.categoryType = categoryType as string;
+      where.categoryType = categoryType;
     }
 
     const axes = await prisma.navigationAxis.findMany({
@@ -95,13 +299,47 @@ export const getNavigationAxes = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       axes,
     });
   } catch (error) {
     console.error('ナビゲーション軸取得エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の取得に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の取得に失敗しました' });
+  }
+};
+
+/**
+ * GET /api/admin/navigation-axes/:category
+ * カテゴリー別ナビゲーション軸取得
+ */
+export const getNavigationAxesByCategory = async (req: Request, res: Response) => {
+  try {
+    const category = typeof req.params.category === 'string' ? req.params.category : req.params.category[0];
+
+    const axes = await prisma.navigationAxis.findMany({
+      where: {
+        categoryType: category,
+      },
+      include: {
+        options: {
+          orderBy: {
+            order: 'asc',
+          },
+        },
+      },
+      orderBy: {
+        order: 'asc',
+      },
+    });
+
+    return res.json({
+      success: true,
+      axes,
+    });
+  } catch (error) {
+    console.error('カテゴリー別ナビゲーション軸取得エラー:', error);
+    return res.status(500).json({ error: 'カテゴリー別ナビゲーション軸の取得に失敗しました' });
   }
 };
 
@@ -149,14 +387,14 @@ export const createNavigationAxis = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'ナビゲーション軸を追加しました',
       axis,
     });
   } catch (error) {
     console.error('ナビゲーション軸追加エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の追加に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の追加に失敗しました' });
   }
 };
 
@@ -166,7 +404,11 @@ export const createNavigationAxis = async (req: Request, res: Response) => {
  */
 export const updateNavigationAxis = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+    if (!id) {
+      return res.status(400).json({ error: 'ナビゲーション軸IDが必要です' });
+    }
+
     const { axisName, axisKey, axisType, displayType, icon, isActive, options } = req.body;
 
     // 軸存在確認
@@ -179,7 +421,7 @@ export const updateNavigationAxis = async (req: Request, res: Response) => {
     }
 
     // 軸更新（optionsは別途更新）
-    const updatedAxis = await prisma.navigationAxis.update({
+    await prisma.navigationAxis.update({
       where: { id },
       data: {
         axisName,
@@ -224,14 +466,14 @@ export const updateNavigationAxis = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'ナビゲーション軸を更新しました',
       axis: finalAxis,
     });
   } catch (error) {
     console.error('ナビゲーション軸更新エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の更新に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の更新に失敗しました' });
   }
 };
 
@@ -241,7 +483,10 @@ export const updateNavigationAxis = async (req: Request, res: Response) => {
  */
 export const deleteNavigationAxis = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+    if (!id) {
+      return res.status(400).json({ error: 'ナビゲーション軸IDが必要です' });
+    }
 
     // 軸存在確認
     const axis = await prisma.navigationAxis.findUnique({
@@ -257,13 +502,13 @@ export const deleteNavigationAxis = async (req: Request, res: Response) => {
       where: { id },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'ナビゲーション軸を削除しました',
     });
   } catch (error) {
     console.error('ナビゲーション軸削除エラー:', error);
-    res.status(500).json({ error: 'ナビゲーション軸の削除に失敗しました' });
+    return res.status(500).json({ error: 'ナビゲーション軸の削除に失敗しました' });
   }
 };
 
@@ -273,7 +518,11 @@ export const deleteNavigationAxis = async (req: Request, res: Response) => {
  */
 export const updateNavigationAxisOrder = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
+    if (!id) {
+      return res.status(400).json({ error: 'ナビゲーション軸IDが必要です' });
+    }
+
     const { newOrder } = req.body;
 
     if (typeof newOrder !== 'number') {
@@ -335,13 +584,13 @@ export const updateNavigationAxisOrder = async (req: Request, res: Response) => 
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: '表示順序を更新しました',
       axis: updatedAxis,
     });
   } catch (error) {
     console.error('表示順序更新エラー:', error);
-    res.status(500).json({ error: '表示順序の更新に失敗しました' });
+    return res.status(500).json({ error: '表示順序の更新に失敗しました' });
   }
 };

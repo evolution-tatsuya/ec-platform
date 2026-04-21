@@ -7,167 +7,6 @@ import 'swiper/swiper-bundle.css';
 import { topPageAPI } from '../lib/api';
 import type { TopPageData } from '../types';
 
-// モックデータ（フォールバック用）
-const mockTopPageData = {
-  heroSlides: [
-    {
-      id: '1',
-      imageUrl: '',
-      title: 'スライド 1',
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    },
-    {
-      id: '2',
-      imageUrl: '',
-      title: 'スライド 2',
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    },
-    {
-      id: '3',
-      imageUrl: '',
-      title: 'スライド 3',
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    },
-  ],
-  megaCategories: [
-    {
-      id: '1',
-      name: '車パーツ',
-      description: '高品質な純正・社外パーツを\nメーカー・車種から簡単検索',
-      backgroundImageUrl:
-        'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=800&h=600&fit=crop&q=80',
-      linkUrl: '/cars',
-    },
-    {
-      id: '2',
-      name: 'イベント',
-      description: 'カーイベント・ミーティング\nチケット＆エントリー受付',
-      backgroundImageUrl:
-        'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800&h=600&fit=crop&q=80',
-      linkUrl: '/events',
-    },
-    {
-      id: '3',
-      name: 'デジタル商品',
-      description: '整備マニュアル・写真集\n即座にダウンロード可能',
-      backgroundImageUrl:
-        'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&h=600&fit=crop&q=80',
-      linkUrl: '/digital',
-    },
-  ],
-  pickupProducts: [
-    {
-      id: '1',
-      name: 'サンプル商品 1',
-      price: 12800,
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    },
-    {
-      id: '2',
-      name: 'サンプル商品 2',
-      price: 24500,
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    },
-    {
-      id: '3',
-      name: 'サンプル商品 3',
-      price: 8900,
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    },
-    {
-      id: '4',
-      name: 'サンプル商品 4',
-      price: 18300,
-      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    },
-  ],
-  newProducts: [
-    {
-      id: '1',
-      name: '新着商品 1',
-      price: 9800,
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    },
-    {
-      id: '2',
-      name: '新着商品 2',
-      price: 15600,
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    },
-    {
-      id: '3',
-      name: '新着商品 3',
-      price: 22400,
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    },
-    {
-      id: '4',
-      name: '新着商品 4',
-      price: 12900,
-      gradient: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-    },
-  ],
-  saleProducts: [
-    {
-      id: '1',
-      name: 'セール商品 1',
-      price: 7200,
-      gradient: 'linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%)',
-    },
-    {
-      id: '2',
-      name: 'セール商品 2',
-      price: 11800,
-      gradient: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-    },
-    {
-      id: '3',
-      name: 'セール商品 3',
-      price: 5400,
-      gradient: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
-    },
-    {
-      id: '4',
-      name: 'セール商品 4',
-      price: 9600,
-      gradient: 'linear-gradient(135deg, #ff6e7f 0%, #bfe9ff 100%)',
-    },
-  ],
-  popularProducts: [
-    {
-      id: '1',
-      name: '人気商品 1',
-      price: 14200,
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    },
-    {
-      id: '2',
-      name: '人気商品 2',
-      price: 19800,
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    },
-    {
-      id: '3',
-      name: '人気商品 3',
-      price: 16500,
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-    },
-    {
-      id: '4',
-      name: '人気商品 4',
-      price: 21300,
-      gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-    },
-  ],
-  news: [
-    { id: '1', date: '2025年12月20日', title: '年末年始の営業時間について' },
-    { id: '2', date: '2025年12月18日', title: '新商品100点追加しました' },
-    { id: '3', date: '2025年12月15日', title: 'ウィンターセール開催中' },
-    { id: '4', date: '2025年12月10日', title: '配送料金改定のお知らせ' },
-    { id: '5', date: '2025年12月05日', title: '会員特典プログラム開始' },
-  ],
-};
-
 export default function TopPage() {
   const navigate = useNavigate();
   const heroSwiperRef = useRef<HTMLDivElement>(null);
@@ -188,9 +27,7 @@ export default function TopPage() {
         setTopPageData(response.data as any);
       } catch (err) {
         console.error('トップページデータ取得エラー:', err);
-        setError('データの読み込みに失敗しました');
-        // フォールバック: モックデータを使用
-        setTopPageData(mockTopPageData as any);
+        setError('データの読み込みに失敗しました。APIサーバーとの接続を確認してください。');
       } finally {
         setLoading(false);
       }
@@ -271,8 +108,8 @@ export default function TopPage() {
     );
   }
 
-  // エラー表示（フォールバックでモックデータを使用）
-  if (error && !topPageData) {
+  // エラー表示
+  if (error) {
     return (
       <Box
         sx={{

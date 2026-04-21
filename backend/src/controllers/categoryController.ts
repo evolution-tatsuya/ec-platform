@@ -3,6 +3,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
+
 import { createError } from '../middleware/errorHandler';
 
 /**
@@ -35,12 +36,12 @@ export const getCategories = async (req: Request, res: Response, next: NextFunct
       products: undefined, // productsは商品数のカウントのみに使用
     }));
 
-    res.json({
+    return res.json({
       success: true,
       categories: categoriesWithCount,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -50,7 +51,7 @@ export const getCategories = async (req: Request, res: Response, next: NextFunct
  */
 export const getCategoryById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = typeof req.params.id === 'string' ? req.params.id : req.params.id[0];
 
     const category = await prisma.category.findUnique({
       where: { id },
@@ -73,12 +74,12 @@ export const getCategoryById = async (req: Request, res: Response, next: NextFun
       return next(createError('カテゴリーが見つかりません', 404));
     }
 
-    res.json({
+    return res.json({
       success: true,
       category,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -86,7 +87,7 @@ export const getCategoryById = async (req: Request, res: Response, next: NextFun
  * カテゴリー階層取得（ツリー構造）
  * GET /api/categories/tree
  */
-export const getCategoryTree = async (req: Request, res: Response, next: NextFunction) => {
+export const getCategoryTree = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     // ルートカテゴリー（親がないもの）を取得
     const rootCategories = await prisma.category.findMany({
@@ -109,11 +110,11 @@ export const getCategoryTree = async (req: Request, res: Response, next: NextFun
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       tree: rootCategories,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

@@ -1,0 +1,249 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * カートページ E2Eテスト
+ * 仕様書: docs/e2e-specs/CartPage-e2e.md
+ */
+
+// テスト用ユーザー認証情報
+const TEST_USER = {
+  email: 'test@example.com',
+  password: 'password123',
+};
+
+// ヘルパー関数: ログイン処理
+async function loginAsUser(page: any) {
+  await page.goto('/auth/login');
+  await page.fill('input[type="email"]', TEST_USER.email);
+  await page.fill('input[type="password"]', TEST_USER.password);
+  await page.click('button[type="submit"]');
+  await page.waitForURL('/');
+}
+
+// ヘルパー関数: カートに商品を追加（API経由）
+async function addProductToCart(page: any) {
+  // APIを直接呼び出してカートに商品を追加
+  const response = await page.evaluate(async () => {
+    // 最初の商品を取得
+    const productsRes = await fetch('http://localhost:8432/api/products?page=1&limit=10');
+    const productsData = await productsRes.json();
+
+    if (!productsData.products || productsData.products.length === 0) {
+      throw new Error('商品が見つかりません');
+    }
+
+    const firstProduct = productsData.products[0];
+
+    // カートに追加
+    const cartRes = await fetch('http://localhost:8432/api/cart', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        productId: firstProduct.id,
+        quantity: 1,
+      }),
+    });
+
+    if (!cartRes.ok) {
+      const error = await cartRes.text();
+      throw new Error(`カート追加失敗: ${error}`);
+    }
+
+    return await cartRes.json();
+  });
+
+  console.log('商品をカートに追加しました:', response);
+  await page.waitForTimeout(500);
+}
+
+// ヘルパー関数: カートをクリア（API経由で完全削除）
+async function clearCart(page: any) {
+  await page.evaluate(async () => {
+    // カート内の全アイテムを取得
+    const cartRes = await fetch('http://localhost:8432/api/cart', {
+      credentials: 'include',
+    });
+
+    if (cartRes.ok) {
+      const cartData = await cartRes.json();
+      const items = cartData.cart?.items || [];
+
+      // 各アイテムを削除
+      for (const item of items) {
+        await fetch(`http://localhost:8432/api/cart/${item.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+      }
+    }
+  });
+
+  console.log('カートクリア完了');
+  await page.waitForTimeout(500);
+}
+
+// ヘルパー関数: 金額をパース（¥10,000 → 10000）
+function parsePrice(priceText: string): number {
+  return parseInt(priceText.replace(/[¥,]/g, ''), 10);
+}
+
+test.describe('P-009 カートページ E2Eテスト', () => {
+  test.beforeEach(async ({ page }) => {
+    // ダイアログを自動的に承諾
+    page.on('dialog', dialog => dialog.accept());
+
+    // 各テスト前にログイン
+    await loginAsUser(page);
+  });
+
+  /**
+   * E2E-CART-003: 数量変更（増加・減少）
+   *
+   * テスト目的: カート商品の数量を変更できることを確認
+   *
+   * 前提条件:
+   * - E2E-CART-002が成功している
+   * - カートに在庫10個以上の商品が1点以上入っている（数量は1）
+   */
+  test.only('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) => {
+    console.log('=== E2E-CART-003: 数量変更テスト開始 ===');
+
+    // 1. カートをクリア
+    console.log('Step 1: カートをクリア中...');
+    await clearCart(page);
+
+    // カートが空であることを確認
+    await page.goto('/cart');
+    const emptyCartMessage = page.locator('h4:has-text("カートは空です")');
+    if (await emptyCartMessage.isVisible()) {
+      console.log('✓ カートが空であることを確認');
+    }
+
+    // 2. 在庫10個以上の商品をカートに追加
+    console.log('Step 2: 商品をカートに追加中...');
+    await addProductToCart(page);
+
+    // 3. カートページにアクセス
+    console.log('Step 3: カートページにアクセス中...');
+    await page.goto('/cart');
+    await page.waitForTimeout(1000);
+
+    // ページタイトルを確認
+    const pageTitle = page.locator('h4:has-text("ショッピングカート")');
+    await expect(pageTitle).toBeVisible();
+
+    // 4. 対象商品の数量を確認（現在数量: 1）
+    console.log('Step 4: 初期数量を確認中...');
+
+    // 数量表示を確認（-ボタンと+ボタンの間にある数値）
+    // CartPageの実装を見ると、h6タグで数量が表示されている
+    const quantityDisplay = page.locator('h6').filter({ hasText: /^[0-9]+$/ }).first();
+    const quantityText = await quantityDisplay.textContent();
+    expect(parseInt(quantityText || '0')).toBe(1);
+    console.log(`初期数量: ${quantityText}`);
+
+    // 5. 注文サマリーの初期金額を取得
+    console.log('Step 5: 初期金額を取得中...');
+
+    const subtotalLocator = page.locator('text=/小計（[0-9]+商品）/').locator('..').locator('text=/¥[\\d,]+/');
+    const initialSubtotalText = await subtotalLocator.textContent();
+    const initialSubtotal = parsePrice(initialSubtotalText || '¥0');
+
+    const totalLocator = page.locator('h5:has-text("¥")').last();
+    const initialTotalText = await totalLocator.textContent();
+    const initialTotal = parsePrice(initialTotalText || '¥0');
+
+    console.log(`初期小計: ¥${initialSubtotal.toLocaleString()}, 初期合計: ¥${initialTotal.toLocaleString()}`);
+
+    // 6. 「+」ボタンをクリック
+    console.log('Step 6: +ボタンをクリック中...');
+    const addButton = page.locator('button:has(svg[data-testid="AddIcon"])').first();
+    await addButton.click();
+
+    // APIレスポンスを待つ
+    await page.waitForTimeout(3000);
+
+    // 7. 数量が 2 になることを確認
+    console.log('Step 7: 数量が2になったか確認中...');
+    const quantity2Display = page.locator('h6').filter({ hasText: /^[0-9]+$/ }).first();
+    const quantity2Text = await quantity2Display.textContent();
+    expect(parseInt(quantity2Text || '0')).toBe(2);
+    console.log(`更新後数量: ${quantity2Text}`);
+
+    // 8. 注文サマリーの小計と合計が更新されることを確認
+    console.log('Step 8: 金額が更新されたか確認中...');
+    const updatedSubtotalText = await subtotalLocator.textContent();
+    const updatedSubtotal = parsePrice(updatedSubtotalText || '¥0');
+    const updatedTotalText = await totalLocator.textContent();
+    const updatedTotal = parsePrice(updatedTotalText || '¥0');
+
+    console.log(`更新後小計: ¥${updatedSubtotal.toLocaleString()}, 更新後合計: ¥${updatedTotal.toLocaleString()}`);
+
+    // 小計が2倍になっていることを確認
+    expect(updatedSubtotal).toBe(initialSubtotal * 2);
+    expect(updatedTotal).toBeGreaterThan(initialTotal);
+    console.log('✓ 金額が正しく2倍になりました');
+
+    // 9. 「+」ボタンを複数回クリックして数量を 5 にする
+    console.log('Step 9: 数量を5にするため+ボタンを3回クリック中...');
+    for (let i = 0; i < 3; i++) {
+      await addButton.click();
+      await page.waitForTimeout(2000);
+    }
+
+    // 10. 数量が 5 になることを確認
+    const quantity5Display = page.locator('h6').filter({ hasText: /^[0-9]+$/ }).first();
+    const quantity5Text = await quantity5Display.textContent();
+    expect(parseInt(quantity5Text || '0')).toBe(5);
+    console.log(`更新後数量: ${quantity5Text}`);
+
+    // 11. 注文サマリーの金額が正しく更新されることを確認
+    console.log('Step 11: 金額が5倍になったか確認中...');
+    const finalSubtotalText = await subtotalLocator.textContent();
+    const finalSubtotal = parsePrice(finalSubtotalText || '¥0');
+    expect(finalSubtotal).toBe(initialSubtotal * 5);
+    console.log(`✓ 金額が正しく5倍になりました: ¥${finalSubtotal.toLocaleString()}`);
+
+    // 12. 「-」ボタンをクリック
+    console.log('Step 12: -ボタンをクリック中...');
+    const removeButton = page.locator('button:has(svg[data-testid="RemoveIcon"])').first();
+    await removeButton.click();
+    await page.waitForTimeout(3000);
+
+    // 13. 数量が 4 になることを確認
+    const quantity4Display = page.locator('h6').filter({ hasText: /^[0-9]+$/ }).first();
+    const quantity4Text = await quantity4Display.textContent();
+    expect(parseInt(quantity4Text || '0')).toBe(4);
+    console.log(`更新後数量: ${quantity4Text}`);
+
+    // 14. 注文サマリーの金額が更新されることを確認
+    console.log('Step 14: 金額が4倍になったか確認中...');
+    const decreasedSubtotalText = await subtotalLocator.textContent();
+    const decreasedSubtotal = parsePrice(decreasedSubtotalText || '¥0');
+    expect(decreasedSubtotal).toBe(initialSubtotal * 4);
+    console.log(`✓ 金額が正しく4倍になりました: ¥${decreasedSubtotal.toLocaleString()}`);
+
+    // 15. 「-」ボタンを3回クリックして数量を 1 にする
+    console.log('Step 15: 数量を1にするため-ボタンを3回クリック中...');
+    for (let i = 0; i < 3; i++) {
+      await removeButton.click();
+      await page.waitForTimeout(2000);
+    }
+
+    // 16. 数量が 1 になることを確認
+    const quantity1Display = page.locator('h6').filter({ hasText: /^[0-9]+$/ }).first();
+    const quantity1Text = await quantity1Display.textContent();
+    expect(parseInt(quantity1Text || '0')).toBe(1);
+    console.log(`更新後数量: ${quantity1Text}`);
+
+    // 17. 数量が 1 の状態で「-」ボタンが無効化されることを確認
+    console.log('Step 17: -ボタンが無効化されているか確認中...');
+    await expect(removeButton).toBeDisabled();
+    console.log('✓ -ボタンが正しく無効化されています');
+
+    console.log('=== ✅ E2E-CART-003: 数量変更テスト完了 ===');
+  });
+});

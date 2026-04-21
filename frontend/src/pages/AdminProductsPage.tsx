@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -40,8 +40,42 @@ import {
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
-import { Header } from '../components';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { ProductType, CategoryType } from '../types';
+import {
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useCreateInventoryLog,
+  useAdminProductById,
+} from '../hooks/useProducts';
+
+// バリデーションスキーマ
+const productSchema = z.object({
+  name: z.string().min(1, '商品名は必須です').max(200, '200文字以内で入力してください'),
+  price: z.number().min(0, '価格は0以上で入力してください'),
+  description: z.string().optional(),
+  productType: z.enum(['PHYSICAL', 'DIGITAL', 'DIGITAL_TICKET', 'EXTERNAL_LINK']),
+  categoryType: z.enum(['CARS', 'EVENTS', 'DIGITAL']),
+  initialStock: z.number().min(0, '在庫数は0以上で入力してください').optional(),
+  externalUrl: z.string().url('有効なURLを入力してください').optional().or(z.literal('')),
+  preparationDays: z.number().min(0).optional(),
+  allowWeekendDelivery: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+type ProductFormData = z.infer<typeof productSchema>;
+
+const inventorySchema = z.object({
+  productId: z.string().min(1, '商品を選択してください'),
+  quantity: z.number().int('整数で入力してください'),
+  type: z.enum(['purchase', 'adjustment']),
+  reason: z.string().min(1, '理由は必須です').max(200, '200文字以内で入力してください'),
+});
+
+type InventoryFormData = z.infer<typeof inventorySchema>;
 
 // ダミーデータ
 const dummyProducts = [
@@ -113,6 +147,175 @@ export default function AdminProductsPage() {
   const [openInventoryDialog, setOpenInventoryDialog] = useState(false);
   const [selectedProducts, setSelectedProducts] = useState<GridRowSelectionModel>([]);
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
+    open: boolean;
+    productId: string | null;
+    productName: string | null;
+  }>({
+    open: false,
+    productId: null,
+    productName: null,
+  });
+
+  // React Query mutations
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+  const deleteProductMutation = useDeleteProduct();
+  const createInventoryLogMutation = useCreateInventoryLog();
+
+  // Product form
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    reset,
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: '',
+      price: 0,
+      description: '',
+      productType: ProductType.PHYSICAL,
+      categoryType: CategoryType.CARS,
+      initialStock: 0,
+      preparationDays: 3,
+      allowWeekendDelivery: false,
+      tags: [],
+    },
+  });
+
+  // Inventory form
+  const inventoryForm = useForm<InventoryFormData>({
+    resolver: zodResolver(inventorySchema),
+    defaultValues: {
+      productId: '',
+      quantity: 0,
+      type: 'purchase',
+      reason: '',
+    },
+  });
+
+  // Load product data for editing
+  const { data: editingProductData, isLoading: isLoadingProduct } = useAdminProductById(
+    editingProduct || ''
+  );
+
+  useEffect(() => {
+    if (editingProductData && openProductDialog) {
+      reset({
+        name: editingProductData.name,
+        price: editingProductData.price,
+        description: editingProductData.description || '',
+        productType: editingProductData.productType,
+        categoryType: editingProductData.categoryType,
+        initialStock: 0,
+        preparationDays: editingProductData.preparationDays || 3,
+        allowWeekendDelivery: editingProductData.allowWeekendDelivery || false,
+        tags: editingProductData.tags || [],
+      });
+    }
+  }, [editingProductData, openProductDialog, reset]);
+
+  // Form submit handlers
+  const onSubmitCreate = async (data: ProductFormData) => {
+    try {
+      await createProductMutation.mutateAsync({
+        name: data.name,
+        price: data.price,
+        description: data.description,
+        productType: data.productType,
+        categoryType: data.categoryType,
+        initialStock: data.initialStock,
+        externalUrl: data.externalUrl,
+        preparationDays: data.preparationDays,
+        allowWeekendDelivery: data.allowWeekendDelivery,
+        tags: data.tags,
+        images: imageFiles as any,
+      });
+
+      setOpenProductDialog(false);
+      reset();
+      setImageFiles([]);
+      alert('商品を登録しました');
+    } catch (error) {
+      console.error('商品登録エラー:', error);
+      alert('商品登録に失敗しました');
+    }
+  };
+
+  const onSubmitUpdate = async (data: ProductFormData) => {
+    if (!editingProduct) return;
+
+    try {
+      await updateProductMutation.mutateAsync({
+        id: editingProduct,
+        data: {
+          name: data.name,
+          price: data.price,
+          description: data.description,
+          productType: data.productType,
+          categoryType: data.categoryType,
+          externalUrl: data.externalUrl,
+          preparationDays: data.preparationDays,
+          allowWeekendDelivery: data.allowWeekendDelivery,
+          tags: data.tags,
+          images: imageFiles.length > 0 ? (imageFiles as any) : undefined,
+        },
+      });
+
+      setOpenProductDialog(false);
+      reset();
+      setEditingProduct(null);
+      setImageFiles([]);
+      alert('商品を更新しました');
+    } catch (error) {
+      console.error('商品更新エラー:', error);
+      alert('商品更新に失敗しました');
+    }
+  };
+
+  const onSubmitInventory = async (data: InventoryFormData) => {
+    try {
+      await createInventoryLogMutation.mutateAsync({
+        productId: data.productId,
+        quantity: data.quantity,
+        type: data.type,
+        reason: data.reason,
+      });
+
+      setOpenInventoryDialog(false);
+      inventoryForm.reset();
+      alert('在庫を調整しました');
+    } catch (error) {
+      console.error('在庫調整エラー:', error);
+      alert('在庫調整に失敗しました');
+    }
+  };
+
+  const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      setImageFiles(Array.from(files));
+    }
+  };
+
+  const executeDelete = async () => {
+    if (!deleteConfirmDialog.productId) return;
+
+    try {
+      await deleteProductMutation.mutateAsync(deleteConfirmDialog.productId);
+      setDeleteConfirmDialog({ open: false, productId: null, productName: null });
+      alert('商品を削除しました');
+    } catch (error: any) {
+      console.error('商品削除エラー:', error);
+      if (error.response?.status === 400) {
+        alert('この商品は注文に紐付いているため削除できません');
+      } else {
+        alert('商品削除に失敗しました');
+      }
+    }
+  };
 
   // 商品一覧のカラム定義
   const columns: GridColDef[] = [
@@ -134,6 +337,12 @@ export default function AdminProductsPage() {
       field: 'categoryType',
       headerName: 'カテゴリー',
       width: 120,
+      filterable: true,
+      type: 'singleSelect',
+      valueOptions: Object.entries(categoryTypeMap).map(([value, label]) => ({
+        value,
+        label,
+      })),
       renderCell: (params: GridRenderCellParams) => categoryTypeMap[params.value as CategoryType],
     },
     {
@@ -146,6 +355,8 @@ export default function AdminProductsPage() {
       field: 'currentStock',
       headerName: '在庫',
       width: 100,
+      filterable: true,
+      type: 'number',
       renderCell: (params: GridRenderCellParams) => (
         <Chip
           label={params.value}
@@ -233,7 +444,12 @@ export default function AdminProductsPage() {
   };
 
   const handleDeleteProduct = (id: string) => {
-    console.log('Delete product:', id);
+    const product = dummyProducts.find((p) => p.id === id);
+    setDeleteConfirmDialog({
+      open: true,
+      productId: id,
+      productName: product?.name || '',
+    });
   };
 
   const handleBulkPublish = () => {
@@ -249,9 +465,7 @@ export default function AdminProductsPage() {
   };
 
   return (
-    <>
-      <Header />
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" fontWeight="bold">
             商品管理
@@ -283,7 +497,7 @@ export default function AdminProductsPage() {
             <Card sx={{ mb: 3 }}>
               <CardContent>
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid item xs={12} md={4}>
                     <TextField
                       fullWidth
                       size="small"
@@ -299,7 +513,7 @@ export default function AdminProductsPage() {
                       }}
                     />
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                  <Grid item xs={12} sm={6} md={2}>
                     <FormControl fullWidth size="small">
                       <InputLabel>カテゴリー</InputLabel>
                       <Select
@@ -314,7 +528,7 @@ export default function AdminProductsPage() {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                  <Grid item xs={12} sm={6} md={2}>
                     <FormControl fullWidth size="small">
                       <InputLabel>在庫状況</InputLabel>
                       <Select
@@ -329,11 +543,11 @@ export default function AdminProductsPage() {
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
+                  <Grid item xs={12} md={4}>
                     <Stack direction="row" spacing={1}>
                       <Button
                         size="small"
-                        disabled={(selectedProducts as any[]).length === 0}
+                        disabled={Array.isArray(selectedProducts) && selectedProducts.length === 0}
                         onClick={handleBulkPublish}
                         startIcon={<Visibility />}
                       >
@@ -341,7 +555,7 @@ export default function AdminProductsPage() {
                       </Button>
                       <Button
                         size="small"
-                        disabled={(selectedProducts as any[]).length === 0}
+                        disabled={Array.isArray(selectedProducts) && selectedProducts.length === 0}
                         onClick={handleBulkUnpublish}
                         startIcon={<VisibilityOff />}
                       >
@@ -350,7 +564,7 @@ export default function AdminProductsPage() {
                       <Button
                         size="small"
                         color="error"
-                        disabled={(selectedProducts as any[]).length === 0}
+                        disabled={Array.isArray(selectedProducts) && selectedProducts.length === 0}
                         onClick={handleBulkDelete}
                         startIcon={<Delete />}
                       >
@@ -368,15 +582,19 @@ export default function AdminProductsPage() {
                 <DataGrid
                   rows={dummyProducts}
                   columns={columns}
-                  checkboxSelection
-                  onRowSelectionModelChange={setSelectedProducts}
-                  rowSelectionModel={selectedProducts}
+                  getRowId={(row) => row.id}
                   initialState={{
                     pagination: { paginationModel: { pageSize: 10 } },
+                    filter: {
+                      filterModel: {
+                        items: [],
+                      },
+                    },
                   }}
                   pageSizeOptions={[10, 25, 50]}
                   autoHeight
-                  disableRowSelectionOnClick
+                  disableColumnFilter={false}
+                  sx={{ '& .MuiDataGrid-footerContainer': { display: 'flex' } }}
                 />
               </CardContent>
             </Card>
@@ -404,6 +622,7 @@ export default function AdminProductsPage() {
                 <DataGrid
                   rows={dummyInventoryLogs}
                   columns={inventoryColumns}
+                  getRowId={(row) => row.id}
                   initialState={{
                     pagination: { paginationModel: { pageSize: 10 } },
                   }}
@@ -434,138 +653,194 @@ export default function AdminProductsPage() {
             </Box>
           </DialogTitle>
           <DialogContent dividers>
-            <Grid container spacing={2}>
-              {/* 基本情報 */}
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  基本情報
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField fullWidth label="商品名" required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="価格（円）" type="number" required />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="初期在庫数" type="number" />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth
-                  label="商品説明"
-                  multiline
-                  rows={4}
-                />
-              </Grid>
+            <form id="product-form" onSubmit={handleSubmit(editingProduct ? onSubmitUpdate : onSubmitCreate)}>
+              <Grid container spacing={2}>
+                {/* 基本情報 */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    基本情報
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="name"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="商品名"
+                        required
+                        error={!!errors.name}
+                        helperText={errors.name?.message}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="price"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="価格（円）"
+                        type="number"
+                        required
+                        error={!!errors.price}
+                        helperText={errors.price?.message}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="initialStock"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="初期在庫数"
+                        type="number"
+                        error={!!errors.initialStock}
+                        helperText={errors.initialStock?.message}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="商品説明"
+                        multiline
+                        rows={4}
+                        error={!!errors.description}
+                        helperText={errors.description?.message}
+                      />
+                    )}
+                  />
+                </Grid>
 
-              {/* 商品種別・カテゴリー */}
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  種別・カテゴリー
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth required>
-                  <InputLabel>商品種別</InputLabel>
-                  <Select label="商品種別">
-                    <MenuItem value={ProductType.PHYSICAL}>通常商品</MenuItem>
-                    <MenuItem value={ProductType.DIGITAL}>デジタル商品</MenuItem>
-                    <MenuItem value={ProductType.DIGITAL_TICKET}>イベントチケット</MenuItem>
-                    <MenuItem value={ProductType.EXTERNAL_LINK}>外部申し込み</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth required>
-                  <InputLabel>カテゴリータイプ</InputLabel>
-                  <Select label="カテゴリータイプ">
-                    <MenuItem value={CategoryType.CARS}>車パーツ</MenuItem>
-                    <MenuItem value={CategoryType.EVENTS}>イベント</MenuItem>
-                    <MenuItem value={CategoryType.DIGITAL}>デジタル</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+                {/* 商品種別・カテゴリー */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    種別・カテゴリー
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="productType"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth required error={!!errors.productType}>
+                        <InputLabel>商品種別</InputLabel>
+                        <Select {...field} label="商品種別">
+                          <MenuItem value={ProductType.PHYSICAL}>通常商品</MenuItem>
+                          <MenuItem value={ProductType.DIGITAL}>デジタル商品</MenuItem>
+                          <MenuItem value={ProductType.DIGITAL_TICKET}>イベントチケット</MenuItem>
+                          <MenuItem value={ProductType.EXTERNAL_LINK}>外部申し込み</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="categoryType"
+                    control={control}
+                    render={({ field }) => (
+                      <FormControl fullWidth required error={!!errors.categoryType}>
+                        <InputLabel>カテゴリータイプ</InputLabel>
+                        <Select {...field} label="カテゴリータイプ">
+                          <MenuItem value={CategoryType.CARS}>車パーツ</MenuItem>
+                          <MenuItem value={CategoryType.EVENTS}>イベント</MenuItem>
+                          <MenuItem value={CategoryType.DIGITAL}>デジタル</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
 
-              {/* 動的属性入力（例: 車パーツの場合） */}
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  商品属性
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="メーカー" placeholder="例: トヨタ" />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="車種" placeholder="例: プリウス" />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="型式" placeholder="例: ZVW30" />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="パーツカテゴリー" placeholder="例: ブレーキ" />
-              </Grid>
+                {/* 画像アップロード */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    商品画像
+                  </Typography>
+                </Grid>
+                <Grid item xs={12}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    startIcon={<CloudUpload />}
+                    fullWidth
+                  >
+                    画像をアップロード
+                    <input
+                      type="file"
+                      hidden
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                    />
+                  </Button>
+                  {imageFiles.length > 0 && (
+                    <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                      {imageFiles.length}枚選択中
+                    </Typography>
+                  )}
+                  <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                    複数選択可。JPG, PNG形式。自動的にWebP形式に変換され88%圧縮されます。
+                  </Typography>
+                </Grid>
 
-              {/* タグ入力 */}
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  タグ
-                </Typography>
+                {/* 配送設定 */}
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                    配送設定
+                  </Typography>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
+                    name="preparationDays"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="準備日数"
+                        type="number"
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth
-                  label="タグ（カンマ区切り）"
-                  placeholder="例: セール, 送料無料, 新商品"
-                  helperText="複数のタグはカンマで区切ってください"
-                />
-              </Grid>
-
-              {/* 画像アップロード */}
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  商品画像
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <Button
-                  variant="outlined"
-                  component="label"
-                  startIcon={<CloudUpload />}
-                  fullWidth
-                >
-                  画像をアップロード
-                  <input type="file" hidden multiple accept="image/*" />
-                </Button>
-                <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                  複数選択可。JPG, PNG形式。自動的にWebP形式に変換され88%圧縮されます。
-                </Typography>
-              </Grid>
-
-              {/* 配送設定 */}
-              <Grid size={{ xs: 12 }}>
-                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                  配送設定
-                </Typography>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField fullWidth label="準備日数" type="number" defaultValue={3} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth>
-                  <InputLabel>配送オプション</InputLabel>
-                  <Select label="配送オプション" multiple defaultValue={[]}>
-                    <MenuItem value="weekend">土日着可</MenuItem>
-                    <MenuItem value="date">日時指定可</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+            </form>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenProductDialog(false)}>キャンセル</Button>
-            <Button variant="contained" onClick={() => setOpenProductDialog(false)}>
-              {editingProduct ? '更新' : '登録'}
+            <Button onClick={() => { setOpenProductDialog(false); reset(); setEditingProduct(null); setImageFiles([]); }}>
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              form="product-form"
+              variant="contained"
+              disabled={createProductMutation.isPending || updateProductMutation.isPending}
+            >
+              {createProductMutation.isPending || updateProductMutation.isPending
+                ? '処理中...'
+                : editingProduct
+                ? '更新'
+                : '登録'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -579,51 +854,127 @@ export default function AdminProductsPage() {
         >
           <DialogTitle>在庫調整</DialogTitle>
           <DialogContent dividers>
-            <Grid container spacing={2}>
-              <Grid size={{ xs: 12 }}>
-                <FormControl fullWidth required>
-                  <InputLabel>商品選択</InputLabel>
-                  <Select label="商品選択">
-                    {dummyProducts.map((product) => (
-                      <MenuItem key={product.id} value={product.id}>
-                        {product.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+            <form id="inventory-form" onSubmit={inventoryForm.handleSubmit(onSubmitInventory)}>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Controller
+                    name="productId"
+                    control={inventoryForm.control}
+                    render={({ field }) => (
+                      <FormControl fullWidth required error={!!inventoryForm.formState.errors.productId}>
+                        <InputLabel>商品選択</InputLabel>
+                        <Select {...field} label="商品選択">
+                          {dummyProducts.map((product) => (
+                            <MenuItem key={product.id} value={product.id}>
+                              {product.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="type"
+                    control={inventoryForm.control}
+                    render={({ field }) => (
+                      <FormControl fullWidth required error={!!inventoryForm.formState.errors.type}>
+                        <InputLabel>調整種類</InputLabel>
+                        <Select {...field} label="調整種類">
+                          <MenuItem value="purchase">入庫</MenuItem>
+                          <MenuItem value="adjustment">調整</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="quantity"
+                    control={inventoryForm.control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="数量"
+                        type="number"
+                        required
+                        error={!!inventoryForm.formState.errors.quantity}
+                        helperText={inventoryForm.formState.errors.quantity?.message}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12}>
+                  <Controller
+                    name="reason"
+                    control={inventoryForm.control}
+                    render={({ field }) => (
+                      <TextField
+                        {...field}
+                        fullWidth
+                        label="理由"
+                        multiline
+                        rows={3}
+                        required
+                        placeholder="例: 新規仕入れ、破損品処分"
+                        error={!!inventoryForm.formState.errors.reason}
+                        helperText={inventoryForm.formState.errors.reason?.message}
+                      />
+                    )}
+                  />
+                </Grid>
               </Grid>
-              <Grid size={{ xs: 12 }}>
-                <FormControl fullWidth required>
-                  <InputLabel>調整種類</InputLabel>
-                  <Select label="調整種類">
-                    <MenuItem value="purchase">入庫</MenuItem>
-                    <MenuItem value="adjustment">調整</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField fullWidth label="数量" type="number" required />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <TextField
-                  fullWidth
-                  label="理由"
-                  multiline
-                  rows={3}
-                  required
-                  placeholder="例: 新規仕入れ、破損品処分"
-                />
-              </Grid>
-            </Grid>
+            </form>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenInventoryDialog(false)}>キャンセル</Button>
-            <Button variant="contained" onClick={() => setOpenInventoryDialog(false)}>
-              調整実行
+            <Button onClick={() => { setOpenInventoryDialog(false); inventoryForm.reset(); }}>
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              form="inventory-form"
+              variant="contained"
+              disabled={createInventoryLogMutation.isPending}
+            >
+              {createInventoryLogMutation.isPending ? '処理中...' : '調整実行'}
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
-    </>
+
+        {/* 削除確認ダイアログ */}
+        <Dialog
+          open={deleteConfirmDialog.open}
+          onClose={() => setDeleteConfirmDialog({ open: false, productId: null, productName: null })}
+        >
+          <DialogTitle>商品削除の確認</DialogTitle>
+          <DialogContent>
+            <Typography>
+              以下の商品を削除してもよろしいですか？
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              {deleteConfirmDialog.productName}
+            </Typography>
+            <Alert severity="warning" sx={{ mt: 2 }}>
+              この操作は取り消せません。注文に紐付いている商品は削除できません。
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteConfirmDialog({ open: false, productId: null, productName: null })}>
+              キャンセル
+            </Button>
+            <Button
+              variant="contained"
+              color="error"
+              onClick={executeDelete}
+              disabled={deleteProductMutation.isPending}
+            >
+              {deleteProductMutation.isPending ? '削除中...' : '削除'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+    </Container>
   );
 }

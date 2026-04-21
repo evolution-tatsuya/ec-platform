@@ -5,6 +5,7 @@ import {
   useTicket,
   resetTicket,
   getTicketStats,
+  scanTicket,
 } from '../controllers/adminTicketController';
 import { requireAuth, requireAdmin } from '../middleware/auth';
 
@@ -16,6 +17,9 @@ router.use(requireAdmin);
 
 // GET /api/admin/tickets/stats - チケット統計
 router.get('/tickets/stats', getTicketStats);
+
+// POST /api/admin/tickets/scan - QRスキャン受付
+router.post('/tickets/scan', scanTicket);
 
 // GET /api/admin/tickets - チケット一覧
 router.get('/tickets', getTickets);

@@ -34,7 +34,7 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
       where: { productId },
       _sum: { quantity: true },
     });
-    const currentStock = inventorySum._sum.quantity || 0;
+    const currentStock = inventorySum._sum?.quantity || 0;
 
     if (currentStock < quantity) {
       return next(createError('在庫が不足しています', 400));
@@ -100,13 +100,13 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'カートに追加しました',
       cartItem,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -157,7 +157,7 @@ export const getCart = async (req: Request, res: Response, next: NextFunction) =
           where: { productId: item.productId },
           _sum: { quantity: true },
         });
-        const currentStock = inventorySum._sum.quantity || 0;
+        const currentStock = inventorySum._sum?.quantity || 0;
 
         return {
           ...item,
@@ -171,7 +171,7 @@ export const getCart = async (req: Request, res: Response, next: NextFunction) =
     const totalAmount = itemsWithStock.reduce((sum, item) => sum + item.subtotal, 0);
     const totalItems = itemsWithStock.reduce((sum, item) => sum + item.quantity, 0);
 
-    res.json({
+    return res.json({
       success: true,
       cart: {
         id: cart.id,
@@ -181,7 +181,7 @@ export const getCart = async (req: Request, res: Response, next: NextFunction) =
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -197,7 +197,7 @@ export const updateCartItem = async (req: Request, res: Response, next: NextFunc
       return next(createError('ログインが必要です', 401));
     }
 
-    const { itemId } = req.params;
+    const itemId = req.params.itemId as string;
     const { quantity } = req.body;
 
     if (!quantity || quantity < 1) {
@@ -226,7 +226,7 @@ export const updateCartItem = async (req: Request, res: Response, next: NextFunc
       where: { productId: cartItem.productId },
       _sum: { quantity: true },
     });
-    const currentStock = inventorySum._sum.quantity || 0;
+    const currentStock = inventorySum._sum?.quantity || 0;
 
     if (currentStock < quantity) {
       return next(createError('在庫が不足しています', 400));
@@ -245,7 +245,7 @@ export const updateCartItem = async (req: Request, res: Response, next: NextFunc
       },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'カートを更新しました',
       cartItem: {
@@ -255,7 +255,7 @@ export const updateCartItem = async (req: Request, res: Response, next: NextFunc
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -271,7 +271,7 @@ export const removeFromCart = async (req: Request, res: Response, next: NextFunc
       return next(createError('ログインが必要です', 401));
     }
 
-    const { itemId } = req.params;
+    const itemId = req.params.itemId as string;
 
     // カートアイテムの存在確認と所有権チェック
     const cartItem = await prisma.cartItem.findUnique({
@@ -294,12 +294,12 @@ export const removeFromCart = async (req: Request, res: Response, next: NextFunc
       where: { id: itemId },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'カートから削除しました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -332,11 +332,11 @@ export const clearCart = async (req: Request, res: Response, next: NextFunction)
       where: { cartId: cart.id },
     });
 
-    res.json({
+    return res.json({
       success: true,
       message: 'カートをクリアしました',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

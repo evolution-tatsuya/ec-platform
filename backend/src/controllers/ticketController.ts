@@ -111,7 +111,7 @@ export async function getTicketQR(req: Request, res: Response) {
     // チケットを取得（ログインユーザーのチケットのみ）
     const ticket = await prisma.digitalTicket.findFirst({
       where: {
-        id: ticketId,
+        id: typeof ticketId === 'string' ? ticketId : ticketId[0],
         order: {
           userId,
         },

@@ -3,6 +3,7 @@ import {
   getInquiries,
   getInquiryById,
   getInquiryStats,
+  getInquiryTrends,
   replyToInquiry,
   updateInquiryStatus,
   deleteInquiry,
@@ -17,6 +18,9 @@ router.use(requireAdmin);
 
 // GET /api/admin/inquiries/stats - 問い合わせ統計
 router.get('/inquiries/stats', getInquiryStats);
+
+// GET /api/admin/inquiries/trends - 問い合わせトレンド
+router.get('/inquiries/trends', getInquiryTrends);
 
 // GET /api/admin/inquiries - 問い合わせ一覧
 router.get('/inquiries', getInquiries);

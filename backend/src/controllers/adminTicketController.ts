@@ -3,6 +3,12 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// ヘルパー関数: string | string[] を string に変換
+const getStringParam = (param: string | string[] | undefined): string | undefined => {
+  if (Array.isArray(param)) return param[0];
+  return param;
+};
+
 /**
  * GET /api/admin/tickets
  * 全チケット一覧を取得（検索・フィルタリング）
@@ -87,7 +93,7 @@ export const getTickets = async (req: Request, res: Response) => {
       prisma.digitalTicket.count({ where }),
     ]);
 
-    res.json({
+    return res.json({
       tickets,
       pagination: {
         total,
@@ -98,7 +104,7 @@ export const getTickets = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('チケット一覧取得エラー:', error);
-    res.status(500).json({ error: 'チケット一覧の取得に失敗しました' });
+    return res.status(500).json({ error: 'チケット一覧の取得に失敗しました' });
   }
 };
 
@@ -108,7 +114,10 @@ export const getTickets = async (req: Request, res: Response) => {
  */
 export const getTicketById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) {
+      return res.status(400).json({ error: 'チケットIDが必要です' });
+    }
 
     const ticket = await prisma.digitalTicket.findUnique({
       where: { id },
@@ -120,7 +129,7 @@ export const getTicketById = async (req: Request, res: Response) => {
                 id: true,
                 email: true,
                 name: true,
-                default_phone: true,
+                defaultPhone: true,
               },
             },
           },
@@ -134,10 +143,10 @@ export const getTicketById = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'チケットが見つかりません' });
     }
 
-    res.json(ticket);
+    return res.json(ticket);
   } catch (error) {
     console.error('チケット詳細取得エラー:', error);
-    res.status(500).json({ error: 'チケット詳細の取得に失敗しました' });
+    return res.status(500).json({ error: 'チケット詳細の取得に失敗しました' });
   }
 };
 
@@ -147,7 +156,10 @@ export const getTicketById = async (req: Request, res: Response) => {
  */
 export const useTicket = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) {
+      return res.status(400).json({ error: 'チケットIDが必要です' });
+    }
 
     // チケット存在確認
     const ticket = await prisma.digitalTicket.findUnique({
@@ -189,13 +201,13 @@ export const useTicket = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       message: 'チケットを使用済みにしました',
       ticket: updatedTicket,
     });
   } catch (error) {
     console.error('チケット使用処理エラー:', error);
-    res.status(500).json({ error: 'チケット使用処理に失敗しました' });
+    return res.status(500).json({ error: 'チケット使用処理に失敗しました' });
   }
 };
 
@@ -205,7 +217,10 @@ export const useTicket = async (req: Request, res: Response) => {
  */
 export const resetTicket = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = getStringParam(req.params.id);
+    if (!id) {
+      return res.status(400).json({ error: 'チケットIDが必要です' });
+    }
 
     // チケット存在確認
     const ticket = await prisma.digitalTicket.findUnique({
@@ -243,13 +258,113 @@ export const resetTicket = async (req: Request, res: Response) => {
       },
     });
 
-    res.json({
+    return res.json({
       message: 'チケットを未使用に戻しました',
       ticket: updatedTicket,
     });
   } catch (error) {
     console.error('チケットリセット処理エラー:', error);
-    res.status(500).json({ error: 'チケットリセット処理に失敗しました' });
+    return res.status(500).json({ error: 'チケットリセット処理に失敗しました' });
+  }
+};
+
+/**
+ * POST /api/admin/tickets/scan
+ * QRコードスキャンによるチケット受付
+ *
+ * リクエストボディ:
+ * - ticketCode または qrCodeData: スキャンしたチケットコードまたはQRデータ
+ */
+export const scanTicket = async (req: Request, res: Response) => {
+  try {
+    const { ticketCode, qrCodeData } = req.body;
+
+    if (!ticketCode && !qrCodeData) {
+      return res.status(400).json({
+        success: false,
+        error: 'チケットコードまたはQRコードデータが必要です',
+      });
+    }
+
+    // チケット検索（ticketCodeまたはqrCodeDataで検索）
+    const where: any = {};
+    if (ticketCode) {
+      where.ticketCode = ticketCode;
+    } else if (qrCodeData) {
+      where.qrCodeData = qrCodeData;
+    }
+
+    const ticket = await prisma.digitalTicket.findFirst({
+      where,
+      include: {
+        order: {
+          select: {
+            orderNumber: true,
+            customerName: true,
+            customerEmail: true,
+            customerPhone: true,
+            createdAt: true,
+          },
+        },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+          },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        error: 'チケットが見つかりません',
+      });
+    }
+
+    // 既に使用済みの場合
+    if (ticket.isUsed) {
+      return res.status(400).json({
+        success: false,
+        error: 'このチケットは既に使用済みです',
+        ticket: {
+          ticketCode: ticket.ticketCode,
+          eventName: ticket.product.name,
+          customerName: ticket.order.customerName,
+          usedAt: ticket.usedAt,
+        },
+      });
+    }
+
+    // チケットを使用済みにする
+    const updatedTicket = await prisma.digitalTicket.update({
+      where: { id: ticket.id },
+      data: {
+        isUsed: true,
+        usedAt: new Date(),
+      },
+    });
+
+    return res.json({
+      success: true,
+      message: '受付完了しました',
+      ticket: {
+        ticketCode: updatedTicket.ticketCode,
+        eventName: ticket.product.name,
+        customerName: ticket.order.customerName,
+        customerEmail: ticket.order.customerEmail,
+        customerPhone: ticket.order.customerPhone,
+        purchasedAt: ticket.order.createdAt,
+        usedAt: updatedTicket.usedAt,
+      },
+    });
+  } catch (error: any) {
+    console.error('チケットスキャンエラー:', error);
+    return res.status(500).json({
+      success: false,
+      error: error.message || 'チケットスキャン処理に失敗しました',
+    });
   }
 };
 
@@ -257,7 +372,7 @@ export const resetTicket = async (req: Request, res: Response) => {
  * GET /api/admin/tickets/stats
  * チケット統計情報取得
  */
-export const getTicketStats = async (req: Request, res: Response) => {
+export const getTicketStats = async (_req: Request, res: Response) => {
   try {
     // 全チケット数
     const totalTickets = await prisma.digitalTicket.count();
@@ -309,7 +424,7 @@ export const getTicketStats = async (req: Request, res: Response) => {
       ticketCount: item._count.id,
     }));
 
-    res.json({
+    return res.json({
       totalTickets,
       usedTickets,
       unusedTickets,
@@ -318,6 +433,6 @@ export const getTicketStats = async (req: Request, res: Response) => {
     });
   } catch (error) {
     console.error('チケット統計取得エラー:', error);
-    res.status(500).json({ error: 'チケット統計の取得に失敗しました' });
+    return res.status(500).json({ error: 'チケット統計の取得に失敗しました' });
   }
 };
