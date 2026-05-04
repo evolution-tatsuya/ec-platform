@@ -94,7 +94,7 @@ const AdminLoginPage = () => {
             </Alert>
           )}
 
-          <form onSubmit={handleLogin}>
+          <form noValidate onSubmit={handleLogin}>
             <TextField
               label="メールアドレス"
               type="email"

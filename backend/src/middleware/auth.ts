@@ -22,12 +22,22 @@ export const requireAuth = (req: Request, _res: Response, next: NextFunction) =>
 
 // 管理者権限必須
 export const requireAdmin = (req: Request, _res: Response, next: NextFunction) => {
+  console.log('[requireAdmin] セッション情報:', {
+    sessionID: req.sessionID,
+    userId: req.session.userId,
+    isAdmin: req.session.isAdmin,
+    cookie: req.session.cookie,
+  });
+
   if (!req.session.userId) {
+    console.log('[requireAdmin] エラー: userId not found in session');
     return next(createError('認証が必要です', 401));
   }
   if (!req.session.isAdmin) {
+    console.log('[requireAdmin] エラー: isAdmin=false');
     return next(createError('管理者権限が必要です', 403));
   }
+  console.log('[requireAdmin] 認証成功');
   next();
 };
 

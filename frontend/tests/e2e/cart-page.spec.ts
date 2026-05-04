@@ -319,10 +319,8 @@ async function resetCartData(page: any, userEmail: string, itemCount: number = 2
 /**
  * E2E-CART-003: 数量変更（増加・減少）
  * 目的: カート商品の数量を変更できることを確認
- * NOTE: React Queryのキャッシュ更新タイミングの競合状態により一時的にスキップ
- *       APIは正常に動作しているが、UIの更新がテストで確認できない
  */
-test.skip('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) => {
+test('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) => {
   // 前提条件: E2E-CART-002が成功している
   // カートに在庫10個以上の商品が1点以上入っている（数量は1）
   await loginUser(page, TEST_USER_A.email, TEST_USER_A.password);
@@ -333,21 +331,24 @@ test.skip('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) =>
   // 1. /cart にアクセス
   await navigateToCartAndWaitForAPI(page);
 
-  // 2. 対象商品の数量変更コントロールを確認（現在数量: 1）
-  // 数量は数量変更コントロール内のh6要素で表示される
-  // 最初の商品カードを特定
-  const firstProductCard = page.locator('[class*="MuiBox"]').filter({
-    has: page.getByRole('button', { name: '削除' })
-  }).first();
+  // 2. 対象商品を商品名で特定（カートテスト商品 1）
+  // 「カートテスト商品 1」という見出しを持つ商品カードを探す
+  const targetProductName = 'カートテスト商品 1（在庫15個）';
+  const targetProductHeading = page.getByRole('heading', { name: targetProductName, level: 6 });
+  await expect(targetProductHeading).toBeVisible();
 
-  // 数量変更コントロール（RemoveIcon と AddIcon の間のh6）を取得
+  // 商品カード全体を取得（見出しの親要素を遡る）
+  const firstProductCard = targetProductHeading.locator('../..');
+  console.log('対象商品:', targetProductName);
+
+  // 数量変更コントロール内の数量を取得
+  // RemoveIconとAddIconを含むBoxから数量のh6を特定
   const quantityControl = firstProductCard.locator('[class*="MuiBox"]').filter({
     has: page.locator('svg[data-testid="RemoveIcon"]')
   }).filter({
     has: page.locator('svg[data-testid="AddIcon"]')
   });
 
-  // 数量のh6を特定（minWidth: 40のスタイルを持つ要素）
   const quantityDisplay = quantityControl.locator('h6').filter({ hasText: /^\d+$/ }).first();
   const initialQuantity = await quantityDisplay.textContent();
   console.log('初期数量:', initialQuantity);
@@ -356,8 +357,8 @@ test.skip('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) =>
   const initialSubtotal = await page.locator('text=/小計.*¥\\d{1,3}(,\\d{3})*/').textContent();
   console.log('初期小計:', initialSubtotal);
 
-  // 3. 「+」ボタンをクリック
-  const increaseButton = firstProductCard.locator('button').filter({ has: page.locator('svg[data-testid="AddIcon"]') }).first();
+  // 3. 対象商品カード内の「+」ボタンをクリック
+  const increaseButton = quantityControl.locator('button').filter({ has: page.locator('svg[data-testid="AddIcon"]') });
 
   // Wait for cart update API response when clicking +
   // 順次実行でPUT → GET refetchを確実に待機
@@ -413,9 +414,7 @@ test.skip('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) =>
   );
 
   // 数量が更新されたことを確認
-  const updatedQuantity1 = await firstProductCard.locator('[class*="MuiBox"]').filter({
-    has: page.locator('svg[data-testid="RemoveIcon"]')
-  }).locator('h6').filter({ hasText: /^\d+$/ }).first().textContent();
+  const updatedQuantity1 = await quantityDisplay.textContent();
 
   console.log('更新後数量（1回目）:', updatedQuantity1);
   const updatedQty = parseInt(updatedQuantity1 || '0');
@@ -426,8 +425,8 @@ test.skip('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) =>
   console.log('更新後小計（1回目）:', updatedSubtotal1);
   expect(updatedSubtotal1).not.toBe(initialSubtotal);
 
-  // 6. 「-」ボタンをクリック
-  const decreaseButton = firstProductCard.locator('button').filter({ has: page.locator('svg[data-testid="RemoveIcon"]') }).first();
+  // 6. 対象商品カード内の「-」ボタンをクリック
+  const decreaseButton = quantityControl.locator('button').filter({ has: page.locator('svg[data-testid="RemoveIcon"]') });
 
   const decreasePromise = page.waitForResponse(
     (resp: any) => {
@@ -469,9 +468,8 @@ test.skip('E2E-CART-003: 数量変更（増加・減少）', async ({ page }) =>
 /**
  * E2E-CART-004: 在庫上限チェック
  * 目的: 在庫数を超える数量に変更できないことを確認
- * NOTE: テストデータの準備が複雑なため一時的にスキップ
  */
-test.skip('E2E-CART-004: 在庫上限チェック', async ({ page }) => {
+test('E2E-CART-004: 在庫上限チェック', async ({ page }) => {
   // 前提条件: カートに在庫5個の商品が1点入っている（数量は1）
   await loginUser(page, TEST_USER_A.email, TEST_USER_A.password);
 
@@ -490,26 +488,44 @@ test.skip('E2E-CART-004: 在庫上限チェック', async ({ page }) => {
 
   // 在庫5個の商品を取得
   const productsResponse = await page.request.get(`${API_BASE_URL}/api/products?limit=50`);
-  if (productsResponse.ok()) {
-    const productsData = await productsResponse.json();
-    const products = productsData.products || [];
-    const product5stock = products.find((p: any) => p.slug === 'cart-test-product-5stock');
-
-    if (!product5stock) {
-      console.error('❌ 在庫5個の商品が見つかりません');
-      test.skip();
-      return;
-    }
-
-    // カートに追加
-    await page.request.post(`${API_BASE_URL}/api/cart`, {
-      data: {
-        productId: product5stock.id,
-        quantity: 1,
-      },
-    });
-    console.log('✅ 在庫5個の商品をカートに追加しました');
+  if (!productsResponse.ok()) {
+    console.error('❌ 商品リスト取得失敗');
+    throw new Error('商品リスト取得失敗');
   }
+
+  const productsData = await productsResponse.json();
+  const products = productsData.products || [];
+  const product5stock = products.find((p: any) => p.slug === 'cart-test-product-5stock');
+
+  if (!product5stock) {
+    console.error('❌ 在庫5個の商品が見つかりません');
+    console.log('利用可能な商品:', products.slice(0, 10).map((p: any) => ({ slug: p.slug, name: p.name })));
+    throw new Error('在庫5個の商品が見つかりません。seed-test-products.ts を実行してください。');
+  }
+
+  console.log('在庫5個の商品を発見:', product5stock.name, 'ID:', product5stock.id);
+
+  // カートに追加（数量1）
+  const addResponse = await page.request.post(`${API_BASE_URL}/api/cart`, {
+    data: {
+      productId: product5stock.id,
+      quantity: 1,
+    },
+  });
+
+  if (!addResponse.ok()) {
+    const errorText = await addResponse.text();
+    console.error('❌ カート追加失敗:', errorText);
+    throw new Error('カート追加失敗');
+  }
+
+  console.log('✅ 在庫5個の商品をカートに追加しました');
+
+  // React Queryキャッシュをクリア
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
 
   // 1. /cart にアクセス
   await navigateToCartAndWaitForAPI(page);
@@ -520,47 +536,80 @@ test.skip('E2E-CART-004: 在庫上限チェック', async ({ page }) => {
   await expect(stockLabel).toBeVisible();
   console.log('在庫5個の商品を確認');
 
-  // 該当商品の数量変更コントロールを取得
+  // 商品カード全体を取得（在庫ラベルから遡る）
   const productCard = stockLabel.locator('../..');
-  const increaseButton = productCard.locator('button').filter({ has: page.locator('svg[data-testid="AddIcon"]') });
-  const quantityDisplay = productCard.locator('h6').filter({ hasText: /^[0-9]+$/ });
+
+  // 数量変更コントロールを取得
+  const quantityControl = productCard.locator('[class*="MuiBox"]').filter({
+    has: page.locator('svg[data-testid="RemoveIcon"]')
+  }).filter({
+    has: page.locator('svg[data-testid="AddIcon"]')
+  });
+
+  const increaseButton = quantityControl.locator('button').filter({ has: page.locator('svg[data-testid="AddIcon"]') });
+  const quantityDisplay = quantityControl.locator('h6').filter({ hasText: /^\d+$/ }).first();
+
+  // 初期数量を確認
+  const initialQuantity = await quantityDisplay.textContent();
+  console.log('初期数量:', initialQuantity);
+  expect(initialQuantity).toBe('1');
 
   // 3. 「+」ボタンを4回クリックして数量を 5 にする
   for (let i = 0; i < 4; i++) {
+    console.log(`クリック ${i + 1}/4...`);
+
+    // API応答を待機
+    const updatePromise = page.waitForResponse(
+      (resp: any) => resp.url().includes('/api/cart/') && resp.request().method() === 'PUT',
+      { timeout: 15000 }
+    );
+
     await increaseButton.click();
+    const updateResponse = await updatePromise;
+    console.log(`  PUT response status: ${updateResponse.status()}`);
+
+    // React Query refetchを待機
+    await page.waitForResponse(
+      (resp: any) => resp.url().endsWith('/api/cart') && resp.request().method() === 'GET',
+      { timeout: 15000 }
+    );
+
+    // UI更新を待機
     await page.waitForTimeout(1000);
   }
 
   // 4. 数量が 5 になることを確認
   const quantity5 = await quantityDisplay.textContent();
-  console.log('数量（5個）:', quantity5);
-  expect(quantity5).toContain('5');
+  console.log('数量（5回クリック後）:', quantity5);
+  expect(quantity5).toBe('5');
 
-  // 5. 「+」ボタンが無効化されることを確認
-  const isDisabled = await increaseButton.isDisabled();
-  expect(isDisabled).toBe(true);
-  console.log('「+」ボタンが無効化されました');
+  // 5. 「+」ボタンが視覚的に無効化されることを確認（opacity: 0.3）
+  const opacity = await increaseButton.evaluate((el) => window.getComputedStyle(el).opacity);
+  console.log('「+」ボタンのopacity:', opacity);
+  expect(parseFloat(opacity)).toBeLessThan(0.5); // opacity: 0.3
+  console.log('✅ 「+」ボタンが視覚的に無効化されました（item.quantity >= item.currentStock）');
 
-  // 6. 「+」ボタンをクリックしようとする
-  // （既に無効化されているため、クリックしても反応しない）
-  await increaseButton.click({ force: true }); // force: true で無効化されたボタンをクリック試行
-  await page.waitForTimeout(500);
+  // 6. 数量が在庫数と同じになると「+」ボタンが無効化される（仕様書の期待結果1）
+  // → 既に確認済み（step 5）
 
-  // 7. アラートメッセージ「この商品の在庫は5個までです」が表示されることを確認
-  // NOTE: アラート実装がダイアログ、トースト、またはインラインメッセージか不明なため、
-  // 複数パターンを想定
-  const alertDialog = page.locator('[role="alert"]').or(page.locator('text=/在庫は.*5個.*まで/i'));
-  const hasAlert = await alertDialog.count() > 0;
-  if (hasAlert) {
-    console.log('在庫上限アラートが表示されました');
-  }
+  // 7. 在庫数を超えようとするとアラートが表示される（仕様書の期待結果2）
+  console.log('「+」ボタンをクリックしてアラート表示を確認...');
+  await increaseButton.click();
 
-  // 8. 数量が 5 のまま変わらないことを確認
+  // Snackbarアラートが表示されることを確認
+  const snackbar = page.locator('[role="alert"]').filter({ hasText: 'この商品の在庫は5個までです' });
+  await expect(snackbar).toBeVisible({ timeout: 3000 });
+  console.log('✅ アラートメッセージ「この商品の在庫は5個までです」が表示されました');
+
+  // アラートが自動的に消えるまで待機（autoHideDuration: 3000）
+  await page.waitForTimeout(3500);
+
+  // 8. 数量は在庫数を超えない（仕様書の期待結果3）
   const finalQuantity = await quantityDisplay.textContent();
   console.log('最終数量:', finalQuantity);
-  expect(finalQuantity).toContain('5');
+  expect(finalQuantity).toBe('5');
 
-  console.log('✅ E2E-CART-004: 在庫上限チェックが正常に動作しました');
+  console.log('✅ E2E-CART-004: 在庫上限チェックが正常に動作しました（アラート表示機能を含む）');
 });
 
 /**

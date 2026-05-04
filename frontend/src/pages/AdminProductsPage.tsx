@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -50,6 +50,7 @@ import {
   useDeleteProduct,
   useCreateInventoryLog,
   useAdminProductById,
+  useAdminProducts,
 } from '../hooks/useProducts';
 
 // バリデーションスキーマ
@@ -58,7 +59,7 @@ const productSchema = z.object({
   price: z.number().min(0, '価格は0以上で入力してください'),
   description: z.string().optional(),
   productType: z.enum(['PHYSICAL', 'DIGITAL', 'DIGITAL_TICKET', 'EXTERNAL_LINK']),
-  categoryType: z.enum(['CARS', 'EVENTS', 'DIGITAL']),
+  categoryType: z.enum(['cars', 'events', 'digital']),
   initialStock: z.number().min(0, '在庫数は0以上で入力してください').optional(),
   externalUrl: z.string().url('有効なURLを入力してください').optional().or(z.literal('')),
   preparationDays: z.number().min(0).optional(),
@@ -77,46 +78,7 @@ const inventorySchema = z.object({
 
 type InventoryFormData = z.infer<typeof inventorySchema>;
 
-// ダミーデータ
-const dummyProducts = [
-  {
-    id: '1',
-    name: 'トヨタ プリウス ZVW30 ブレーキパッド',
-    price: 12800,
-    productType: ProductType.PHYSICAL,
-    categoryType: CategoryType.CARS,
-    currentStock: 25,
-    isActive: true,
-    tags: ['セール', '送料無料'],
-    images: [],
-    createdAt: '2026-04-10',
-  },
-  {
-    id: '2',
-    name: '車イベント2026 東京 一般チケット',
-    price: 5000,
-    productType: ProductType.DIGITAL_TICKET,
-    categoryType: CategoryType.EVENTS,
-    currentStock: 100,
-    isActive: true,
-    tags: ['受付中'],
-    images: [],
-    createdAt: '2026-04-12',
-  },
-  {
-    id: '3',
-    name: 'カスタムカーマニュアルPDF',
-    price: 2980,
-    productType: ProductType.DIGITAL,
-    categoryType: CategoryType.DIGITAL,
-    currentStock: 999,
-    isActive: true,
-    tags: ['新商品', 'PDF'],
-    images: [],
-    createdAt: '2026-04-14',
-  },
-];
-
+// ダミー在庫ログ（商品一覧タブでは使用しない）
 const dummyInventoryLogs = [
   { id: '1', date: '2026-04-15 10:30', type: '入庫', quantity: 50, reason: '新規仕入れ' },
   { id: '2', date: '2026-04-14 15:20', type: '出庫', quantity: -5, reason: '注文番号 ORD-001' },
@@ -145,7 +107,7 @@ export default function AdminProductsPage() {
   const [stockFilter, setStockFilter] = useState<string>('all');
   const [openProductDialog, setOpenProductDialog] = useState(false);
   const [openInventoryDialog, setOpenInventoryDialog] = useState(false);
-  const [selectedProducts, setSelectedProducts] = useState<GridRowSelectionModel>([]);
+  const [selectedProducts, setSelectedProducts] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
@@ -158,11 +120,24 @@ export default function AdminProductsPage() {
     productName: null,
   });
 
+  // API接続 - 商品一覧取得
+  // useMemoでfiltersオブジェクトを安定化
+  const productFilters = React.useMemo(() => ({
+    search: searchTerm || undefined,
+    categoryType: categoryFilter !== 'all' ? categoryFilter : undefined,
+    stockStatus: stockFilter !== 'all' ? (stockFilter as 'in_stock' | 'low_stock' | 'out_of_stock' | 'all') : undefined,
+  }), [searchTerm, categoryFilter, stockFilter]);
+
+  const { data: productsData, isLoading: isLoadingProducts, error: productsError, refetch: refetchProducts } = useAdminProducts(productFilters);
+
   // React Query mutations
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
   const deleteProductMutation = useDeleteProduct();
   const createInventoryLogMutation = useCreateInventoryLog();
+
+  // QueryClientを直接取得してリフェッチ制御に使用
+  // const queryClient = useQueryClient(); // 現在未使用
 
   // Product form
   const {
@@ -170,6 +145,7 @@ export default function AdminProductsPage() {
     handleSubmit,
     formState: { errors },
     reset,
+    watch,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -177,13 +153,17 @@ export default function AdminProductsPage() {
       price: 0,
       description: '',
       productType: ProductType.PHYSICAL,
-      categoryType: CategoryType.CARS,
+      categoryType: 'cars' as any,
       initialStock: 0,
+      externalUrl: '',
       preparationDays: 3,
       allowWeekendDelivery: false,
       tags: [],
     },
   });
+
+  // 商品種別を監視して動的にフィールド表示を制御
+  const watchProductType = watch('productType');
 
   // Inventory form
   const inventoryForm = useForm<InventoryFormData>({
@@ -197,7 +177,7 @@ export default function AdminProductsPage() {
   });
 
   // Load product data for editing
-  const { data: editingProductData, isLoading: isLoadingProduct } = useAdminProductById(
+  const { data: editingProductData } = useAdminProductById(
     editingProduct || ''
   );
 
@@ -210,9 +190,10 @@ export default function AdminProductsPage() {
         productType: editingProductData.productType,
         categoryType: editingProductData.categoryType,
         initialStock: 0,
+        externalUrl: editingProductData.externalUrl || '',
         preparationDays: editingProductData.preparationDays || 3,
         allowWeekendDelivery: editingProductData.allowWeekendDelivery || false,
-        tags: editingProductData.tags || [],
+        tags: (editingProductData.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name),
       });
     }
   }, [editingProductData, openProductDialog, reset]);
@@ -234,6 +215,15 @@ export default function AdminProductsPage() {
         images: imageFiles as any,
       });
 
+      // 商品一覧を直接リフェッチ
+      console.log('=== 商品作成成功、リフェッチ開始 ===');
+      try {
+        await refetchProducts();
+        console.log('refetchProducts完了');
+      } catch (refetchError) {
+        console.error('リフェッチエラー:', refetchError);
+      }
+
       setOpenProductDialog(false);
       reset();
       setImageFiles([]);
@@ -254,8 +244,6 @@ export default function AdminProductsPage() {
           name: data.name,
           price: data.price,
           description: data.description,
-          productType: data.productType,
-          categoryType: data.categoryType,
           externalUrl: data.externalUrl,
           preparationDays: data.preparationDays,
           allowWeekendDelivery: data.allowWeekendDelivery,
@@ -371,7 +359,7 @@ export default function AdminProductsPage() {
       width: 200,
       renderCell: (params: GridRenderCellParams) => (
         <Box display="flex" gap={0.5} flexWrap="wrap">
-          {(params.value as string[]).map((tag: string, index: number) => (
+          {(params.value as string[] | undefined)?.map((tag: string, index: number) => (
             <Chip key={index} label={tag} size="small" variant="outlined" />
           ))}
         </Box>
@@ -444,7 +432,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDeleteProduct = (id: string) => {
-    const product = dummyProducts.find((p) => p.id === id);
+    const product = (productsData || []).find((p) => p.id === id);
     setDeleteConfirmDialog({
       open: true,
       productId: id,
@@ -520,11 +508,12 @@ export default function AdminProductsPage() {
                         value={categoryFilter}
                         label="カテゴリー"
                         onChange={(e) => setCategoryFilter(e.target.value)}
+                        data-testid="category-filter"
                       >
                         <MenuItem value="all">すべて</MenuItem>
-                        <MenuItem value={CategoryType.CARS}>車パーツ</MenuItem>
-                        <MenuItem value={CategoryType.EVENTS}>イベント</MenuItem>
-                        <MenuItem value={CategoryType.DIGITAL}>デジタル</MenuItem>
+                        <MenuItem value="cars">車パーツ</MenuItem>
+                        <MenuItem value="events">イベント</MenuItem>
+                        <MenuItem value="digital">デジタル</MenuItem>
                       </Select>
                     </FormControl>
                   </Grid>
@@ -547,7 +536,7 @@ export default function AdminProductsPage() {
                     <Stack direction="row" spacing={1}>
                       <Button
                         size="small"
-                        disabled={Array.isArray(selectedProducts) && selectedProducts.length === 0}
+                        disabled={selectedProducts.ids.size === 0}
                         onClick={handleBulkPublish}
                         startIcon={<Visibility />}
                       >
@@ -555,7 +544,7 @@ export default function AdminProductsPage() {
                       </Button>
                       <Button
                         size="small"
-                        disabled={Array.isArray(selectedProducts) && selectedProducts.length === 0}
+                        disabled={selectedProducts.ids.size === 0}
                         onClick={handleBulkUnpublish}
                         startIcon={<VisibilityOff />}
                       >
@@ -564,7 +553,7 @@ export default function AdminProductsPage() {
                       <Button
                         size="small"
                         color="error"
-                        disabled={Array.isArray(selectedProducts) && selectedProducts.length === 0}
+                        disabled={selectedProducts.ids.size === 0}
                         onClick={handleBulkDelete}
                         startIcon={<Delete />}
                       >
@@ -579,19 +568,30 @@ export default function AdminProductsPage() {
             {/* 商品一覧テーブル */}
             <Card>
               <CardContent>
+                {productsError && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    商品一覧の取得に失敗しました: {productsError.message}
+                  </Alert>
+                )}
                 <DataGrid
-                  rows={dummyProducts}
+                  rows={productsData || []}
                   columns={columns}
+                  loading={isLoadingProducts}
                   getRowId={(row) => row.id}
+                  checkboxSelection
+                  onRowSelectionModelChange={(newSelection) => {
+                    setSelectedProducts(newSelection);
+                  }}
+                  rowSelectionModel={selectedProducts}
                   initialState={{
-                    pagination: { paginationModel: { pageSize: 10 } },
+                    pagination: { paginationModel: { pageSize: 20 } },
                     filter: {
                       filterModel: {
                         items: [],
                       },
                     },
                   }}
-                  pageSizeOptions={[10, 25, 50]}
+                  pageSizeOptions={[10, 20, 50]}
                   autoHeight
                   disableColumnFilter={false}
                   sx={{ '& .MuiDataGrid-footerContainer': { display: 'flex' } }}
@@ -653,7 +653,7 @@ export default function AdminProductsPage() {
             </Box>
           </DialogTitle>
           <DialogContent dividers>
-            <form id="product-form" onSubmit={handleSubmit(editingProduct ? onSubmitUpdate : onSubmitCreate)}>
+            <form id="product-form" noValidate onSubmit={handleSubmit(editingProduct ? onSubmitUpdate : onSubmitCreate)}>
               <Grid container spacing={2}>
                 {/* 基本情報 */}
                 <Grid item xs={12}>
@@ -761,14 +761,43 @@ export default function AdminProductsPage() {
                       <FormControl fullWidth required error={!!errors.categoryType}>
                         <InputLabel>カテゴリータイプ</InputLabel>
                         <Select {...field} label="カテゴリータイプ">
-                          <MenuItem value={CategoryType.CARS}>車パーツ</MenuItem>
-                          <MenuItem value={CategoryType.EVENTS}>イベント</MenuItem>
-                          <MenuItem value={CategoryType.DIGITAL}>デジタル</MenuItem>
+                          <MenuItem value="cars">車パーツ</MenuItem>
+                          <MenuItem value="events">イベント</MenuItem>
+                          <MenuItem value="digital">デジタル</MenuItem>
                         </Select>
                       </FormControl>
                     )}
                   />
                 </Grid>
+
+                {/* 外部URL（外部申し込みの場合のみ表示） */}
+                {watchProductType === ProductType.EXTERNAL_LINK && (
+                  <>
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                        外部リンク設定
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Controller
+                        name="externalUrl"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            fullWidth
+                            label="外部URL"
+                            type="url"
+                            placeholder="https://example.com"
+                            required
+                            error={!!errors.externalUrl}
+                            helperText={errors.externalUrl?.message || '外部申し込みページのURLを入力してください'}
+                          />
+                        )}
+                      />
+                    </Grid>
+                  </>
+                )}
 
                 {/* 画像アップロード */}
                 <Grid item xs={12}>
@@ -854,7 +883,7 @@ export default function AdminProductsPage() {
         >
           <DialogTitle>在庫調整</DialogTitle>
           <DialogContent dividers>
-            <form id="inventory-form" onSubmit={inventoryForm.handleSubmit(onSubmitInventory)}>
+            <form id="inventory-form" noValidate onSubmit={inventoryForm.handleSubmit(onSubmitInventory)}>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Controller
@@ -863,8 +892,8 @@ export default function AdminProductsPage() {
                     render={({ field }) => (
                       <FormControl fullWidth required error={!!inventoryForm.formState.errors.productId}>
                         <InputLabel>商品選択</InputLabel>
-                        <Select {...field} label="商品選択">
-                          {dummyProducts.map((product) => (
+                        <Select {...field} label="商品選択" disabled={isLoadingProducts}>
+                          {(productsData || []).map((product) => (
                             <MenuItem key={product.id} value={product.id}>
                               {product.name}
                             </MenuItem>

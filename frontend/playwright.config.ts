@@ -13,7 +13,7 @@ export default defineConfig({
     ['list']
   ],
   use: {
-    baseURL: 'http://localhost:3249',
+    baseURL: 'http://localhost:3247',
     headless: true,
     trace: 'retain-on-failure',
     screenshot: {

@@ -12,12 +12,22 @@ async function main() {
   console.log('📂 カテゴリー作成中...');
 
   const carPartsCategory = await prisma.category.upsert({
-    where: { slug: 'car-parts' },
+    where: { slug: 'cars' },
     update: {},
     create: {
       name: '車パーツ',
-      slug: 'car-parts',
+      slug: 'cars',
       description: '車パーツカテゴリー',
+    },
+  });
+
+  await prisma.category.upsert({
+    where: { slug: 'events' },
+    update: {},
+    create: {
+      name: 'イベント',
+      slug: 'events',
+      description: 'イベントカテゴリー',
     },
   });
 
@@ -38,8 +48,39 @@ async function main() {
 
   const products = [];
 
-  // ピックアップ商品用（6件）
+  // 検索テスト用商品（プリウス ブレーキパッド）
+  const priusProduct = await prisma.product.upsert({
+    where: { slug: 'prius-brake-pad' },
+    update: {},
+    create: {
+      name: 'トヨタ プリウス ZVW30 ブレーキパッド',
+      slug: 'prius-brake-pad',
+      description: 'E2Eテスト用の検索対象商品です（プリウス）',
+      price: 12800,
+      categoryId: carPartsCategory.id,
+      isActive: true,
+      productType: 'physical',
+    },
+  });
+  products.push(priusProduct);
+
+  // 在庫を追加（在庫少テスト用に5個）
+  await prisma.inventoryLog.create({
+    data: {
+      productId: priusProduct.id,
+      quantity: 5,
+      type: 'purchase',
+      note: 'テストデータ初期在庫',
+    },
+  });
+
+  // ピックアップ商品用（6件）- カテゴリーを分散
+  const eventsCategory = await prisma.category.findUnique({ where: { slug: 'events' } });
   for (let i = 1; i <= 6; i++) {
+    // i=1,2 → 車パーツ、i=3,4 → イベント、i=5,6 → デジタル
+    const categoryId = i <= 2 ? carPartsCategory.id : (i <= 4 ? eventsCategory!.id : digitalCategory.id);
+    const productType = i <= 2 ? 'physical' : (i <= 4 ? 'digital_ticket' : 'digital');
+
     const product = await prisma.product.upsert({
       where: { slug: `pickup-product-${i}` },
       update: {},
@@ -48,26 +89,58 @@ async function main() {
         slug: `pickup-product-${i}`,
         description: `E2Eテスト用のピックアップ商品です（${i}）`,
         price: 1000 * i,
-        categoryId: carPartsCategory.id,
+        categoryId: categoryId,
         isActive: true,
-        productType: 'physical',
+        productType: productType,
       },
     });
     products.push(product);
 
-    // 在庫を追加
-    await prisma.inventoryLog.create({
-      data: {
-        productId: product.id,
-        quantity: 100,
-        type: 'purchase',
-        note: 'テストデータ初期在庫',
-      },
-    });
+    // 在庫を追加（物理商品とチケットのみ）
+    if (i <= 4) {
+      await prisma.inventoryLog.create({
+        data: {
+          productId: product.id,
+          quantity: 200,
+          type: 'purchase',
+          note: 'テストデータ初期在庫',
+        },
+      });
+    }
   }
 
-  // 追加の商品（新着・セール・人気商品として使用）
+  // E2E-CART-004用: 在庫5個の商品を追加（カートテスト専用）
+  const cart5stockProduct = await prisma.product.upsert({
+    where: { slug: 'cart-test-product-5stock' },
+    update: {},
+    create: {
+      name: 'カートテスト商品（在庫5個）',
+      slug: 'cart-test-product-5stock',
+      description: 'E2E-CART-004テスト用の在庫5個商品',
+      price: 5000,
+      categoryId: carPartsCategory.id,
+      isActive: true,
+      productType: 'physical',
+    },
+  });
+  products.push(cart5stockProduct);
+
+  // 在庫を5個に設定
+  await prisma.inventoryLog.create({
+    data: {
+      productId: cart5stockProduct.id,
+      quantity: 5,
+      type: 'purchase',
+      note: 'E2E-CART-004用の在庫5個テストデータ',
+    },
+  });
+
+  // 追加の商品（新着・セール・人気商品として使用）- カテゴリーを均等に分散
   for (let i = 7; i <= 16; i++) {
+    // i=7,8,9,10 → 車パーツ、i=11,12,13 → イベント、i=14,15,16 → デジタル
+    const categoryId = i <= 10 ? carPartsCategory.id : (i <= 13 ? eventsCategory!.id : digitalCategory.id);
+    const productType = i <= 10 ? 'physical' : (i <= 13 ? 'digital_ticket' : 'digital');
+
     const product = await prisma.product.upsert({
       where: { slug: `test-product-${i}` },
       update: {},
@@ -76,19 +149,25 @@ async function main() {
         slug: `test-product-${i}`,
         description: `E2Eテスト用の商品です（${i}）`,
         price: 500 * i,
-        categoryId: i % 2 === 0 ? carPartsCategory.id : digitalCategory.id,
+        categoryId: categoryId,
         isActive: true,
-        productType: i % 2 === 0 ? 'physical' : 'digital',
+        productType: productType,
       },
     });
     products.push(product);
 
-    // 在庫を追加（物理商品のみ）
-    if (i % 2 === 0) {
+    // 在庫を追加（物理商品とチケットのみ）- 在庫テスト用にバリエーション追加
+    if (i <= 13) {
+      let quantity;
+      if (i === 7) quantity = 0; // 在庫切れ
+      else if (i === 8) quantity = 3; // 在庫少
+      else if (i === 9) quantity = 8; // 在庫少
+      else quantity = 100; // 在庫あり
+
       await prisma.inventoryLog.create({
         data: {
           productId: product.id,
-          quantity: 50,
+          quantity: quantity,
           type: 'purchase',
           note: 'テストデータ初期在庫',
         },

@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import {
   Box,
   Typography,
@@ -9,6 +10,7 @@ import {
   Divider,
   CircularProgress,
   Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -22,6 +24,10 @@ const BANK_TRANSFER_DISCOUNT_RATE = 0.036; // 3.6%
 export default function CartPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [stockAlert, setStockAlert] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
 
   // カートデータを取得
   const { data, isLoading, error } = useQuery({
@@ -61,8 +67,16 @@ export default function CartPage() {
     if (newQuantity >= 1 && newQuantity <= maxQuantity) {
       updateQuantityMutation.mutate({ itemId, quantity: newQuantity });
     } else if (newQuantity > currentStock) {
-      alert(`この商品の在庫は${currentStock}個までです`);
+      // 在庫上限到達時のアラート表示
+      setStockAlert({
+        open: true,
+        message: `この商品の在庫は${currentStock}個までです`,
+      });
     }
+  };
+
+  const handleCloseStockAlert = () => {
+    setStockAlert({ open: false, message: '' });
   };
 
   const handleRemoveItem = (itemId: string, productName: string) => {
@@ -352,16 +366,25 @@ export default function CartPage() {
                     size="small"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleQuantityChange(item.id, item.currentStock, item.quantity, 1);
+                      // 在庫上限到達時もクリックイベントを処理してアラート表示
+                      if (item.quantity >= item.currentStock) {
+                        setStockAlert({
+                          open: true,
+                          message: `この商品の在庫は${item.currentStock}個までです`,
+                        });
+                      } else {
+                        handleQuantityChange(item.id, item.currentStock, item.quantity, 1);
+                      }
                     }}
-                    disabled={item.quantity >= item.currentStock || updateQuantityMutation.isPending}
+                    disabled={updateQuantityMutation.isPending}
                     sx={{
                       border: '1px solid',
                       borderColor: 'divider',
+                      opacity: item.quantity >= item.currentStock ? 0.3 : 1,
                       '&:hover:not(:disabled)': {
-                        backgroundColor: 'primary.main',
-                        color: 'white',
-                        borderColor: 'primary.main',
+                        backgroundColor: item.quantity >= item.currentStock ? 'transparent' : 'primary.main',
+                        color: item.quantity >= item.currentStock ? 'inherit' : 'white',
+                        borderColor: item.quantity >= item.currentStock ? 'divider' : 'primary.main',
                       },
                       '&:disabled': {
                         opacity: 0.3,
@@ -494,6 +517,18 @@ export default function CartPage() {
           </Button>
         </Box>
       </Box>
+
+      {/* 在庫上限アラート */}
+      <Snackbar
+        open={stockAlert.open}
+        autoHideDuration={3000}
+        onClose={handleCloseStockAlert}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseStockAlert} severity="warning" sx={{ width: '100%' }}>
+          {stockAlert.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

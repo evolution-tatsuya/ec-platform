@@ -89,6 +89,9 @@ export const getAdminProducts = async (
     if (filters?.stockStatus) params.stockStatus = filters.stockStatus;
     if (filters?.tags && filters.tags.length > 0) params.tags = filters.tags.join(',');
 
+    // 十分な件数を取得（デフォルト100件）
+    params.limit = '100';
+
     const response = await axios.get(`${API_BASE_URL}/api/admin/products`, {
       params,
       withCredentials: true,

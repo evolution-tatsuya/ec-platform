@@ -35,7 +35,8 @@ export const useAdminProducts = (filters?: ProductFilterParams) => {
   return useQuery<Product[], Error>({
     queryKey: ['adminProducts', filters],
     queryFn: () => getAdminProducts(filters),
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ
+    staleTime: 0, // フィルター変更時に即座にリフェッチ
+    refetchOnMount: true,
   });
 };
 
@@ -60,8 +61,11 @@ export const useCreateProduct = () => {
   return useMutation<Product, Error, CreateProductRequest>({
     mutationFn: createAdminProduct,
     onSuccess: () => {
-      // 商品一覧キャッシュを無効化
-      queryClient.invalidateQueries({ queryKey: ['adminProducts'] });
+      // 商品一覧キャッシュを無効化して即座にリフェッチ
+      queryClient.invalidateQueries({
+        queryKey: ['adminProducts'],
+        refetchType: 'active', // アクティブなクエリのみリフェッチ
+      });
     },
   });
 };

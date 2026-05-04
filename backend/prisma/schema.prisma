@@ -8,8 +8,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ===== 会員・管理者モデル =====
@@ -87,8 +87,10 @@ model Product {
   categoryId           String?
   isActive             Boolean  @default(true)
   productType          String // 'physical' | 'digital' | 'event' | 'external'
+  externalUrl          String?  @map("external_url") // 外部申し込みURL（productType='external'の場合）
   preparationDays      Int      @default(3) @map("preparation_days") // 配送準備日数（デフォルト3日）
   allowWeekendDelivery Boolean  @default(true) @map("allow_weekend_delivery") // 土日配送可否（デフォルトtrue）
+  tags                 String   @default("[]") // タグ配列（JSON文字列形式）
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -435,9 +437,9 @@ model Inquiry {
   name       String // 送信者名
   email      String // 送信者メール
   subject    String // 件名
-  message    String    @db.Text // 問い合わせ本文
+  message    String // 問い合わせ本文
   status     String    @default("pending") // 'pending' | 'replied' | 'closed'
-  reply      String?   @db.Text // 管理者の返信
+  reply      String? // 管理者の返信
   repliedAt  DateTime? @map("replied_at") // 返信日時
   repliedBy  String?   @map("replied_by") // 返信者（管理者）ID
   createdAt  DateTime  @default(now()) @map("created_at")

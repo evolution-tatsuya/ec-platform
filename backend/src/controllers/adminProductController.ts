@@ -30,9 +30,11 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
   try {
     const {
       categoryId,
+      categoryType,
       productType,
       isActive,
       search,
+      stockStatus,
       sortBy = 'createdAt',
       sortOrder = 'desc',
       page = '1',
@@ -46,7 +48,16 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
     // クエリ条件構築（管理者は全商品を閲覧可能）
     const where: any = {};
 
-    if (categoryId) {
+    // categoryType（スラッグ）からcategoryIdを解決
+    if (categoryType) {
+      const category = await prisma.category.findUnique({
+        where: { slug: categoryType as string },
+      });
+      if (category) {
+        where.categoryId = category.id;
+      }
+    } else if (categoryId) {
+      // 互換性のためcategoryIdも受け付ける
       where.categoryId = categoryId as string;
     }
 
@@ -60,9 +71,9 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
 
     if (search) {
       where.OR = [
-        { name: { contains: search as string, mode: 'insensitive' } },
-        { description: { contains: search as string, mode: 'insensitive' } },
-        { slug: { contains: search as string, mode: 'insensitive' } },
+        { name: { contains: search as string } },
+        { description: { contains: search as string } },
+        { slug: { contains: search as string } },
       ];
     }
 
@@ -84,29 +95,49 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
       prisma.product.count({ where }),
     ]);
 
-    // 各商品の在庫数を計算
-    const productsWithStock = await Promise.all(
+    // 各商品の在庫数を計算し、categoryTypeを追加
+    let productsWithStock = await Promise.all(
       products.map(async (product) => {
         const inventorySum = await prisma.inventoryLog.aggregate({
           where: { productId: product.id },
           _sum: { quantity: true },
         });
+        // tagsをJSON配列にパース
+        const parsedTags = typeof product.tags === 'string' ? JSON.parse(product.tags) : product.tags;
         return {
           ...product,
+          tags: parsedTags,
+          categoryType: product.category?.slug, // categoryTypeをスラッグから追加
           currentStock: inventorySum._sum?.quantity || 0,
         };
       })
     );
 
+    // 在庫状況フィルター（在庫数計算後にフィルタリング）
+    if (stockStatus) {
+      productsWithStock = productsWithStock.filter((product) => {
+        const stock = product.currentStock;
+        if (stockStatus === 'out_of_stock') return stock === 0;
+        if (stockStatus === 'low_stock') return stock > 0 && stock < 10;
+        if (stockStatus === 'in_stock') return stock >= 10;
+        return true;
+      });
+    }
+
+    console.log(`=== 商品一覧取得 ===`);
+    console.log(`返却件数: ${productsWithStock.length}件`);
+    console.log(`総件数: ${total}件`);
+    console.log(`最初の商品名: ${productsWithStock[0]?.name || 'なし'}`);
+
     return res.json({
       success: true,
       products: productsWithStock,
       pagination: {
-        total,
+        total: stockStatus ? productsWithStock.length : total,
         page: pageNum,
         limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
-        hasMore: offset + limitNum < total,
+        totalPages: stockStatus ? Math.ceil(productsWithStock.length / limitNum) : Math.ceil(total / limitNum),
+        hasMore: stockStatus ? false : (offset + limitNum < total),
       },
     });
   } catch (error) {
@@ -121,12 +152,17 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
  */
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('=== 商品作成API リクエストデバッグ ===');
+    console.log('req.body:', req.body);
+    console.log('req.file:', req.file);
+
     const {
       name,
-      slug,
+      slug: requestSlug,
       description,
       price,
-      categoryId,
+      categoryId: requestCategoryId,
+      categoryType,
       productType,
       preparationDays = 3,
       allowWeekendDelivery = true,
@@ -138,9 +174,34 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       ? allowWeekendDelivery === 'true'
       : allowWeekendDelivery;
 
+    // categoryType（スラッグ）からcategoryIdを解決（商品一覧取得APIと同じロジック）
+    let categoryId = requestCategoryId;
+    if (categoryType && !categoryId) {
+      const category = await prisma.category.findUnique({
+        where: { slug: categoryType as string },
+      });
+      if (category) {
+        categoryId = category.id;
+      } else {
+        return next(createError('指定されたカテゴリーが存在しません', 404));
+      }
+    }
+
+    // slugの自動生成（フロントエンドから送信されない場合）
+    let slug = requestSlug;
+    if (!slug && name) {
+      // 商品名から簡易的なslugを生成（小文字化、スペースをハイフンに変換、タイムスタンプ追加）
+      const baseSlug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      slug = `${baseSlug}-${Date.now()}`;
+    }
+
     // バリデーション
-    if (!name || !slug || !categoryId || !productType) {
+    if (!name || !categoryId || !productType) {
       return next(createError('必須項目が不足しています', 400));
+    }
+
+    if (!slug) {
+      return next(createError('スラッグの生成に失敗しました', 400));
     }
 
     if (price < 0) {
@@ -156,13 +217,15 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return next(createError('このスラッグは既に使用されています', 400));
     }
 
-    // カテゴリー存在チェック
-    const category = await prisma.category.findUnique({
-      where: { id: categoryId },
-    });
+    // カテゴリー存在チェック（既にcategoryTypeから解決済みの場合はスキップ）
+    if (!categoryType) {
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+      });
 
-    if (!category) {
-      return next(createError('指定されたカテゴリーが存在しません', 404));
+      if (!category) {
+        return next(createError('指定されたカテゴリーが存在しません', 404));
+      }
     }
 
     // 画像アップロード処理
@@ -281,12 +344,17 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return newProduct;
     });
 
+    console.log('=== 商品作成成功 ===');
+    console.log('product:', product);
+
     return res.status(201).json({
       success: true,
       product,
       message: '商品を登録しました',
     });
   } catch (error) {
+    console.error('=== 商品作成エラー ===');
+    console.error('error:', error);
     return next(error);
   }
 };
@@ -318,10 +386,14 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
       _sum: { quantity: true },
     });
 
+    // tagsをJSON配列にパース
+    const parsedTags = typeof product.tags === 'string' ? JSON.parse(product.tags) : product.tags;
+
     return res.json({
       success: true,
       product: {
         ...product,
+        tags: parsedTags,
         currentStock: inventorySum._sum?.quantity || 0,
       },
     });
@@ -346,10 +418,13 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       description,
       price,
       categoryId,
+      categoryType,
       productType,
+      externalUrl,
       preparationDays,
       allowWeekendDelivery,
       isActive,
+      tags,
     } = req.body;
 
     // 商品存在チェック
@@ -372,10 +447,23 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       }
     }
 
-    // カテゴリー存在チェック
-    if (categoryId) {
+    // categoryType（スラッグ）からcategoryIdを解決（createProductと同様のロジック）
+    let resolvedCategoryId = categoryId;
+    if (categoryType && !categoryId) {
       const category = await prisma.category.findUnique({
-        where: { id: categoryId },
+        where: { slug: categoryType as string },
+      });
+      if (category) {
+        resolvedCategoryId = category.id;
+      } else {
+        return next(createError('指定されたカテゴリーが存在しません', 404));
+      }
+    }
+
+    // カテゴリー存在チェック
+    if (resolvedCategoryId) {
+      const category = await prisma.category.findUnique({
+        where: { id: resolvedCategoryId },
       });
 
       if (!category) {
@@ -446,6 +534,20 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       ]);
     }
 
+    // multipart/form-dataの場合、全て文字列として送信されるので変換
+    const parsedPrice = price !== undefined ? parseInt(price, 10) : undefined;
+    const parsedPreparationDays = preparationDays !== undefined ? parseInt(preparationDays, 10) : undefined;
+    const parsedAllowWeekendDelivery = typeof allowWeekendDelivery === 'string'
+      ? allowWeekendDelivery === 'true'
+      : allowWeekendDelivery;
+    const parsedIsActive = typeof isActive === 'string'
+      ? isActive === 'true'
+      : isActive;
+    // tagsはJSON文字列としてDBに保存
+    const parsedTags = tags !== undefined
+      ? (typeof tags === 'string' ? tags : JSON.stringify(tags))
+      : undefined;
+
     // 商品更新
     const updatedProduct = await prisma.product.update({
       where: { id },
@@ -453,12 +555,14 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         ...(name && { name }),
         ...(slug && { slug }),
         ...(description !== undefined && { description }),
-        ...(price !== undefined && { price: parseInt(price, 10) }),
-        ...(categoryId && { categoryId }),
+        ...(parsedPrice !== undefined && { price: parsedPrice }),
+        ...(resolvedCategoryId && { categoryId: resolvedCategoryId }),
         ...(productType && { productType }),
-        ...(preparationDays !== undefined && { preparationDays: parseInt(preparationDays, 10) }),
-        ...(allowWeekendDelivery !== undefined && { allowWeekendDelivery }),
-        ...(isActive !== undefined && { isActive }),
+        ...(externalUrl !== undefined && { externalUrl }),
+        ...(parsedPreparationDays !== undefined && { preparationDays: parsedPreparationDays }),
+        ...(parsedAllowWeekendDelivery !== undefined && { allowWeekendDelivery: parsedAllowWeekendDelivery }),
+        ...(parsedIsActive !== undefined && { isActive: parsedIsActive }),
+        ...(parsedTags !== undefined && { tags: parsedTags }),
       },
       include: {
         category: true,
@@ -471,10 +575,14 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       _sum: { quantity: true },
     });
 
+    // tagsをJSON配列にパース
+    const parsedResponseTags = typeof updatedProduct.tags === 'string' ? JSON.parse(updatedProduct.tags) : updatedProduct.tags;
+
     return res.json({
       success: true,
       product: {
         ...updatedProduct,
+        tags: parsedResponseTags,
         currentStock: inventorySum._sum?.quantity || 0,
       },
       message: '商品を更新しました',
