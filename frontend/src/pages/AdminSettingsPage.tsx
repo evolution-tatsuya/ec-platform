@@ -1,7 +1,7 @@
 // ===== A-007: システム設定ページ =====
 // 目的: サイト全体の設定、書類テンプレート編集
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -17,6 +17,7 @@ import {
   Divider,
   InputAdornment,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import {
@@ -29,6 +30,14 @@ import {
   Settings,
 } from '@mui/icons-material';
 import { Header } from '../components';
+import {
+  useAdminSettings,
+  useUpdateCompanySettings,
+  useUpdatePaymentSettings,
+  useUpdateEmailSettings,
+  useUpdateDocumentTemplates,
+  useUpdateImageOptimization,
+} from '../hooks/useSettings';
 
 // 銀行口座種別
 const accountTypeOptions = [
@@ -39,16 +48,19 @@ const accountTypeOptions = [
 const AdminSettingsPage = () => {
   const [tabValue, setTabValue] = useState(0);
 
+  // API取得
+  const { data: settings, isLoading, error } = useAdminSettings();
+
   // タブ1: 基本情報
-  const [companyName, setCompanyName] = useState('株式会社サンプル');
-  const [postalCode, setPostalCode] = useState('100-0001');
-  const [address, setAddress] = useState('東京都千代田区千代田1-1-1');
-  const [phone, setPhone] = useState('03-1234-5678');
-  const [bankName, setBankName] = useState('サンプル銀行');
-  const [branchName, setBranchName] = useState('渋谷支店');
-  const [accountType, setAccountType] = useState('checking');
-  const [accountNumber, setAccountNumber] = useState('1234567');
-  const [accountHolder, setAccountHolder] = useState('カ）サンプル');
+  const [companyName, setCompanyName] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [branchName, setBranchName] = useState('');
+  const [accountType, setAccountType] = useState<'checking' | 'savings'>('checking');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountHolder, setAccountHolder] = useState('');
 
   // デザイン設定
   const [primaryColor, setPrimaryColor] = useState('#1976d2');
@@ -63,13 +75,60 @@ const AdminSettingsPage = () => {
   const [bankTransferEnabled, setBankTransferEnabled] = useState(true);
   const [bankTransferDiscountRate, setBankTransferDiscountRate] = useState(3.6);
   const [creditCardEnabled, setCreditCardEnabled] = useState(true);
-  const [stripePublicKey, setStripePublicKey] = useState('pk_test_xxxxxx');
-  const [stripeSecretKey, setStripeSecretKey] = useState('sk_test_xxxxxx');
+  const [stripePublicKey, setStripePublicKey] = useState('');
+  const [stripeSecretKey, setStripeSecretKey] = useState('');
 
   // タブ3: メール設定
-  const [senderEmail, setSenderEmail] = useState('noreply@example.com');
-  const [shippingNotificationTemplate, setShippingNotificationTemplate] = useState(
-    `お客様
+  const [senderEmail, setSenderEmail] = useState('');
+  const [shippingNotificationTemplate, setShippingNotificationTemplate] = useState('');
+
+  // タブ4: 書類テンプレート
+  const [selectedDocument, setSelectedDocument] = useState<
+    'invoice' | 'receipt' | 'estimate'
+  >('invoice');
+
+  // Mutation
+  const updateCompanyMutation = useUpdateCompanySettings();
+  const updatePaymentMutation = useUpdatePaymentSettings();
+  const updateEmailMutation = useUpdateEmailSettings();
+  const updateDocumentMutation = useUpdateDocumentTemplates();
+  const updateImageMutation = useUpdateImageOptimization();
+
+  // APIデータを取得したらstateに反映
+  useEffect(() => {
+    if (settings) {
+      // 会社情報
+      setCompanyName(settings.company.companyName);
+      setPostalCode(settings.company.postalCode);
+      setAddress(settings.company.address);
+      setPhone(settings.company.phone);
+      setBankName(settings.company.bankName);
+      setBranchName(settings.company.branchName);
+      setAccountType(settings.company.accountType);
+      setAccountNumber(settings.company.accountNumber);
+      setAccountHolder(settings.company.accountHolder);
+
+      // デザイン設定
+      setPrimaryColor(settings.company.primaryColor);
+      setSecondaryColor(settings.company.secondaryColor);
+
+      // 画像最適化設定
+      setWebpEnabled(settings.imageOptimization.webpEnabled);
+      setCompressionQuality(settings.imageOptimization.compressionQuality);
+      setThumbnailSize(settings.imageOptimization.thumbnailSize);
+
+      // 決済設定
+      setBankTransferEnabled(settings.payment.bankTransferEnabled);
+      setBankTransferDiscountRate(settings.payment.bankTransferDiscountRate * 100);
+      setCreditCardEnabled(settings.payment.creditCardEnabled);
+      setStripePublicKey(settings.payment.stripePublicKey);
+      setStripeSecretKey(settings.payment.stripeSecretKey);
+
+      // メール設定
+      setSenderEmail(settings.email.senderEmail);
+      setShippingNotificationTemplate(
+        settings.email.shippingNotificationTemplate ||
+          `お客様
 
 いつもご利用いただき、ありがとうございます。
 ご注文商品を発送いたしました。
@@ -80,17 +139,63 @@ const AdminSettingsPage = () => {
 配送業者のサイトにて配送状況をご確認いただけます。
 
 引き続きよろしくお願いいたします。`
-  );
-
-  // タブ4: 書類テンプレート
-  const [selectedDocument, setSelectedDocument] = useState<
-    'invoice' | 'receipt' | 'estimate'
-  >('invoice');
+      );
+    }
+  }, [settings]);
 
   // 保存処理
-  const handleSave = () => {
-    console.log('設定を保存しました（ダミー実装）');
-    alert('設定を保存しました');
+  const handleSave = async () => {
+    try {
+      if (tabValue === 0) {
+        // タブ1: 基本情報
+        await updateCompanyMutation.mutateAsync({
+          companyName,
+          logoUrl: settings?.company.logoUrl,
+          postalCode,
+          address,
+          phone,
+          bankName,
+          branchName,
+          accountType: accountType as 'checking' | 'savings',
+          accountNumber,
+          accountHolder,
+        });
+        await updateImageMutation.mutateAsync({
+          webpEnabled,
+          compressionQuality,
+          thumbnailSize,
+        });
+        alert('基本情報を保存しました');
+      } else if (tabValue === 1) {
+        // タブ2: 決済設定
+        await updatePaymentMutation.mutateAsync({
+          bankTransferEnabled,
+          bankTransferDiscountRate: bankTransferDiscountRate / 100,
+          creditCardEnabled,
+          stripePublicKey,
+          stripeSecretKey,
+        });
+        alert('決済設定を保存しました');
+      } else if (tabValue === 2) {
+        // タブ3: メール設定
+        await updateEmailMutation.mutateAsync({
+          senderEmail,
+          shippingNotificationTemplate,
+        });
+        alert('メール設定を保存しました');
+      } else if (tabValue === 3) {
+        // タブ4: 書類テンプレート
+        await updateDocumentMutation.mutateAsync({
+          invoiceTemplate: settings?.documentTemplates.invoiceTemplate,
+          receiptTemplate: settings?.documentTemplates.receiptTemplate,
+          estimateTemplate: settings?.documentTemplates.estimateTemplate,
+        });
+        alert('書類テンプレートを保存しました');
+      }
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      alert(`保存に失敗しました: ${error.message}`);
+    }
   };
 
   // 書類プレビュー
@@ -100,6 +205,46 @@ const AdminSettingsPage = () => {
       `${docType === 'invoice' ? '納品書' : docType === 'receipt' ? '領収書' : '見積書'}のプレビュー（未実装）`
     );
   };
+
+  // ローディング表示
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
+          <CircularProgress />
+        </Box>
+      </>
+    );
+  }
+
+  // エラー表示
+  if (error) {
+    return (
+      <>
+        <Header />
+        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+          <Alert severity="error">
+            設定の取得に失敗しました: {error.message}
+          </Alert>
+        </Box>
+      </>
+    );
+  }
+
+  // データがない場合
+  if (!settings) {
+    return (
+      <>
+        <Header />
+        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+          <Alert severity="warning">
+            設定データが見つかりません
+          </Alert>
+        </Box>
+      </>
+    );
+  }
 
   return (
     <>
@@ -205,7 +350,7 @@ const AdminSettingsPage = () => {
                       select
                       label="口座種別"
                       value={accountType}
-                      onChange={(e) => setAccountType(e.target.value)}
+                      onChange={(e) => setAccountType(e.target.value as 'checking' | 'savings')}
                       fullWidth
                       SelectProps={{ native: true }}
                     >

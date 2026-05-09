@@ -22,6 +22,7 @@ import {
   Tab,
   Tabs,
   InputAdornment,
+  Snackbar,
 } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import {
@@ -43,6 +44,7 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { format } from 'date-fns';
 import { ProductType, CategoryType } from '../types';
 import {
   useCreateProduct,
@@ -51,7 +53,13 @@ import {
   useCreateInventoryLog,
   useAdminProductById,
   useAdminProducts,
+  useInventoryLogs,
 } from '../hooks/useProducts';
+import {
+  bulkPublishProducts,
+  bulkUnpublishProducts,
+  bulkDeleteProducts,
+} from '../services/api/products';
 
 // バリデーションスキーマ
 const productSchema = z.object({
@@ -77,13 +85,6 @@ const inventorySchema = z.object({
 });
 
 type InventoryFormData = z.infer<typeof inventorySchema>;
-
-// ダミー在庫ログ（商品一覧タブでは使用しない）
-const dummyInventoryLogs = [
-  { id: '1', date: '2026-04-15 10:30', type: '入庫', quantity: 50, reason: '新規仕入れ' },
-  { id: '2', date: '2026-04-14 15:20', type: '出庫', quantity: -5, reason: '注文番号 ORD-001' },
-  { id: '3', date: '2026-04-13 09:15', type: '調整', quantity: -2, reason: '破損品処分' },
-];
 
 // 商品種別の日本語表示
 const productTypeMap: Record<ProductType, string> = {
@@ -119,6 +120,13 @@ export default function AdminProductsPage() {
     productId: null,
     productName: null,
   });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+  }>({
+    open: false,
+    message: '',
+  });
 
   // API接続 - 商品一覧取得
   // useMemoでfiltersオブジェクトを安定化
@@ -129,6 +137,9 @@ export default function AdminProductsPage() {
   }), [searchTerm, categoryFilter, stockFilter]);
 
   const { data: productsData, isLoading: isLoadingProducts, error: productsError, refetch: refetchProducts } = useAdminProducts(productFilters);
+
+  // API接続 - 在庫ログ一覧取得
+  const { data: inventoryLogsData = [], isLoading: isLoadingInventoryLogs } = useInventoryLogs();
 
   // React Query mutations
   const createProductMutation = useCreateProduct();
@@ -274,10 +285,10 @@ export default function AdminProductsPage() {
 
       setOpenInventoryDialog(false);
       inventoryForm.reset();
-      alert('在庫を調整しました');
+      setSnackbar({ open: true, message: '在庫を調整しました' });
     } catch (error) {
       console.error('在庫調整エラー:', error);
-      alert('在庫調整に失敗しました');
+      setSnackbar({ open: true, message: '在庫調整に失敗しました' });
     }
   };
 
@@ -397,7 +408,12 @@ export default function AdminProductsPage() {
 
   // 在庫ログのカラム定義
   const inventoryColumns: GridColDef[] = [
-    { field: 'date', headerName: '日時', width: 180 },
+    {
+      field: 'createdAt',
+      headerName: '日時',
+      width: 180,
+      valueGetter: (value) => format(new Date(value), 'yyyy/MM/dd HH:mm'),
+    },
     {
       field: 'type',
       headerName: '種類',
@@ -407,7 +423,7 @@ export default function AdminProductsPage() {
           label={params.value}
           size="small"
           color={
-            params.value === '入庫' ? 'success' : params.value === '出庫' ? 'error' : 'default'
+            params.value === 'purchase' || params.value === 'sale_return' ? 'success' : 'error'
           }
         />
       ),
@@ -440,16 +456,46 @@ export default function AdminProductsPage() {
     });
   };
 
-  const handleBulkPublish = () => {
-    console.log('Bulk publish:', selectedProducts);
+  const handleBulkPublish = async () => {
+    try {
+      const ids = Array.from(selectedProducts.ids) as string[];
+      await bulkPublishProducts(ids);
+      setSnackbar({ open: true, message: `${ids.length}件の商品を公開しました` });
+      setSelectedProducts({ type: 'include', ids: new Set() });
+      await refetchProducts();
+    } catch (error) {
+      console.error('一括公開エラー:', error);
+      setSnackbar({ open: true, message: '一括公開に失敗しました' });
+    }
   };
 
-  const handleBulkUnpublish = () => {
-    console.log('Bulk unpublish:', selectedProducts);
+  const handleBulkUnpublish = async () => {
+    try {
+      const ids = Array.from(selectedProducts.ids) as string[];
+      await bulkUnpublishProducts(ids);
+      setSnackbar({ open: true, message: `${ids.length}件の商品を非公開にしました` });
+      setSelectedProducts({ type: 'include', ids: new Set() });
+      await refetchProducts();
+    } catch (error) {
+      console.error('一括非公開エラー:', error);
+      setSnackbar({ open: true, message: '一括非公開に失敗しました' });
+    }
   };
 
-  const handleBulkDelete = () => {
-    console.log('Bulk delete:', selectedProducts);
+  const handleBulkDelete = async () => {
+    try {
+      const ids = Array.from(selectedProducts.ids) as string[];
+      if (!window.confirm(`${ids.length}件の商品を削除してもよろしいですか？この操作は取り消せません。`)) {
+        return;
+      }
+      await bulkDeleteProducts(ids);
+      setSnackbar({ open: true, message: `${ids.length}件の商品を削除しました` });
+      setSelectedProducts({ type: 'include', ids: new Set() });
+      await refetchProducts();
+    } catch (error) {
+      console.error('一括削除エラー:', error);
+      setSnackbar({ open: true, message: '一括削除に失敗しました' });
+    }
   };
 
   return (
@@ -524,6 +570,7 @@ export default function AdminProductsPage() {
                         value={stockFilter}
                         label="在庫状況"
                         onChange={(e) => setStockFilter(e.target.value)}
+                        data-testid="stock-filter"
                       >
                         <MenuItem value="all">すべて</MenuItem>
                         <MenuItem value="in_stock">在庫あり</MenuItem>
@@ -620,8 +667,9 @@ export default function AdminProductsPage() {
                   </Button>
                 </Box>
                 <DataGrid
-                  rows={dummyInventoryLogs}
+                  rows={inventoryLogsData}
                   columns={inventoryColumns}
+                  loading={isLoadingInventoryLogs}
                   getRowId={(row) => row.id}
                   initialState={{
                     pagination: { paginationModel: { pageSize: 10 } },
@@ -1004,6 +1052,14 @@ export default function AdminProductsPage() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* Snackbar */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={() => setSnackbar({ open: false, message: '' })}
+          message={snackbar.message}
+        />
     </Container>
   );
 }

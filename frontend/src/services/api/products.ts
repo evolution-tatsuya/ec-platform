@@ -300,13 +300,17 @@ export const getAdminInventoryLogs = async (
     if (productId) {
       // 特定商品の在庫ログ取得
       const response = await axios.get(
-        `${API_BASE_URL}/api/admin/products/${productId}/inventory-logs`,
+        `${API_BASE_URL}/api/admin/inventory-logs/${productId}`,
         { withCredentials: true }
       );
       return response.data.logs || [];
     } else {
-      // 全商品の在庫ログ取得（実装されていない場合は空配列を返す）
-      return [];
+      // 全商品の在庫ログ取得
+      const response = await axios.get(
+        `${API_BASE_URL}/api/admin/inventory-logs`,
+        { withCredentials: true }
+      );
+      return response.data.logs || [];
     }
   } catch (error) {
     console.error('在庫ログ取得エラー:', error);
@@ -323,8 +327,9 @@ export const createAdminInventoryLog = async (
 ): Promise<InventoryLog> => {
   try {
     const response = await axios.post(
-      `${API_BASE_URL}/api/admin/products/${data.productId}/inventory`,
+      `${API_BASE_URL}/api/admin/inventory-logs`,
       {
+        productId: data.productId,
         quantity: data.quantity,
         type: data.type,
         note: data.reason,
@@ -348,7 +353,7 @@ export const getProductCurrentStock = async (
 ): Promise<number> => {
   try {
     const response = await axios.get(
-      `${API_BASE_URL}/api/admin/products/${productId}/inventory-logs`,
+      `${API_BASE_URL}/api/admin/inventory-logs/${productId}`,
       { withCredentials: true }
     );
 

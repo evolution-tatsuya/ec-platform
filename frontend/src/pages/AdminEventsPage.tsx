@@ -1,7 +1,7 @@
 // ===== A-004: イベント・チケット管理ページ =====
 // 目的: イベントフォーム作成、参加者リスト管理、QR受付
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -28,6 +28,8 @@ import {
   Checkbox,
   FormControlLabel,
   Divider,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import type { GridColDef } from '@mui/x-data-grid';
@@ -42,15 +44,17 @@ import {
   Cancel,
 } from '@mui/icons-material';
 import { Header } from '../components';
+import {
+  useAdminEvents,
+  useAdminEventFormTemplate,
+  useSaveAdminEventFormTemplate,
+  useAdminEventParticipants,
+  useScanAdminTicket,
+  useExportAdminEventParticipantsCSV,
+  useExportAdminEventParticipantsExcel,
+} from '../hooks/useEvents';
 
-// ダミーデータ: イベント一覧
-const dummyEvents = [
-  { id: '1', name: '車フェス2025春' },
-  { id: '2', name: 'カスタムカーミーティング' },
-  { id: '3', name: '音楽フェスティバル2025' },
-];
-
-// ダミーデータ: フォーム項目タイプ
+// フォーム項目タイプ
 const fieldTypes = [
   { value: 'TEXT', label: 'テキスト' },
   { value: 'RADIO', label: 'ラジオボタン' },
@@ -58,70 +62,6 @@ const fieldTypes = [
   { value: 'DROPDOWN', label: 'ドロップダウン' },
   { value: 'DATE', label: '日付' },
   { value: 'TEXTAREA', label: 'テキストエリア' },
-];
-
-// ダミーデータ: フォーム項目
-const dummyFormFields = [
-  {
-    id: '1',
-    label: '氏名',
-    fieldType: 'TEXT',
-    isRequired: true,
-    order: 1,
-  },
-  {
-    id: '2',
-    label: '参加人数',
-    fieldType: 'RADIO',
-    isRequired: true,
-    order: 2,
-    options: ['1名', '2名', '3名以上'],
-  },
-  {
-    id: '3',
-    label: '希望日時',
-    fieldType: 'DATE',
-    isRequired: true,
-    order: 3,
-  },
-  {
-    id: '4',
-    label: '備考',
-    fieldType: 'TEXTAREA',
-    isRequired: false,
-    order: 4,
-  },
-];
-
-// ダミーデータ: 参加者リスト
-const dummyParticipants = [
-  {
-    id: '1',
-    name: '山田太郎',
-    email: 'yamada@example.com',
-    ticketCode: 'TICKET-001-ABC',
-    qrCode: 'QR-001',
-    isUsed: false,
-    formData: { participantCount: '2名', preferredDate: '2025-05-15' },
-  },
-  {
-    id: '2',
-    name: '佐藤花子',
-    email: 'sato@example.com',
-    ticketCode: 'TICKET-002-DEF',
-    qrCode: 'QR-002',
-    isUsed: true,
-    formData: { participantCount: '1名', preferredDate: '2025-05-15' },
-  },
-  {
-    id: '3',
-    name: '鈴木一郎',
-    email: 'suzuki@example.com',
-    ticketCode: 'TICKET-003-GHI',
-    qrCode: 'QR-003',
-    isUsed: false,
-    formData: { participantCount: '3名以上', preferredDate: '2025-05-16' },
-  },
 ];
 
 interface TabPanelProps {
@@ -147,14 +87,12 @@ function TabPanel(props: TabPanelProps) {
 
 const AdminEventsPage = () => {
   const [tabValue, setTabValue] = useState(0);
-  const [selectedEvent, setSelectedEvent] = useState('1');
-  const [formFields, setFormFields] = useState(dummyFormFields);
-  const [participants, setParticipants] = useState(dummyParticipants);
+  const [selectedEvent, setSelectedEvent] = useState('');
   const [openFieldDialog, setOpenFieldDialog] = useState(false);
   const [openScanDialog, setOpenScanDialog] = useState(false);
   const [scannedTicket, setScannedTicket] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'used' | 'unused'>('all');
 
   // 新規フォーム項目用の状態
   const [newField, setNewField] = useState({
@@ -163,6 +101,45 @@ const AdminEventsPage = () => {
     isRequired: false,
     options: '',
   });
+
+  // API hooks
+  const { data: events, isLoading: eventsLoading, error: eventsError } = useAdminEvents();
+  const {
+    data: formTemplate,
+    isLoading: formLoading,
+    error: formError,
+  } = useAdminEventFormTemplate(selectedEvent);
+  const {
+    data: participantsData,
+    isLoading: participantsLoading,
+    error: participantsError,
+  } = useAdminEventParticipants(selectedEvent, {
+    search: searchTerm || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+  });
+  const saveFormTemplate = useSaveAdminEventFormTemplate();
+  const scanTicket = useScanAdminTicket();
+  const exportCSV = useExportAdminEventParticipantsCSV();
+  const exportExcel = useExportAdminEventParticipantsExcel();
+
+  // フォーム項目のローカル状態（編集用）
+  const [formFields, setFormFields] = useState(formTemplate?.fields || []);
+
+  // フォームテンプレートが取得されたら、ローカル状態を更新
+  useEffect(() => {
+    if (formTemplate?.fields) {
+      setFormFields(formTemplate.fields);
+    }
+  }, [formTemplate]);
+
+  // イベント選択時に最初のイベントを自動選択
+  useEffect(() => {
+    if (events && events.length > 0 && !selectedEvent) {
+      setSelectedEvent(events[0].id);
+    }
+  }, [events, selectedEvent]);
+
+  const participants = participantsData?.participants || [];
 
   // DataGrid列定義
   const columns: GridColDef[] = [
@@ -234,37 +211,156 @@ const AdminEventsPage = () => {
   const handleAddField = () => {
     const newFieldData = {
       id: String(formFields.length + 1),
+      templateId: selectedEvent,
       label: newField.label,
       fieldType: newField.fieldType,
       isRequired: newField.isRequired,
       order: formFields.length + 1,
       options: newField.options ? newField.options.split(',').map((o) => o.trim()) : undefined,
     };
-    setFormFields([...formFields, newFieldData]);
+    const updatedFields = [...formFields, newFieldData];
+    setFormFields(updatedFields);
     setNewField({ label: '', fieldType: 'TEXT', isRequired: false, options: '' });
     setOpenFieldDialog(false);
+
+    // API保存（エラーハンドリング付き）
+    if (selectedEvent && formTemplate) {
+      saveFormTemplate.mutate(
+        {
+          eventId: selectedEvent,
+          data: {
+            name: formTemplate.name || 'イベントフォーム',
+            description: formTemplate.description,
+            fields: updatedFields.map((f) => ({
+              label: f.label,
+              fieldType: f.fieldType,
+              isRequired: f.isRequired,
+              order: f.order,
+              options: f.options,
+            })),
+          },
+        },
+        {
+          onError: (error) => {
+            console.error('フォーム保存エラー:', error);
+            alert('フォーム項目の保存に失敗しました');
+          },
+        }
+      );
+    }
   };
 
   // フォーム項目削除
   const handleDeleteField = (id: string) => {
-    setFormFields(formFields.filter((f) => f.id !== id));
+    const updatedFields = formFields.filter((f) => f.id !== id);
+    setFormFields(updatedFields);
+
+    // API保存
+    if (selectedEvent && formTemplate) {
+      saveFormTemplate.mutate(
+        {
+          eventId: selectedEvent,
+          data: {
+            name: formTemplate.name || 'イベントフォーム',
+            description: formTemplate.description,
+            fields: updatedFields.map((f) => ({
+              label: f.label,
+              fieldType: f.fieldType,
+              isRequired: f.isRequired,
+              order: f.order,
+              options: f.options,
+            })),
+          },
+        },
+        {
+          onError: (error) => {
+            console.error('フォーム削除エラー:', error);
+            alert('フォーム項目の削除に失敗しました');
+          },
+        }
+      );
+    }
   };
 
   // QRスキャン処理
   const handleScan = () => {
-    // ダミー処理: チケットコードでチェックイン
-    const participant = participants.find((p) => p.ticketCode === scannedTicket);
-    if (participant) {
-      setParticipants(
-        participants.map((p) => (p.ticketCode === scannedTicket ? { ...p, isUsed: true } : p))
-      );
-      alert(`チェックイン完了: ${participant.name}`);
-      setScannedTicket('');
-      setOpenScanDialog(false);
-    } else {
-      alert('チケットが見つかりません');
+    scanTicket.mutate(
+      { ticketCode: scannedTicket },
+      {
+        onSuccess: (response) => {
+          if (response.success) {
+            alert(`チェックイン完了: ${response.ticket?.customerName || ''}`);
+            setScannedTicket('');
+            setOpenScanDialog(false);
+          } else {
+            alert(response.error || 'チケットが見つかりません');
+          }
+        },
+        onError: (error) => {
+          console.error('スキャンエラー:', error);
+          alert('スキャンに失敗しました');
+        },
+      }
+    );
+  };
+
+  // CSV出力
+  const handleExportCSV = () => {
+    if (selectedEvent) {
+      exportCSV.mutate(selectedEvent, {
+        onError: (error) => {
+          console.error('CSV出力エラー:', error);
+          alert('CSV出力に失敗しました');
+        },
+      });
     }
   };
+
+  // Excel出力
+  const handleExportExcel = () => {
+    if (selectedEvent) {
+      exportExcel.mutate(selectedEvent, {
+        onError: (error) => {
+          console.error('Excel出力エラー:', error);
+          alert('Excel出力に失敗しました');
+        },
+      });
+    }
+  };
+
+  // ローディング・エラー表示
+  if (eventsLoading) {
+    return (
+      <>
+        <Header />
+        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Box>
+      </>
+    );
+  }
+
+  if (eventsError) {
+    return (
+      <>
+        <Header />
+        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+          <Alert severity="error">イベントの取得に失敗しました</Alert>
+        </Box>
+      </>
+    );
+  }
+
+  if (!events || events.length === 0) {
+    return (
+      <>
+        <Header />
+        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+          <Alert severity="info">イベントが登録されていません</Alert>
+        </Box>
+      </>
+    );
+  }
 
   return (
     <>
@@ -294,7 +390,7 @@ const AdminEventsPage = () => {
                   onChange={(e) => setSelectedEvent(e.target.value)}
                   label="イベント選択"
                 >
-                  {dummyEvents.map((event) => (
+                  {events.map((event) => (
                     <MenuItem key={event.id} value={event.id}>
                       {event.name}
                     </MenuItem>
@@ -312,7 +408,13 @@ const AdminEventsPage = () => {
               フォーム項目一覧
             </Typography>
 
-            {formFields.length === 0 ? (
+            {formLoading ? (
+              <Box display="flex" justifyContent="center" p={3}>
+                <CircularProgress />
+              </Box>
+            ) : formError ? (
+              <Alert severity="error">フォームテンプレートの取得に失敗しました</Alert>
+            ) : formFields.length === 0 ? (
               <Typography variant="body2" color="text.secondary">
                 フォーム項目がありません
               </Typography>
@@ -384,7 +486,7 @@ const AdminEventsPage = () => {
                 select
                 label="ステータス"
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => setStatusFilter(e.target.value as 'all' | 'used' | 'unused')}
                 size="small"
                 sx={{ width: 150 }}
               >
@@ -392,30 +494,50 @@ const AdminEventsPage = () => {
                 <MenuItem value="unused">未使用</MenuItem>
                 <MenuItem value="used">使用済み</MenuItem>
               </TextField>
-              <Button variant="outlined" startIcon={<Download />}>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={handleExportCSV}
+                disabled={exportCSV.isPending || !selectedEvent}
+              >
                 CSV出力
               </Button>
-              <Button variant="outlined" startIcon={<Download />}>
+              <Button
+                variant="outlined"
+                startIcon={<Download />}
+                onClick={handleExportExcel}
+                disabled={exportExcel.isPending || !selectedEvent}
+              >
                 Excel出力
               </Button>
             </Box>
           </Paper>
 
           {/* 参加者リスト */}
-          <Paper>
-            <DataGrid
-              rows={filteredParticipants}
-              columns={columns}
-              autoHeight
-              pageSizeOptions={[10, 25, 50, 100]}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 25 },
-                },
-              }}
-              disableRowSelectionOnClick
-            />
-          </Paper>
+          {participantsLoading ? (
+            <Paper sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress />
+            </Paper>
+          ) : participantsError ? (
+            <Paper sx={{ p: 3 }}>
+              <Alert severity="error">参加者リストの取得に失敗しました</Alert>
+            </Paper>
+          ) : (
+            <Paper>
+              <DataGrid
+                rows={filteredParticipants}
+                columns={columns}
+                autoHeight
+                pageSizeOptions={[10, 25, 50, 100]}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 25 },
+                  },
+                }}
+                disableRowSelectionOnClick
+              />
+            </Paper>
+          )}
         </TabPanel>
 
         {/* タブ3: QR受付 */}
@@ -541,13 +663,15 @@ const AdminEventsPage = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenFieldDialog(false)}>キャンセル</Button>
+            <Button onClick={() => setOpenFieldDialog(false)} disabled={saveFormTemplate.isPending}>
+              キャンセル
+            </Button>
             <Button
               onClick={handleAddField}
               variant="contained"
-              disabled={!newField.label}
+              disabled={!newField.label || saveFormTemplate.isPending}
             >
-              追加
+              {saveFormTemplate.isPending ? '追加中...' : '追加'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -567,13 +691,15 @@ const AdminEventsPage = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenScanDialog(false)}>キャンセル</Button>
+            <Button onClick={() => setOpenScanDialog(false)} disabled={scanTicket.isPending}>
+              キャンセル
+            </Button>
             <Button
               onClick={handleScan}
               variant="contained"
-              disabled={!scannedTicket}
+              disabled={!scannedTicket || scanTicket.isPending}
             >
-              チェックイン
+              {scanTicket.isPending ? 'チェックイン中...' : 'チェックイン'}
             </Button>
           </DialogActions>
         </Dialog>

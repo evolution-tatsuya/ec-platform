@@ -10,12 +10,14 @@
 
 import { useState } from 'react';
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Container,
   Dialog,
   DialogActions,
@@ -42,134 +44,8 @@ import { Edit } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Header } from '../components';
-
-// ダミーデータ
-const DUMMY_CUSTOMERS = [
-  {
-    id: '1',
-    name: '山田太郎',
-    email: 'yamada@example.com',
-    phone: '090-1234-5678',
-    registeredAt: new Date('2025-01-15'),
-    totalOrders: 12,
-    totalSpent: 180000,
-    lastOrderDate: new Date('2026-04-10'),
-    repeatRate: 0.83,
-    tags: ['VIP', 'リピーター'],
-    orders: [
-      {
-        orderNumber: 'ORD-20260410-001',
-        orderDate: new Date('2026-04-10'),
-        totalAmount: 15800,
-        status: 'PREPARING',
-      },
-      {
-        orderNumber: 'ORD-20260315-002',
-        orderDate: new Date('2026-03-15'),
-        totalAmount: 28000,
-        status: 'DELIVERED',
-      },
-      {
-        orderNumber: 'ORD-20260210-003',
-        orderDate: new Date('2026-02-10'),
-        totalAmount: 42500,
-        status: 'DELIVERED',
-      },
-    ],
-  },
-  {
-    id: '2',
-    name: '佐藤花子',
-    email: 'sato@example.com',
-    phone: '080-9876-5432',
-    registeredAt: new Date('2025-03-20'),
-    totalOrders: 5,
-    totalSpent: 68000,
-    lastOrderDate: new Date('2026-04-12'),
-    repeatRate: 0.6,
-    tags: ['リピーター'],
-    orders: [
-      {
-        orderNumber: 'ORD-20260412-001',
-        orderDate: new Date('2026-04-12'),
-        totalAmount: 28000,
-        status: 'SHIPPED',
-      },
-      {
-        orderNumber: 'ORD-20260301-002',
-        orderDate: new Date('2026-03-01'),
-        totalAmount: 15000,
-        status: 'DELIVERED',
-      },
-    ],
-  },
-  {
-    id: '3',
-    name: '田中一郎',
-    email: 'tanaka@example.com',
-    phone: '070-1111-2222',
-    registeredAt: new Date('2026-04-01'),
-    totalOrders: 1,
-    totalSpent: 42500,
-    lastOrderDate: new Date('2026-04-14'),
-    repeatRate: 0,
-    tags: [],
-    orders: [
-      {
-        orderNumber: 'ORD-20260414-001',
-        orderDate: new Date('2026-04-14'),
-        totalAmount: 42500,
-        status: 'PENDING_PAYMENT',
-      },
-    ],
-  },
-  {
-    id: '4',
-    name: '鈴木美咲',
-    email: 'suzuki@example.com',
-    phone: '090-3333-4444',
-    registeredAt: new Date('2024-11-10'),
-    totalOrders: 25,
-    totalSpent: 520000,
-    lastOrderDate: new Date('2026-04-08'),
-    repeatRate: 0.92,
-    tags: ['VIP', 'リピーター', '高額購入者'],
-    orders: [
-      {
-        orderNumber: 'ORD-20260408-001',
-        orderDate: new Date('2026-04-08'),
-        totalAmount: 85000,
-        status: 'DELIVERED',
-      },
-      {
-        orderNumber: 'ORD-20260305-002',
-        orderDate: new Date('2026-03-05'),
-        totalAmount: 62000,
-        status: 'DELIVERED',
-      },
-    ],
-  },
-  {
-    id: '5',
-    name: '高橋健太',
-    email: 'takahashi@example.com',
-    phone: '080-5555-6666',
-    registeredAt: new Date('2025-06-18'),
-    totalOrders: 8,
-    totalSpent: 125000,
-    lastOrderDate: new Date('2026-03-28'),
-    repeatRate: 0.75,
-    tags: ['リピーター'],
-    orders: [
-      {
-        orderNumber: 'ORD-20260328-001',
-        orderDate: new Date('2026-03-28'),
-        totalAmount: 22000,
-        status: 'DELIVERED',
-      },
-    ],
-  },
-];
+import { useAdminCustomers, useAdminCustomerById, useUpdateCustomerTags } from '../hooks/useCustomers';
+import type { CustomerWithStats } from '../types';
 
 // タグの選択肢
 const TAG_OPTIONS = ['VIP', 'リピーター', '高額購入者', '要注意'];
@@ -199,8 +75,26 @@ export default function AdminCustomersPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterOrderCount, setFilterOrderCount] = useState<string>('all');
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [editTags, setEditTags] = useState<string[]>([]);
+
+  // APIから顧客一覧取得
+  const {
+    data: customers = [],
+    isLoading,
+    error
+  } = useAdminCustomers({
+    search: searchQuery || undefined,
+  });
+
+  // 顧客詳細取得
+  const {
+    data: selectedCustomer,
+    isLoading: isLoadingDetail,
+  } = useAdminCustomerById(selectedCustomerId);
+
+  // タグ更新mutation
+  const updateTagsMutation = useUpdateCustomerTags();
 
   // DataGrid列定義
   const columns: GridColDef[] = [
@@ -220,7 +114,7 @@ export default function AdminCustomersPage() {
       width: 120,
       renderCell: (params) => (
         <Typography variant="body2">
-          {format(params.value as Date, 'yyyy/MM/dd', { locale: ja })}
+          {format(new Date(params.value as string), 'yyyy/MM/dd', { locale: ja })}
         </Typography>
       ),
     },
@@ -269,7 +163,7 @@ export default function AdminCustomersPage() {
           size="small"
           variant="outlined"
           startIcon={<Edit />}
-          onClick={() => handleOpenDetailDialog(params.row)}
+          onClick={() => handleOpenDetailDialog(params.row as CustomerWithStats)}
         >
           詳細
         </Button>
@@ -277,37 +171,34 @@ export default function AdminCustomersPage() {
     },
   ];
 
-  const handleOpenDetailDialog = (customer: any) => {
-    setSelectedCustomer(customer);
+  const handleOpenDetailDialog = (customer: CustomerWithStats) => {
+    setSelectedCustomerId(customer.id);
     setEditTags(customer.tags);
     setDetailDialogOpen(true);
   };
 
   const handleCloseDetailDialog = () => {
     setDetailDialogOpen(false);
-    setSelectedCustomer(null);
+    setSelectedCustomerId('');
     setEditTags([]);
   };
 
-  const handleSaveTags = () => {
-    // 実際のAPI接続は後のステップで実施
-    console.log('タグ保存:', { customerId: selectedCustomer?.id, tags: editTags });
-    handleCloseDetailDialog();
+  const handleSaveTags = async () => {
+    if (!selectedCustomerId) return;
+
+    try {
+      await updateTagsMutation.mutateAsync({
+        id: selectedCustomerId,
+        data: { tags: editTags },
+      });
+      handleCloseDetailDialog();
+    } catch (error) {
+      console.error('タグ保存エラー:', error);
+    }
   };
 
-  // フィルタリング処理（ダミー）
-  const filteredCustomers = DUMMY_CUSTOMERS.filter((customer) => {
-    // 検索クエリフィルター
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (
-        !customer.name.toLowerCase().includes(query) &&
-        !customer.email.toLowerCase().includes(query)
-      ) {
-        return false;
-      }
-    }
-
+  // クライアントサイドフィルタリング処理（購入回数のみ）
+  const filteredCustomers = customers.filter((customer) => {
     // 購入回数フィルター
     if (filterOrderCount !== 'all') {
       const count = customer.totalOrders;
@@ -319,6 +210,34 @@ export default function AdminCustomersPage() {
 
     return true;
   });
+
+  // ローディング状態
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+            <CircularProgress />
+          </Box>
+        </Container>
+      </>
+    );
+  }
+
+  // エラー状態
+  if (error) {
+    return (
+      <>
+        <Header />
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+          <Alert severity="error">
+            顧客データの取得に失敗しました: {error.message}
+          </Alert>
+        </Container>
+      </>
+    );
+  }
 
   return (
     <>
@@ -392,7 +311,11 @@ export default function AdminCustomersPage() {
         >
           <DialogTitle>顧客詳細</DialogTitle>
           <DialogContent>
-            {selectedCustomer && (
+            {isLoadingDetail ? (
+              <Box display="flex" justifyContent="center" py={4}>
+                <CircularProgress />
+              </Box>
+            ) : selectedCustomer ? (
               <Stack spacing={3} sx={{ mt: 1 }}>
                 {/* 基本情報 */}
                 <Box>
@@ -406,12 +329,14 @@ export default function AdminCustomersPage() {
                     <Typography variant="body2">
                       <strong>メール:</strong> {selectedCustomer.email}
                     </Typography>
-                    <Typography variant="body2">
-                      <strong>電話番号:</strong> {selectedCustomer.phone}
-                    </Typography>
+                    {selectedCustomer.phone && (
+                      <Typography variant="body2">
+                        <strong>電話番号:</strong> {selectedCustomer.phone}
+                      </Typography>
+                    )}
                     <Typography variant="body2">
                       <strong>登録日:</strong>{' '}
-                      {format(selectedCustomer.registeredAt, 'yyyy年M月d日', { locale: ja })}
+                      {format(new Date(selectedCustomer.registeredAt), 'yyyy年M月d日', { locale: ja })}
                     </Typography>
                   </Stack>
                 </Box>
@@ -453,9 +378,9 @@ export default function AdminCustomersPage() {
                             最終購入日
                           </Typography>
                           <Typography variant="body2" fontWeight="bold">
-                            {format(selectedCustomer.lastOrderDate, 'yyyy/MM/dd', {
-                              locale: ja,
-                            })}
+                            {selectedCustomer.lastOrderDate
+                              ? format(new Date(selectedCustomer.lastOrderDate), 'yyyy/MM/dd', { locale: ja })
+                              : '未購入'}
                           </Typography>
                         </CardContent>
                       </Card>
@@ -521,7 +446,7 @@ export default function AdminCustomersPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {selectedCustomer.orders.map((order: any, index: number) => (
+                        {selectedCustomer.orders.map((order, index) => (
                           <TableRow key={index}>
                             <TableCell>
                               <Typography variant="body2" fontFamily="monospace">
@@ -530,7 +455,7 @@ export default function AdminCustomersPage() {
                             </TableCell>
                             <TableCell>
                               <Typography variant="body2">
-                                {format(order.orderDate, 'yyyy/MM/dd', { locale: ja })}
+                                {format(new Date(order.orderDate), 'yyyy/MM/dd', { locale: ja })}
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
@@ -550,12 +475,18 @@ export default function AdminCustomersPage() {
                   </TableContainer>
                 </Box>
               </Stack>
-            )}
+            ) : null}
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDetailDialog}>キャンセル</Button>
-            <Button variant="contained" onClick={handleSaveTags}>
-              タグを保存
+            <Button onClick={handleCloseDetailDialog} disabled={updateTagsMutation.isPending}>
+              キャンセル
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleSaveTags}
+              disabled={updateTagsMutation.isPending}
+            >
+              {updateTagsMutation.isPending ? '保存中...' : 'タグを保存'}
             </Button>
           </DialogActions>
         </Dialog>

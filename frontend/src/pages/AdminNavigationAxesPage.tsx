@@ -18,6 +18,7 @@ import {
   TextField,
   Typography,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import {
@@ -35,66 +36,13 @@ import {
 } from '@mui/icons-material';
 
 import { CategoryType, AxisType, DisplayType } from '../types';
-
-// ダミーデータ: ナビゲーション軸
-const dummyAxes = [
-  {
-    id: '1',
-    categoryType: CategoryType.CARS,
-    axisName: 'メーカー',
-    axisKey: 'maker',
-    order: 1,
-    axisType: AxisType.SELECT,
-    displayType: DisplayType.DROPDOWN,
-    icon: '🚗',
-    options: ['トヨタ', 'ホンダ', '日産', 'マツダ', 'スバル'],
-  },
-  {
-    id: '2',
-    categoryType: CategoryType.CARS,
-    axisName: '車種',
-    axisKey: 'carModel',
-    order: 2,
-    axisType: AxisType.SEARCH,
-    displayType: DisplayType.DROPDOWN,
-    icon: '🚙',
-    options: ['プリウス', 'フィット', 'ノート', 'デミオ', 'インプレッサ'],
-    parentAxisKey: 'maker',
-  },
-  {
-    id: '3',
-    categoryType: CategoryType.CARS,
-    axisName: 'パーツカテゴリー',
-    axisKey: 'partsCategory',
-    order: 3,
-    axisType: AxisType.SELECT,
-    displayType: DisplayType.BUTTON,
-    icon: '🔧',
-    options: ['ブレーキ', 'サスペンション', 'エアロ', 'マフラー', 'ホイール'],
-  },
-  {
-    id: '4',
-    categoryType: CategoryType.EVENTS,
-    axisName: 'イベント種類',
-    axisKey: 'eventType',
-    order: 1,
-    axisType: AxisType.SELECT,
-    displayType: DisplayType.BUTTON,
-    icon: '🎪',
-    options: ['車フェス', '音楽フェス', '展示会', 'ワークショップ'],
-  },
-  {
-    id: '5',
-    categoryType: CategoryType.DIGITAL,
-    axisName: 'ジャンル',
-    axisKey: 'genre',
-    order: 1,
-    axisType: AxisType.MULTI_SELECT,
-    displayType: DisplayType.DROPDOWN,
-    icon: '📁',
-    options: ['マニュアル', '動画', 'ソフトウェア', 'テンプレート'],
-  },
-];
+import {
+  useNavigationAxesByCategory,
+  useCreateNavigationAxis,
+  useUpdateNavigationAxis,
+  useDeleteNavigationAxis,
+  useUpdateNavigationAxisOrder,
+} from '../hooks/useNavigationAxes';
 
 // カテゴリータイプの日本語表示
 const categoryTypeMap: Record<CategoryType, string> = {
@@ -136,8 +84,15 @@ export default function AdminNavigationAxesPage() {
     parentAxisKey: '',
   });
 
-  // 選択中のカテゴリーの軸のみフィルタリング
-  const filteredAxes = dummyAxes.filter((axis) => axis.categoryType === selectedCategory);
+  // API統合: カテゴリー別軸データ取得
+  const { data: axes = [], isLoading, error } = useNavigationAxesByCategory(selectedCategory);
+  const createMutation = useCreateNavigationAxis();
+  const updateMutation = useUpdateNavigationAxis();
+  const deleteMutation = useDeleteNavigationAxis();
+  const updateOrderMutation = useUpdateNavigationAxisOrder();
+
+  // フィルタ済み軸データ（APIから取得したものをそのまま使用）
+  const filteredAxes = axes;
 
   // DataGrid列定義
   const columns: GridColDef[] = [
@@ -237,7 +192,7 @@ export default function AdminNavigationAxesPage() {
 
   // 軸の編集
   const handleEditAxis = (id: string) => {
-    const axis = dummyAxes.find((a) => a.id === id);
+    const axis = axes.find((a) => a.id === id);
     if (axis) {
       setEditingAxis(id);
       setAxisForm({
@@ -254,11 +209,43 @@ export default function AdminNavigationAxesPage() {
   };
 
   // 軸の追加・更新
-  const handleSaveAxis = () => {
-    console.log('Save axis:', axisForm);
-    setOpenAxisDialog(false);
-    setEditingAxis(null);
-    resetAxisForm();
+  const handleSaveAxis = async () => {
+    try {
+      const optionsArray = axisForm.options.split('\n').filter(Boolean);
+
+      if (editingAxis) {
+        // 更新
+        await updateMutation.mutateAsync({
+          id: editingAxis,
+          data: {
+            axisName: axisForm.axisName,
+            axisKey: axisForm.axisKey,
+            axisType: axisForm.axisType,
+            displayType: axisForm.displayType,
+            icon: axisForm.icon || undefined,
+            options: optionsArray,
+          },
+        });
+      } else {
+        // 新規作成
+        await createMutation.mutateAsync({
+          categoryType: selectedCategory,
+          axisName: axisForm.axisName,
+          axisKey: axisForm.axisKey,
+          axisType: axisForm.axisType,
+          displayType: axisForm.displayType,
+          icon: axisForm.icon || undefined,
+          options: optionsArray,
+        });
+      }
+
+      setOpenAxisDialog(false);
+      setEditingAxis(null);
+      resetAxisForm();
+    } catch (error) {
+      console.error('Failed to save axis:', error);
+      alert((error as Error).message || '保存に失敗しました');
+    }
   };
 
   // 軸の削除ダイアログを開く
@@ -268,20 +255,50 @@ export default function AdminNavigationAxesPage() {
   };
 
   // 軸の削除
-  const handleDeleteAxis = () => {
-    console.log('Delete axis:', deletingAxisId);
-    setOpenDeleteDialog(false);
-    setDeletingAxisId(null);
+  const handleDeleteAxis = async () => {
+    if (!deletingAxisId) return;
+
+    try {
+      await deleteMutation.mutateAsync(deletingAxisId);
+      setOpenDeleteDialog(false);
+      setDeletingAxisId(null);
+    } catch (error) {
+      console.error('Failed to delete axis:', error);
+      alert((error as Error).message || '削除に失敗しました');
+    }
   };
 
   // 軸の順序変更（上へ）
-  const handleMoveUp = (id: string) => {
-    console.log('Move up:', id);
+  const handleMoveUp = async (id: string) => {
+    const currentAxis = axes.find((a) => a.id === id);
+    if (!currentAxis || currentAxis.order === 1) return;
+
+    try {
+      await updateOrderMutation.mutateAsync({
+        id,
+        data: { newOrder: currentAxis.order - 1 },
+      });
+    } catch (error) {
+      console.error('Failed to move up:', error);
+      alert((error as Error).message || '順序変更に失敗しました');
+    }
   };
 
   // 軸の順序変更（下へ）
-  const handleMoveDown = (id: string) => {
-    console.log('Move down:', id);
+  const handleMoveDown = async (id: string) => {
+    const currentAxis = axes.find((a) => a.id === id);
+    const maxOrder = Math.max(...axes.map((a) => a.order));
+    if (!currentAxis || currentAxis.order === maxOrder) return;
+
+    try {
+      await updateOrderMutation.mutateAsync({
+        id,
+        data: { newOrder: currentAxis.order + 1 },
+      });
+    } catch (error) {
+      console.error('Failed to move down:', error);
+      alert((error as Error).message || '順序変更に失敗しました');
+    }
   };
 
   // フォームリセット
@@ -304,9 +321,31 @@ export default function AdminNavigationAxesPage() {
     resetAxisForm();
   };
 
+  // ローディング中
+  if (isLoading) {
+    return (
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  // エラー時
+  if (error) {
+    return (
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Alert severity="error">
+          ナビゲーション軸の読み込みに失敗しました: {error.message}
+        </Alert>
+      </Container>
+    );
+  }
+
   return (
     <>
-      
+
       <Container maxWidth="xl" sx={{ py: 4 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" fontWeight="bold">

@@ -1134,3 +1134,219 @@ Week 13:  [===次回===] スライス12-A, 12-B（顧客管理 + 問い合わせ
 - オーケストレーターへ報告
 - フッター実装の優先度を確認
 - 他のE2Eテスト（E2E-TOP-002～E2E-TOP-010）の実装判断を待つ
+
+---
+
+### TC-014: 一括公開（商品管理ページ）
+
+**実行日時**: 2026-05-09
+**テストステータス**: ❌ **FAIL（実装不足検出）**
+**実行環境**: Playwright, Chromium, localhost:3251
+**実行時間**: 10.1秒
+
+#### テスト結果サマリー
+
+| ステップ | 結果 | 備考 |
+|---------|------|------|
+| ログイン処理 | ✅ Pass | 管理者ログイン成功 |
+| 商品管理ページ表示 | ✅ Pass | DataGrid正常表示 |
+| 1件目チェックボックス選択 | ✅ Pass | チェック成功 |
+| 2件目チェックボックス選択 | ✅ Pass | チェック成功 |
+| 選択状態確認 | ✅ Pass | 2件選択確認 |
+| ステータス取得（選択前） | ✅ Pass | 1件目「公開中」, 2件目「公開中」 |
+| [公開]ボタン有効化確認 | ✅ Pass | ボタン有効化 |
+| [公開]ボタンクリック | ✅ Pass | クリック成功 |
+| **モック検出** | ❌ **Fail** | **`console.log`のみの実装を検出** |
+| API呼び出し確認 | ⚠️ Skip | モック検出により中止 |
+| ステータス更新確認 | ⚠️ Skip | モック検出により中止 |
+
+#### 🔍 検出された問題
+
+##### 1. **一括公開機能が未実装（モック実装検出）**（重要度: 高）
+
+- **問題**: `handleBulkPublish`関数が`console.log`のみで、実際のAPI呼び出しが実装されていない
+- **検出内容**:
+  ```javascript
+  [Browser log] Bulk publish: {type: include, ids: Set(2)}
+  ```
+  - ブラウザコンソールに`Bulk publish:`ログが出力された
+  - これはモック実装の証拠
+- **影響範囲**: 商品管理ページ（`/admin/products`）の一括公開機能
+- **現状コード**:
+  ```typescript
+  // frontend/src/pages/AdminProductsPage.tsx:443-445
+  const handleBulkPublish = () => {
+    console.log('Bulk publish:', selectedProducts);
+  };
+  ```
+- **期待される実装**:
+  1. バックエンドAPIエンドポイント作成
+     - `PUT /api/admin/products/bulk-publish`
+     - リクエストボディ: `{ productIds: number[] }`
+  2. フロントエンド実装
+     - React Query mutationを使用
+     - API呼び出し後、商品一覧をrefetch
+     - 成功メッセージ表示
+  3. バックエンド実装
+     - 複数商品の`isActive`フィールドを一括更新
+     - トランザクション処理
+     - 更新件数を返却
+
+##### 2. **一括非公開・一括削除も同様に未実装**（重要度: 高）
+
+- **問題**: TC-015（一括非公開）、TC-016（一括削除）も同じく`console.log`のみ
+- **確認コード**:
+  ```typescript
+  // frontend/src/pages/AdminProductsPage.tsx:447-453
+  const handleBulkUnpublish = () => {
+    console.log('Bulk unpublish:', selectedProducts);
+  };
+
+  const handleBulkDelete = () => {
+    console.log('Bulk delete:', selectedProducts);
+  };
+  ```
+
+#### ✅ テストの成功要因
+
+1. **モック検出ロジックの実装**
+   - ブラウザコンソールログをキャプチャし、`Bulk publish:`文字列を検出
+   - E2E仕様書通り、モック検出時は即座にテスト中止
+
+2. **適切なセレクタ修正**
+   - ステータスフィールドが`status`ではなく`isActive`であることを発見
+   - テストコードを修正し、正しいフィールドを参照
+
+3. **明確なエラーメッセージ**
+   ```
+   ❌ モック検出: console.logのみの実装が検出されました
+   📊 実装状況: handleBulkPublish関数は`console.log`のみで、実際のAPI呼び出しが実装されていません
+   🚨 このテストは即座に中止します（E2E仕様書の指示通り）
+   ```
+
+#### 📝 推奨実装プラン
+
+##### フェーズ1: バックエンドAPI実装（優先度: 高）
+
+1. **エンドポイント作成**
+   ```typescript
+   // backend/src/routes/admin/products.ts
+
+   // 一括公開
+   router.put('/bulk-publish', async (req, res) => {
+     const { productIds } = req.body;
+     const updatedCount = await prisma.product.updateMany({
+       where: { id: { in: productIds } },
+       data: { isActive: true },
+     });
+     res.json({ success: true, updatedCount });
+   });
+
+   // 一括非公開
+   router.put('/bulk-unpublish', async (req, res) => {
+     const { productIds } = req.body;
+     const updatedCount = await prisma.product.updateMany({
+       where: { id: { in: productIds } },
+       data: { isActive: false },
+     });
+     res.json({ success: true, updatedCount });
+   });
+
+   // 一括削除（注文に紐付いていない商品のみ）
+   router.delete('/bulk-delete', async (req, res) => {
+     const { productIds } = req.body;
+     // 注文に紐付いている商品を除外
+     const deletable = await prisma.product.findMany({
+       where: {
+         id: { in: productIds },
+         orderItems: { none: {} }
+       },
+       select: { id: true }
+     });
+     const deletedCount = await prisma.product.deleteMany({
+       where: { id: { in: deletable.map(p => p.id) } }
+     });
+     res.json({ success: true, deletedCount, skipped: productIds.length - deletedCount });
+   });
+   ```
+
+2. **バリデーション**
+   - `productIds`は空配列不可
+   - 最大100件まで（パフォーマンス考慮）
+
+##### フェーズ2: フロントエンド実装（優先度: 高）
+
+1. **React Query mutation作成**
+   ```typescript
+   const bulkPublishMutation = useMutation({
+     mutationFn: async (productIds: number[]) => {
+       const res = await fetch('/api/admin/products/bulk-publish', {
+         method: 'PUT',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ productIds }),
+       });
+       return res.json();
+     },
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ['admin', 'products'] });
+       setSnackbar({ open: true, message: '商品を公開しました', severity: 'success' });
+       setSelectedProducts({ type: 'exclude', ids: new Set() }); // 選択解除
+     },
+   });
+
+   const handleBulkPublish = () => {
+     const productIds = Array.from(selectedProducts.ids);
+     bulkPublishMutation.mutate(productIds);
+   };
+   ```
+
+2. **確認ダイアログ追加（一括削除のみ）**
+   - 削除は不可逆なので確認ダイアログ必須
+   - 公開/非公開は確認不要
+
+##### フェーズ3: TC-014/015/016再テスト（優先度: 中）
+
+1. **TC-014: 一括公開** - 実装後に再実行
+2. **TC-015: 一括非公開** - 実装後に再実行
+3. **TC-016: 一括削除** - 実装後に再実行
+
+#### 🎯 次のアクション
+
+1. **オーケストレーターへ報告**
+   - TC-014はFail（モック実装検出により中止）
+   - 一括公開/非公開/削除の実装が必要
+
+2. **実装タスク作成**
+   - バックエンドAPI実装（3エンドポイント）
+   - フロントエンドmutation実装（3機能）
+   - 確認ダイアログ実装（削除のみ）
+
+3. **テスト再実行計画**
+   - 実装完了後、TC-014/015/016を再実行
+   - 全てPassすればPhase 10.6完了
+
+#### 📊 検証ログ
+
+```
+=== TC-014: 一括公開 開始 ===
+✓ ログイン処理完了
+✓ 商品管理ページに移動
+✓ DataGridが表示
+✓ 1件目のチェックボックスをクリック
+✓ 2件目のチェックボックスをクリック
+✓ 2件がチェックされた状態を確認
+✓ 選択前のステータス: 1件目「公開中」, 2件目「公開中」
+✓ [公開]ボタンが有効化されている
+[Browser log] Bulk publish: {type: include, ids: Set(2)}
+✓ [公開]ボタンをクリック
+❌ モック検出: console.logのみの実装が検出されました
+📊 実装状況: handleBulkPublish関数は`console.log`のみで、実際のAPI呼び出しが実装されていません
+🚨 このテストは即座に中止します（E2E仕様書の指示通り）
+❌ TC-014: Fail (実行時間: 10.1秒)
+```
+
+---
+
+**テスト担当**: Agent（ブルーランプエージェント）
+**報告日時**: 2026-05-09
+**ステータス**: ❌ Fail - 実装不足検出、オーケストレーターへ報告済み

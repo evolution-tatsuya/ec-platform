@@ -9,13 +9,15 @@
  * - 書類自動生成（納品書、領収書、見積書）
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Container,
   Dialog,
   DialogActions,
@@ -44,81 +46,16 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ja } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { Header } from '../components';
+import {
+  useAdminOrders,
+  useShipOrder,
+  useGenerateInvoice,
+  useGenerateReceipt,
+  useGenerateQuote,
+} from '../hooks/useOrders';
+import type { Order, AdminOrderFilterParams, OrderStatus, PaymentMethod } from '../types';
 
-// ダミーデータ
-const DUMMY_ORDERS = [
-  {
-    id: '1',
-    orderNumber: 'ORD-20260415-001',
-    customerName: '山田太郎',
-    customerEmail: 'yamada@example.com',
-    customerPhone: '090-1234-5678',
-    orderDate: new Date('2026-04-10'),
-    totalAmount: 15800,
-    status: 'PREPARING',
-    paymentMethod: 'BANK_TRANSFER',
-    paymentStatus: 'COMPLETED',
-    shippingAddress: '東京都渋谷区道玄坂1-2-3',
-    shippingPostalCode: '150-0043',
-    shippingPhone: '090-1234-5678',
-    items: [
-      { name: 'トヨタ プリウス ブレーキパッド', quantity: 2, price: 7800 },
-      { name: '車用オイルフィルター', quantity: 1, price: 100 },
-    ],
-    shippingOptions: {
-      weekendDelivery: true,
-      preferredDate: '2026-04-20',
-      preferredTimeSlot: '午前中',
-    },
-    notes: 'できるだけ早く発送してください',
-  },
-  {
-    id: '2',
-    orderNumber: 'ORD-20260415-002',
-    customerName: '佐藤花子',
-    customerEmail: 'sato@example.com',
-    customerPhone: '080-9876-5432',
-    orderDate: new Date('2026-04-12'),
-    totalAmount: 28000,
-    status: 'SHIPPED',
-    paymentMethod: 'CREDIT_CARD',
-    paymentStatus: 'COMPLETED',
-    shippingAddress: '大阪府大阪市北区梅田1-1-1',
-    shippingPostalCode: '530-0001',
-    shippingPhone: '080-9876-5432',
-    carrier: 'yamato',
-    trackingNumber: '1234-5678-9012',
-    items: [{ name: 'ホンダ フィット エアフィルター', quantity: 1, price: 28000 }],
-    shippingOptions: {
-      weekendDelivery: false,
-      preferredTimeSlot: '14-16時',
-    },
-    notes: '',
-  },
-  {
-    id: '3',
-    orderNumber: 'ORD-20260414-003',
-    customerName: '田中一郎',
-    customerEmail: 'tanaka@example.com',
-    customerPhone: '070-1111-2222',
-    orderDate: new Date('2026-04-14'),
-    totalAmount: 42500,
-    status: 'PENDING_PAYMENT',
-    paymentMethod: 'BANK_TRANSFER',
-    paymentStatus: 'PENDING',
-    shippingAddress: '福岡県福岡市博多区博多駅前2-3-4',
-    shippingPostalCode: '812-0011',
-    shippingPhone: '070-1111-2222',
-    items: [
-      { name: 'マツダ デミオ スパークプラグ', quantity: 4, price: 9500 },
-      { name: 'ワイパーブレード', quantity: 2, price: 3000 },
-    ],
-    shippingOptions: {
-      weekendDelivery: false,
-    },
-    notes: '不在時は宅配ボックスに入れてください',
-  },
-];
+// DUMMY_ORDERS削除 - API統合完了
 
 // ステータス表示マップ
 const orderStatusMap: Record<string, string> = {
@@ -156,15 +93,34 @@ const carrierMap: Record<string, string> = {
 };
 
 export default function AdminOrdersPage() {
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<OrderStatus | 'all'>('all');
+  const [filterPaymentMethod, setFilterPaymentMethod] = useState<PaymentMethod | 'all'>('all');
   const [filterStartDate, setFilterStartDate] = useState<Date | null>(null);
   const [filterEndDate, setFilterEndDate] = useState<Date | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [shipDialogOpen, setShipDialogOpen] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [carrier, setCarrier] = useState<string>('');
   const [trackingNumber, setTrackingNumber] = useState<string>('');
+
+  // フィルターパラメータを構築
+  const filterParams = useMemo<AdminOrderFilterParams | undefined>(() => {
+    const params: AdminOrderFilterParams = {};
+    if (filterStatus !== 'all') params.status = filterStatus;
+    if (filterPaymentMethod !== 'all') params.paymentMethod = filterPaymentMethod;
+    if (filterStartDate) params.startDate = format(filterStartDate, 'yyyy-MM-dd');
+    if (filterEndDate) params.endDate = format(filterEndDate, 'yyyy-MM-dd');
+    return Object.keys(params).length > 0 ? params : undefined;
+  }, [filterStatus, filterPaymentMethod, filterStartDate, filterEndDate]);
+
+  // API統合: 注文一覧取得
+  const { data: orders = [], isLoading, error } = useAdminOrders(filterParams);
+
+  // API統合: Mutation
+  const shipOrderMutation = useShipOrder();
+  const generateInvoiceMutation = useGenerateInvoice();
+  const generateReceiptMutation = useGenerateReceipt();
+  const generateQuoteMutation = useGenerateQuote();
 
   // DataGrid列定義
   const columns: GridColDef[] = [
@@ -184,14 +140,17 @@ export default function AdminOrdersPage() {
       width: 150,
     },
     {
-      field: 'orderDate',
+      field: 'createdAt',
       headerName: '注文日',
       width: 120,
-      renderCell: (params) => (
-        <Typography variant="body2">
-          {format(params.value as Date, 'yyyy/MM/dd', { locale: ja })}
-        </Typography>
-      ),
+      renderCell: (params) => {
+        const date = new Date(params.value);
+        return (
+          <Typography variant="body2">
+            {format(date, 'yyyy/MM/dd', { locale: ja })}
+          </Typography>
+        );
+      },
     },
     {
       field: 'totalAmount',
@@ -254,7 +213,7 @@ export default function AdminOrdersPage() {
     },
   ];
 
-  const handleOpenDetailDialog = (order: any) => {
+  const handleOpenDetailDialog = (order: Order) => {
     setSelectedOrder(order);
     setDetailDialogOpen(true);
   };
@@ -264,7 +223,7 @@ export default function AdminOrdersPage() {
     setSelectedOrder(null);
   };
 
-  const handleOpenShipDialog = (order: any) => {
+  const handleOpenShipDialog = (order: Order) => {
     setSelectedOrder(order);
     setCarrier('');
     setTrackingNumber('');
@@ -278,19 +237,60 @@ export default function AdminOrdersPage() {
     setTrackingNumber('');
   };
 
-  const handleShip = () => {
-    // 実際のAPI接続は後のステップで実施
-    console.log('発送処理:', { carrier, trackingNumber });
-    handleCloseShipDialog();
+  const handleShip = async () => {
+    if (!selectedOrder || !carrier || !trackingNumber) return;
+
+    try {
+      await shipOrderMutation.mutateAsync({
+        id: selectedOrder.id,
+        data: { carrier, trackingNumber },
+      });
+      handleCloseShipDialog();
+    } catch (err) {
+      console.error('発送処理エラー:', err);
+    }
   };
 
-  const handleDownloadDocument = (type: 'delivery' | 'receipt' | 'quote') => {
-    // 実際のAPI接続は後のステップで実施
-    console.log('書類ダウンロード:', type, selectedOrder?.orderNumber);
+  const handleDownloadDocument = async (type: 'delivery' | 'receipt' | 'quote') => {
+    if (!selectedOrder) return;
+
+    try {
+      if (type === 'delivery') {
+        await generateInvoiceMutation.mutateAsync(selectedOrder.id);
+      } else if (type === 'receipt') {
+        await generateReceiptMutation.mutateAsync(selectedOrder.id);
+      } else if (type === 'quote') {
+        await generateQuoteMutation.mutateAsync(selectedOrder.id);
+      }
+    } catch (err) {
+      console.error('書類生成エラー:', err);
+    }
   };
 
-  // フィルタリング処理（ダミー）
-  const filteredOrders = DUMMY_ORDERS;
+  // ローディング・エラーハンドリング
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress />
+        </Container>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Header />
+        <Container maxWidth="xl" sx={{ py: 4 }}>
+          <Alert severity="error">
+            注文一覧の取得に失敗しました: {error.message}
+          </Alert>
+        </Container>
+      </>
+    );
+  }
 
   return (
     <>
@@ -364,7 +364,7 @@ export default function AdminOrdersPage() {
         <Card>
           <CardContent>
             <DataGrid
-              rows={filteredOrders}
+              rows={orders}
               columns={columns}
               initialState={{
                 pagination: {
@@ -426,9 +426,9 @@ export default function AdminOrdersPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {selectedOrder.items.map((item: any, index: number) => (
+                        {selectedOrder.items.map((item, index: number) => (
                           <TableRow key={index}>
-                            <TableCell>{item.name}</TableCell>
+                            <TableCell>{item.product?.name || '商品名不明'}</TableCell>
                             <TableCell align="right">{item.quantity}</TableCell>
                             <TableCell align="right">¥{item.price.toLocaleString()}</TableCell>
                             <TableCell align="right">
@@ -456,51 +456,19 @@ export default function AdminOrdersPage() {
                   </Typography>
                   <Stack spacing={1}>
                     <Typography variant="body2">
-                      <strong>郵便番号:</strong> {selectedOrder.shippingPostalCode}
+                      <strong>郵便番号:</strong> {selectedOrder.shippingPostalCode || '未設定'}
                     </Typography>
                     <Typography variant="body2">
-                      <strong>住所:</strong> {selectedOrder.shippingAddress}
+                      <strong>住所:</strong> {selectedOrder.shippingAddress || '未設定'}
                     </Typography>
                     <Typography variant="body2">
-                      <strong>電話番号:</strong> {selectedOrder.shippingPhone}
+                      <strong>電話番号:</strong> {selectedOrder.customerPhone}
                     </Typography>
                   </Stack>
                 </Box>
 
-                {/* 配送オプション */}
-                <Box>
-                  <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                    配送オプション
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Typography variant="body2">
-                      <strong>土日着指定:</strong>{' '}
-                      {selectedOrder.shippingOptions.weekendDelivery ? 'あり' : 'なし'}
-                    </Typography>
-                    {selectedOrder.shippingOptions.preferredDate && (
-                      <Typography variant="body2">
-                        <strong>希望配達日:</strong>{' '}
-                        {selectedOrder.shippingOptions.preferredDate}
-                      </Typography>
-                    )}
-                    {selectedOrder.shippingOptions.preferredTimeSlot && (
-                      <Typography variant="body2">
-                        <strong>時間帯指定:</strong>{' '}
-                        {selectedOrder.shippingOptions.preferredTimeSlot}
-                      </Typography>
-                    )}
-                  </Stack>
-                </Box>
-
-                {/* 備考 */}
-                {selectedOrder.notes && (
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                      備考
-                    </Typography>
-                    <Typography variant="body2">{selectedOrder.notes}</Typography>
-                  </Box>
-                )}
+                {/* 備考（配送オプション削除 - 型定義に存在しない） */}
+                {/* notes プロパティも型定義に存在しないため削除 */}
 
                 {/* 支払い情報 */}
                 <Box>
@@ -520,17 +488,18 @@ export default function AdminOrdersPage() {
                 </Box>
 
                 {/* 発送情報（発送済みの場合） */}
-                {selectedOrder.status === 'SHIPPED' && (
+                {selectedOrder.status === 'SHIPPED' && selectedOrder.carrier && (
                   <Box>
                     <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                       発送情報
                     </Typography>
                     <Stack spacing={1}>
                       <Typography variant="body2">
-                        <strong>配送業者:</strong> {carrierMap[selectedOrder.carrier]}
+                        <strong>配送業者:</strong>{' '}
+                        {carrierMap[selectedOrder.carrier] || selectedOrder.carrier}
                       </Typography>
                       <Typography variant="body2">
-                        <strong>追跡番号:</strong> {selectedOrder.trackingNumber}
+                        <strong>追跡番号:</strong> {selectedOrder.trackingNumber || '未設定'}
                       </Typography>
                     </Stack>
                   </Box>
