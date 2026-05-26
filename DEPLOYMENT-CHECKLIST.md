@@ -1,0 +1,494 @@
+# 本番デプロイ チェックリスト
+
+**作成日**: 2026-05-26
+**使い方**: デプロイ前・デプロイ中・デプロイ後の各段階でチェック
+
+---
+
+## ✅ デプロイ前の確認（Pre-Deployment）
+
+### コードの準備
+
+- [ ] すべての変更がGitにコミット済み
+- [ ] `git status` で未コミットファイルがない
+- [ ] mainブランチに最新コードをマージ済み
+- [ ] E2Eテストが97%以上Pass（ローカル環境）
+
+### ドキュメントの確認
+
+- [ ] `DEPLOYMENT-GUIDE.md` を通読した
+- [ ] `.env.production.template` をコピーして `.env.production` を作成した
+- [ ] `PRODUCTION-READINESS-CHECKLIST.md` を確認した
+- [ ] `SECURITY-FINAL-CHECK.md` を確認した
+
+### アカウント・認証情報の準備
+
+- [ ] Neonアカウントが作成済み
+- [ ] Google Cloud Platformアカウントが作成済み
+- [ ] Vercelアカウントが作成済み
+- [ ] Cloudflare R2アカウント（使用する場合）
+- [ ] Stripeアカウント（使用する場合）
+- [ ] Resendアカウント（使用する場合）
+- [ ] OpenAI APIキー（使用する場合）
+
+### CLIツールのインストール
+
+- [ ] `gcloud` CLIがインストール済み
+- [ ] `vercel` CLIがインストール済み
+- [ ] `docker` がインストール済み
+- [ ] `psql`（PostgreSQLクライアント）がインストール済み
+
+---
+
+## ✅ データベース準備（Neon）
+
+### プロジェクト作成
+
+- [ ] Neonで本番用プロジェクトを作成
+  - プロジェクト名: `ec-platform-production`
+  - リージョン: `Asia / Singapore`
+  - PostgreSQL version: 15以上
+
+- [ ] Pooled connectionの接続文字列を取得
+  - 形式: `postgresql://user:password@host/database?sslmode=require`
+
+- [ ] 接続文字列を安全に保存
+  - `/tmp/production-db-url.txt` にコピー（一時）
+  - パスワードマネージャーに保存（永続）
+
+### マイグレーション実行
+
+- [ ] `DATABASE_URL`環境変数を本番用に設定
+  ```bash
+  export DATABASE_URL="postgresql://..."
+  ```
+
+- [ ] マイグレーション実行
+  ```bash
+  cd backend
+  npx prisma migrate deploy
+  ```
+
+- [ ] マイグレーション成功を確認
+  - 表示: `✔ 15 migrations applied successfully`
+
+- [ ] データベース接続テスト
+  ```bash
+  psql $DATABASE_URL -c "SELECT 1"
+  ```
+
+### 初期データ投入
+
+- [ ] 管理者アカウント作成
+  ```bash
+  npx ts-node src/scripts/createAdmin.ts
+  ```
+
+- [ ] 管理者アカウント情報を安全に保存
+  - メール: `admin@ec-platform.local`
+  - パスワード: `TestAdmin2025!`（後で変更する）
+
+- [ ] テストデータ投入（任意）
+  ```bash
+  npx ts-node src/scripts/seedTestData.ts
+  ```
+
+---
+
+## ✅ バックエンドデプロイ（Google Cloud Run）
+
+### Google Cloud準備
+
+- [ ] Google Cloud Consoleで新規プロジェクトを作成
+  - プロジェクト名: `ec-platform-backend`
+  - プロジェクトIDをメモ
+
+- [ ] 必要なAPIを有効化
+  - [ ] Cloud Run API
+  - [ ] Cloud Build API
+  - [ ] Artifact Registry API
+
+- [ ] gcloud CLIで認証
+  ```bash
+  gcloud auth login
+  gcloud config set project ec-platform-backend-123456
+  ```
+
+### Dockerイメージ作成
+
+- [ ] Dockerイメージをビルド
+  ```bash
+  cd backend
+  docker build -t gcr.io/PROJECT_ID/backend:latest .
+  ```
+
+- [ ] ビルド成功を確認
+  ```bash
+  docker images | grep backend
+  ```
+
+- [ ] ローカルでイメージをテスト（任意）
+  ```bash
+  docker run -p 8432:8432 --env-file .env.production gcr.io/PROJECT_ID/backend:latest
+  ```
+
+### Cloud Runへのデプロイ
+
+- [ ] Docker認証設定
+  ```bash
+  gcloud auth configure-docker
+  ```
+
+- [ ] イメージをプッシュ
+  ```bash
+  docker push gcr.io/PROJECT_ID/backend:latest
+  ```
+
+- [ ] Cloud Runにデプロイ
+  ```bash
+  gcloud run deploy ec-platform-backend \
+    --image gcr.io/PROJECT_ID/backend:latest \
+    --platform managed \
+    --region asia-northeast1 \
+    --allow-unauthenticated \
+    --port 8432 \
+    --memory 512Mi \
+    --cpu 1 \
+    --set-env-vars "NODE_ENV=production" \
+    --set-env-vars "DATABASE_URL=..." \
+    --set-env-vars "SESSION_SECRET=..." \
+    --set-env-vars "CORS_ORIGIN=https://your-app.vercel.app"
+  ```
+
+- [ ] デプロイ成功を確認
+  - Service URLをメモ（例: `https://ec-platform-backend-xxx-an.a.run.app`）
+
+### 環境変数の設定
+
+- [ ] Cloud Runコンソールで環境変数を確認
+  - [ ] `NODE_ENV=production`
+  - [ ] `DATABASE_URL=postgresql://...`
+  - [ ] `SESSION_SECRET=...` (32バイト以上)
+  - [ ] `CORS_ORIGIN=https://...`
+  - [ ] `PORT=8432`
+
+- [ ] オプション環境変数（使用する場合）
+  - [ ] `R2_ACCOUNT_ID`
+  - [ ] `R2_ACCESS_KEY_ID`
+  - [ ] `R2_SECRET_ACCESS_KEY`
+  - [ ] `R2_BUCKET_NAME`
+  - [ ] `STRIPE_SECRET_KEY` (sk_live_)
+  - [ ] `RESEND_API_KEY`
+  - [ ] `RESEND_FROM_EMAIL`
+  - [ ] `OPENAI_API_KEY`
+  - [ ] `GEMINI_API_KEY`
+
+### 動作確認
+
+- [ ] ヘルスチェックAPI
+  ```bash
+  curl https://SERVICE_URL/api/health
+  ```
+  - 期待: `{"status":"ok","timestamp":"..."}`
+
+- [ ] 商品一覧API（認証不要）
+  ```bash
+  curl https://SERVICE_URL/api/products
+  ```
+  - 期待: JSON配列（空でも可）
+
+- [ ] CORSヘッダー確認
+  ```bash
+  curl -I https://SERVICE_URL/api/health
+  ```
+  - 期待: `Access-Control-Allow-Origin` ヘッダーあり
+
+---
+
+## ✅ フロントエンドデプロイ（Vercel）
+
+### Vercel準備
+
+- [ ] Vercel CLIでログイン
+  ```bash
+  cd frontend
+  vercel login
+  ```
+
+- [ ] ブラウザで認証完了
+
+### プロジェクト初期化
+
+- [ ] Vercelプロジェクトを初期化
+  ```bash
+  vercel
+  ```
+
+- [ ] 設定を確認
+  - プロジェクト名: `ec-platform-frontend`
+  - ビルドコマンド: `npm run build`
+  - 出力ディレクトリ: `dist`
+
+### 環境変数の設定
+
+- [ ] Vercelダッシュボードで環境変数を設定
+  - https://vercel.com/dashboard → プロジェクト → Settings → Environment Variables
+
+- [ ] Production環境の環境変数
+  - [ ] `VITE_API_URL=https://SERVICE_URL`
+  - [ ] `VITE_STRIPE_PUBLIC_KEY=pk_live_...` （使用する場合）
+
+- [ ] Preview環境の環境変数（同じ値でOK）
+  - [ ] `VITE_API_URL=https://SERVICE_URL`
+  - [ ] `VITE_STRIPE_PUBLIC_KEY=pk_test_...`
+
+### 本番デプロイ
+
+- [ ] 本番環境にデプロイ
+  ```bash
+  vercel --prod
+  ```
+
+- [ ] デプロイ成功を確認
+  - Production URLをメモ（例: `https://ec-platform-frontend.vercel.app`）
+
+### カスタムドメイン（任意）
+
+- [ ] Vercelダッシュボードでドメインを追加
+- [ ] DNS設定を完了
+- [ ] SSL証明書が自動発行されることを確認
+
+---
+
+## ✅ CORS設定の更新
+
+### バックエンドのCORS更新
+
+- [ ] Vercelの本番URLを使用してCORS_ORIGINを更新
+  ```bash
+  gcloud run services update ec-platform-backend \
+    --region asia-northeast1 \
+    --set-env-vars "CORS_ORIGIN=https://ec-platform-frontend.vercel.app"
+  ```
+
+- [ ] 更新完了を確認
+  ```bash
+  gcloud run services describe ec-platform-backend --region asia-northeast1
+  ```
+
+---
+
+## ✅ 動作確認（Post-Deployment）
+
+### バックエンドAPI確認
+
+- [ ] ヘルスチェック
+  ```bash
+  curl https://SERVICE_URL/api/health
+  ```
+
+- [ ] 商品一覧API
+  ```bash
+  curl https://SERVICE_URL/api/products
+  ```
+
+- [ ] 管理者ログインAPI（Postmanまたはcurl）
+  ```bash
+  curl -X POST https://SERVICE_URL/api/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"admin@ec-platform.local","password":"TestAdmin2025!"}'
+  ```
+
+### フロントエンド確認
+
+- [ ] トップページが表示される
+  - URL: https://ec-platform-frontend.vercel.app
+
+- [ ] ヒーローセクションが正常に表示される
+
+- [ ] カテゴリーが表示される
+
+- [ ] 商品一覧が表示される（データがある場合）
+
+### 管理画面確認
+
+- [ ] ログインページにアクセス
+  - URL: https://ec-platform-frontend.vercel.app/admin/login
+
+- [ ] 管理者アカウントでログイン
+  - メール: `admin@ec-platform.local`
+  - パスワード: `TestAdmin2025!`
+
+- [ ] ダッシュボードが表示される
+
+- [ ] 商品管理ページが表示される
+  - URL: /admin/products
+
+- [ ] DataGridが正常に動作する
+
+### 認証・セッション確認
+
+- [ ] ログイン後にセッションが維持される
+
+- [ ] ページをリロードしてもログイン状態が保持される
+
+- [ ] ログアウトが正常に動作する
+
+### エラーハンドリング確認
+
+- [ ] 存在しないページにアクセスすると404ページが表示される
+
+- [ ] APIエラー時に適切なエラーメッセージが表示される
+
+### パフォーマンス確認
+
+- [ ] Lighthouseスコアを確認
+  - Performance: 90以上
+  - Accessibility: 90以上
+  - Best Practices: 90以上
+  - SEO: 80以上
+
+---
+
+## ✅ セキュリティ最終確認
+
+### 認証情報の変更
+
+- [ ] 管理者アカウントのパスワードを変更
+  - 初期パスワード: `TestAdmin2025!`
+  - 新しいパスワード: 強力なパスワードに変更
+
+- [ ] SESSION_SECRETが本番用に生成済み
+  ```bash
+  openssl rand -base64 32
+  ```
+
+- [ ] データベースURLが本番用（開発環境と別）
+
+### API キーの確認
+
+- [ ] Stripe APIキーが本番モード（`sk_live_`、`pk_live_`）
+
+- [ ] OpenAI APIキーに使用量制限が設定済み
+  - https://platform.openai.com/account/billing/limits
+
+- [ ] Resendが本番ドメインで設定済み
+
+### セキュリティヘッダー確認
+
+- [ ] HTTPSが有効（Vercel、Cloud Runは自動）
+
+- [ ] Helmet.jsが有効（バックエンド）
+  ```bash
+  curl -I https://SERVICE_URL/api/health | grep -i "x-frame-options"
+  ```
+
+- [ ] CORS設定が本番URLのみ許可
+
+### エラーログの確認
+
+- [ ] エラーログにAPIキーが含まれていない
+
+- [ ] エラーログにパスワードが含まれていない
+
+- [ ] Stack traceが本番環境で表示されない
+
+---
+
+## ✅ モニタリング・バックアップ
+
+### モニタリング設定
+
+- [ ] Google Cloud Monitoringが有効
+  - https://console.cloud.google.com/monitoring
+
+- [ ] Vercel Analyticsが有効（任意、$10/月）
+  - https://vercel.com/docs/analytics
+
+- [ ] エラーアラートが設定済み（任意）
+
+### バックアップ設定
+
+- [ ] Neon自動バックアップが有効
+  - Neonコンソールで確認
+
+- [ ] 週次の手動バックアップスケジュールを設定（推奨）
+  ```bash
+  pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+  ```
+
+---
+
+## ✅ ドキュメント更新
+
+### README更新
+
+- [ ] README.mdに本番環境URLを追加
+
+- [ ] デプロイ日時を記録
+
+### 運用ドキュメント
+
+- [ ] 本番環境の接続情報をドキュメント化（安全な場所に保管）
+
+- [ ] 障害対応手順書を作成（任意）
+
+### チーム共有
+
+- [ ] デプロイ完了をチームに通知
+
+- [ ] 本番環境のアクセス権限を設定
+
+---
+
+## 📊 デプロイ完了レポート
+
+デプロイ完了後、以下の情報を記録してください：
+
+```
+デプロイ日時: YYYY-MM-DD HH:MM
+デプロイ担当者: [名前]
+
+本番環境URL:
+- フロントエンド: https://ec-platform-frontend.vercel.app
+- バックエンド: https://ec-platform-backend-xxx-an.a.run.app
+
+データベース:
+- Neonプロジェクト: ec-platform-production
+- リージョン: ap-southeast-1
+- PostgreSQL version: 15
+
+動作確認結果:
+- ✅ ヘルスチェックAPI: 正常
+- ✅ フロントエンド表示: 正常
+- ✅ 管理画面ログイン: 正常
+- ✅ セッション維持: 正常
+- ✅ CORS: 正常
+
+Lighthouseスコア:
+- Performance: XX
+- Accessibility: XX
+- Best Practices: XX
+- SEO: XX
+
+次のアクション:
+- [ ] カスタムドメイン設定
+- [ ] モニタリング強化
+- [ ] パフォーマンス最適化
+```
+
+---
+
+## 🎉 完了！
+
+すべてのチェックが完了したら、本番環境デプロイ成功です！
+
+次のステップ:
+1. ユーザーに本番環境URLを共有
+2. フィードバックを収集
+3. 継続的な改善
+
+---
+
+**作成者**: Claude Code
+**最終更新**: 2026-05-26
