@@ -50,13 +50,13 @@ export const DigitalProductCard: React.FC<DigitalProductCardProps> = ({
   const getDigitalTypeLabel = () => {
     switch (product.digitalType) {
       case 'PDF':
-        return '📄 PDF';
+        return 'PDF';
       case '音楽':
-        return '🎵 音楽';
+        return '音楽';
       case '動画':
-        return '🎬 動画';
+        return '動画';
       case 'デジタルチケット':
-        return '🎫 チケット';
+        return 'チケット';
       default:
         return product.digitalType;
     }
