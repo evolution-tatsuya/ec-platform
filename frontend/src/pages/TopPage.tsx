@@ -315,7 +315,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -383,7 +383,7 @@ export default function TopPage() {
                       sx={{
                         fontSize: 20,
                         fontWeight: 700,
-                        color: '#1976d2',
+                        color: '#7c4dff',
                       }}
                     >
                       ¥{product.product.price.toLocaleString()}
@@ -414,7 +414,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -480,7 +480,7 @@ export default function TopPage() {
                   sx={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: '#1976d2',
+                    color: '#7c4dff',
                   }}
                 >
                   ¥{product.price.toLocaleString()}
@@ -511,7 +511,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -577,7 +577,7 @@ export default function TopPage() {
                   sx={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: '#1976d2',
+                    color: '#7c4dff',
                   }}
                 >
                   ¥{product.price.toLocaleString()}
@@ -608,7 +608,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -674,7 +674,7 @@ export default function TopPage() {
                   sx={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: '#1976d2',
+                    color: '#7c4dff',
                   }}
                 >
                   ¥{product.price.toLocaleString()}
@@ -703,7 +703,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
