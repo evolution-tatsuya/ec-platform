@@ -174,7 +174,7 @@ export const CarsTopPage: React.FC = () => {
 
           <Grid container spacing={3}>
             {featuredCars.map((car) => (
-              <Grid xs={12} sm={6} md={3} key={car.id}>
+              <Grid xs={12} sm={6} md={4} key={car.id}>
                 <Card
                   sx={{
                     cursor: 'pointer',
@@ -188,16 +188,10 @@ export const CarsTopPage: React.FC = () => {
                 >
                   <Box
                     sx={{
-                      height: 200,
+                      height: 220,
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
                     }}
-                  >
-                    <DirectionsCar sx={{ fontSize: 64 }} />
-                  </Box>
+                  />
 
                   <CardContent>
                     <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
