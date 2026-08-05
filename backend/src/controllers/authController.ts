@@ -8,6 +8,10 @@ import { createError } from '../middleware/errorHandler';
 
 const SALT_ROUNDS = 10;
 
+// ブルートフォース対策: 5回連続失敗で15分間ロック
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15分
+
 /**
  * 会員登録
  * POST /api/auth/register
@@ -87,11 +91,58 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       return next(createError('メールアドレスまたはパスワードが正しくありません', 401));
     }
 
+    // アカウントロック中かチェック（ブルートフォース対策）
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const remainingMs = user.lockedUntil.getTime() - Date.now();
+      const remainingMin = Math.ceil(remainingMs / 60000);
+      return next(
+        createError(
+          `ログイン試行回数が上限に達しました。約${remainingMin}分後に再度お試しください`,
+          429
+        )
+      );
+    }
+
     // パスワード検証
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return next(createError('メールアドレスまたはパスワードが正しくありません', 401));
+      // 失敗回数をインクリメントし、上限到達でロック
+      const attempts = user.failedLoginAttempts + 1;
+      const shouldLock = attempts >= MAX_LOGIN_ATTEMPTS;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: attempts,
+          lockedUntil: shouldLock ? new Date(Date.now() + LOCK_DURATION_MS) : null,
+        },
+      });
+
+      if (shouldLock) {
+        return next(
+          createError(
+            'ログイン試行回数が上限に達しました。15分後に再度お試しください',
+            429
+          )
+        );
+      }
+
+      const remaining = MAX_LOGIN_ATTEMPTS - attempts;
+      return next(
+        createError(
+          `メールアドレスまたはパスワードが正しくありません（あと${remaining}回でロックされます）`,
+          401
+        )
+      );
+    }
+
+    // ログイン成功: 失敗カウントとロックをリセット
+    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
     }
 
     // セッションに保存
