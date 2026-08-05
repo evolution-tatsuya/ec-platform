@@ -366,7 +366,7 @@ export default function TopPage() {
                   >
                     {!(product as any).gradient &&
                       (!product.product.images || !product.product.images[0]) &&
-                      `商品画像 ${product.id}`}
+                      `商品画像`}
                   </Box>
                   <Box sx={{ p: 2 }}>
                     <Typography
@@ -397,6 +397,7 @@ export default function TopPage() {
       </Box>
 
       {/* 新着商品 */}
+      {topPageData.newProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -462,7 +463,7 @@ export default function TopPage() {
               >
                 {!(product as any).gradient &&
                   (!product.images || !product.images[0]) &&
-                  `新着 ${product.id}`}
+                  `新着`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -490,7 +491,10 @@ export default function TopPage() {
         </Box>
       </Box>
 
+      )}
+
       {/* セール商品 */}
+      {topPageData.saleProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -556,7 +560,7 @@ export default function TopPage() {
               >
                 {!(product as any).gradient &&
                   (!product.images || !product.images[0]) &&
-                  `セール ${product.id}`}
+                  `セール`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -584,7 +588,10 @@ export default function TopPage() {
         </Box>
       </Box>
 
+      )}
+
       {/* 人気商品 */}
+      {topPageData.popularProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -650,7 +657,7 @@ export default function TopPage() {
               >
                 {!(product as any).gradient &&
                   (!product.images || !product.images[0]) &&
-                  `人気 ${product.id}`}
+                  `人気`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -677,6 +684,7 @@ export default function TopPage() {
           ))}
         </Box>
       </Box>
+      )}
 
       {/* お知らせ・ニュース */}
       <Box
