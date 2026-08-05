@@ -42,8 +42,9 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // ===== CORS設定 =====
-// 複数のオリジンを許可（localhost と IPアドレスの両方）
-const allowedOrigins = [
+// 本番環境では設定されたオリジンのみ許可し、開発用のlocalhost/LAN IPは信頼しない。
+// 開発環境では利便性のため複数のlocalhost/LAN IPを許可する。
+const devOrigins = [
   'http://localhost:5173',
   'http://localhost:3247',
   'http://localhost:3248',
@@ -57,8 +58,17 @@ const allowedOrigins = [
   'http://172.20.10.10:5173',
   'http://172.20.10.10:3249',
   'http://172.20.10.10:3250',
-  config.corsOrigin,
 ];
+
+const isProduction = config.nodeEnv === 'production';
+
+// 本番: CORS_ORIGIN と FRONTEND_URL のみ許可
+// 開発: 上記に加えてlocalhost/LAN IP群も許可
+const allowedOrigins = [
+  config.corsOrigin,
+  config.frontendUrl,
+  ...(isProduction ? [] : devOrigins),
+].filter(Boolean);
 
 app.use(
   cors({
