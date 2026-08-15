@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Drawer,
@@ -13,6 +13,9 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
+  Avatar,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -26,7 +29,11 @@ import {
   ContactMail,
   Settings,
   Navigation as NavigationIcon,
+  AccountCircle,
+  Logout,
+  ManageAccounts,
 } from '@mui/icons-material';
+import { useAuth } from '../hooks/useAuth';
 
 const drawerWidth = 240;
 
@@ -44,7 +51,7 @@ const navItems: NavItem[] = [
   { text: '顧客管理', icon: <People />, path: '/admin/customers' },
   { text: '問い合わせ管理', icon: <ContactMail />, path: '/admin/inquiries' },
   { text: 'システム設定', icon: <Settings />, path: '/admin/settings' },
-  { text: 'ナビゲーション軸', icon: <NavigationIcon />, path: '/admin/navigation' },
+  { text: 'ナビゲーション軸', icon: <NavigationIcon />, path: '/admin/navigation-axes' },
 ];
 
 export default function AdminLayout() {
@@ -52,6 +59,28 @@ export default function AdminLayout() {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  // アカウントメニュー（右上）
+  const [accountAnchor, setAccountAnchor] = useState<null | HTMLElement>(null);
+  const accountMenuOpen = Boolean(accountAnchor);
+
+  const handleAccountMenuOpen = (e: React.MouseEvent<HTMLElement>) => {
+    setAccountAnchor(e.currentTarget);
+  };
+  const handleAccountMenuClose = () => setAccountAnchor(null);
+
+  const handleAccountSettings = () => {
+    handleAccountMenuClose();
+    navigate('/admin/account');
+  };
+
+  const handleLogout = async () => {
+    handleAccountMenuClose();
+    await logout();
+    navigate('/admin/login');
+  };
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -104,6 +133,64 @@ export default function AdminLayout() {
           <Typography variant="h6" noWrap component="div">
             多機能ECプラットフォーム
           </Typography>
+
+          {/* 右側: アカウントメニュー */}
+          <Box sx={{ flexGrow: 1 }} />
+          <Box
+            onClick={handleAccountMenuOpen}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              cursor: 'pointer',
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              '&:hover': { bgcolor: 'rgba(255,255,255,0.12)' },
+            }}
+          >
+            <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(255,255,255,0.25)' }}>
+              {user?.name?.charAt(0) ?? <AccountCircle />}
+            </Avatar>
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{ display: { xs: 'none', sm: 'block' }, maxWidth: 160 }}
+            >
+              {user?.name ?? '管理者'}
+            </Typography>
+          </Box>
+          <Menu
+            anchorEl={accountAnchor}
+            open={accountMenuOpen}
+            onClose={handleAccountMenuClose}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <MenuItem disabled sx={{ opacity: '1 !important' }}>
+              <Box>
+                <Typography variant="body2" fontWeight={700}>
+                  {user?.name ?? '管理者'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {user?.email ?? ''}
+                </Typography>
+              </Box>
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleAccountSettings}>
+              <ListItemIcon>
+                <ManageAccounts fontSize="small" />
+              </ListItemIcon>
+              アカウント設定
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <Logout fontSize="small" />
+              </ListItemIcon>
+              ログアウト
+            </MenuItem>
+          </Menu>
         </Toolbar>
       </AppBar>
 

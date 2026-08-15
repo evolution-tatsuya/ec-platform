@@ -34,6 +34,7 @@ import AuthPage from './pages/AuthPage';
 import AboutPage from './pages/AboutPage';
 import LegalPage from './pages/LegalPage';
 import PrivacyPage from './pages/PrivacyPage';
+import AdminAccountPage from './pages/AdminAccountPage';
 import { UserRole } from './types';
 import { Header, CustomerLayout } from './components';
 import TestPage from './TestPage';
@@ -73,6 +74,7 @@ function App() {
               <Route path="inquiries" element={<AdminInquiriesPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
+              <Route path="account" element={<AdminAccountPage />} />
             </Route>
 
             {/* トップページ（独自レイアウト） */}
