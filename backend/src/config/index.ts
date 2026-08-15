@@ -30,17 +30,17 @@ interface Config {
   // Stripe
   stripePublicKey: string;
   stripeSecretKey: string;
-  stripeWebhookSecret: string;
+  stripeWebhookSecret?: string;
 
   // Resend
   resendApiKey: string;
   resendFromEmail: string;
 
-  // OpenAI
-  openaiApiKey: string;
+  // OpenAI（任意: 未設定ならAI返答をスキップし人間対応へ）
+  openaiApiKey?: string;
 
-  // Gemini
-  geminiApiKey: string;
+  // Gemini（任意: 未設定ならAI返答をスキップし人間対応へ）
+  geminiApiKey?: string;
 }
 
 const getEnv = (key: string, defaultValue?: string): string => {
@@ -49,6 +49,10 @@ const getEnv = (key: string, defaultValue?: string): string => {
     throw new Error(`環境変数 ${key} が設定されていません`);
   }
   return value;
+};
+
+const getEnvOptional = (key: string, defaultValue?: string): string | undefined => {
+  return process.env[key] || defaultValue;
 };
 
 export const config: Config = {
@@ -68,11 +72,11 @@ export const config: Config = {
 
   stripePublicKey: getEnv('STRIPE_PUBLIC_KEY'),
   stripeSecretKey: getEnv('STRIPE_SECRET_KEY'),
-  stripeWebhookSecret: getEnv('STRIPE_WEBHOOK_SECRET', ''),
+  stripeWebhookSecret: getEnvOptional('STRIPE_WEBHOOK_SECRET'),
 
   resendApiKey: getEnv('RESEND_API_KEY'),
   resendFromEmail: getEnv('RESEND_FROM_EMAIL'),
 
-  openaiApiKey: getEnv('OPENAI_API_KEY'),
-  geminiApiKey: getEnv('GEMINI_API_KEY'),
+  openaiApiKey: getEnvOptional('OPENAI_API_KEY'),
+  geminiApiKey: getEnvOptional('GEMINI_API_KEY'),
 };
