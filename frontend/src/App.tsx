@@ -31,6 +31,9 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
+import AboutPage from './pages/AboutPage';
+import LegalPage from './pages/LegalPage';
+import PrivacyPage from './pages/PrivacyPage';
 import { UserRole } from './types';
 import { Header, CustomerLayout } from './components';
 import TestPage from './TestPage';
@@ -158,6 +161,20 @@ function App() {
               element={
                 <CustomerLayout><DigitalProductsListPage /></CustomerLayout>
               }
+            />
+
+            {/* 静的情報ページ（フッターリンク） */}
+            <Route
+              path="/about"
+              element={<CustomerLayout><AboutPage /></CustomerLayout>}
+            />
+            <Route
+              path="/legal"
+              element={<CustomerLayout><LegalPage /></CustomerLayout>}
+            />
+            <Route
+              path="/privacy"
+              element={<CustomerLayout><PrivacyPage /></CustomerLayout>}
             />
 
             {/* 認証ページ（独自レイアウト、Headerあり） */}
