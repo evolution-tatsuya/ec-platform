@@ -43,7 +43,6 @@ import type { GridColDef } from '@mui/x-data-grid';
 import { Edit } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Header } from '../components';
 import { useAdminCustomers, useAdminCustomerById, useUpdateCustomerTags } from '../hooks/useCustomers';
 import type { CustomerWithStats } from '../types';
 
@@ -112,11 +111,15 @@ export default function AdminCustomersPage() {
       field: 'registeredAt',
       headerName: '登録日',
       width: 120,
-      renderCell: (params) => (
-        <Typography variant="body2">
-          {format(new Date(params.value as string), 'yyyy/MM/dd', { locale: ja })}
-        </Typography>
-      ),
+      renderCell: (params) => {
+        const d = params.value ? new Date(params.value as string) : null;
+        const valid = d && !isNaN(d.getTime());
+        return (
+          <Typography variant="body2">
+            {valid ? format(d as Date, 'yyyy/MM/dd', { locale: ja }) : '-'}
+          </Typography>
+        );
+      },
     },
     {
       field: 'totalOrders',
@@ -136,7 +139,7 @@ export default function AdminCustomersPage() {
       align: 'right',
       renderCell: (params) => (
         <Typography variant="body2" fontWeight="bold">
-          ¥{params.value.toLocaleString()}
+          ¥{(params.value ?? 0).toLocaleString()}
         </Typography>
       ),
     },
@@ -147,7 +150,7 @@ export default function AdminCustomersPage() {
       sortable: false,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5}>
-          {(params.value as string[]).map((tag, index) => (
+          {(Array.isArray(params.value) ? (params.value as string[]) : []).map((tag, index) => (
             <Chip key={index} label={tag} size="small" color="primary" />
           ))}
         </Stack>
@@ -214,70 +217,65 @@ export default function AdminCustomersPage() {
   // ローディング状態
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-            <CircularProgress />
-          </Box>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
+        </Box>
+      </Container>
     );
   }
 
   // エラー状態
   if (error) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Alert severity="error">
-            顧客データの取得に失敗しました: {error.message}
-          </Alert>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Alert severity="error">
+          顧客データの取得に失敗しました: {error.message}
+        </Alert>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          顧客管理
-        </Typography>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        顧客管理
+      </Typography>
 
         {/* 検索・絞り込み */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Grid container spacing={2}>
-              <Grid xs={12} sm={8}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="顧客検索"
-                  placeholder="名前またはメールアドレスで検索"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </Grid>
-              <Grid xs={12} sm={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>購入回数</InputLabel>
-                  <Select
-                    value={filterOrderCount}
-                    onChange={(e) => setFilterOrderCount(e.target.value)}
-                    label="購入回数"
-                  >
-                    <MenuItem value="all">すべて</MenuItem>
-                    <MenuItem value="1">1回</MenuItem>
-                    <MenuItem value="2-5">2〜5回</MenuItem>
-                    <MenuItem value="6-10">6〜10回</MenuItem>
-                    <MenuItem value="11+">11回以上</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' },
+                gap: 2,
+                alignItems: 'center',
+              }}
+            >
+              <TextField
+                fullWidth
+                size="small"
+                label="顧客検索"
+                placeholder="名前またはメールアドレスで検索"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>購入回数</InputLabel>
+                <Select
+                  value={filterOrderCount}
+                  onChange={(e) => setFilterOrderCount(e.target.value)}
+                  label="購入回数"
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="1">1回</MenuItem>
+                  <MenuItem value="2-5">2〜5回</MenuItem>
+                  <MenuItem value="6-10">6〜10回</MenuItem>
+                  <MenuItem value="11+">11回以上</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </CardContent>
         </Card>
 
@@ -298,12 +296,23 @@ export default function AdminCustomersPage() {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               autoHeight
+              sx={{
+                // 全セルの中身を縦センターに揃える（行ごとの上下バラつきを解消）
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-cell > *': {
+                  width: '100%',
+                },
+              }}
             />
           </CardContent>
         </Card>
 
         {/* 顧客詳細ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={detailDialogOpen}
           onClose={handleCloseDetailDialog}
           maxWidth="md"
@@ -490,7 +499,6 @@ export default function AdminCustomersPage() {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
-    </>
+    </Container>
   );
 }

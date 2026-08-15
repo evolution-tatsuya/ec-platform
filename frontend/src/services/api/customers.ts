@@ -12,6 +12,16 @@ import type {
 // 環境変数からAPIベースURLを取得
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8432';
 
+/** tags が JSON文字列の場合に安全に配列へパースする（失敗時は空配列） */
+const safeParseTags = (value: string): string[] => {
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
 // ========================================
 // 型定義
 // ========================================
@@ -60,7 +70,20 @@ export const getAdminCustomers = async (
         withCredentials: true,
       }
     );
-    return response.data.customers;
+    // バックエンドのフィールド名（createdAt/orderCount/totalPurchase）を
+    // フロントの型（registeredAt/totalOrders/totalSpent）へ変換し、
+    // undefined/null によるクラッシュを防ぐため安全なデフォルトを補う
+    return (response.data.customers || []).map((c: any) => ({
+      ...c,
+      registeredAt: c.registeredAt ?? c.createdAt ?? new Date().toISOString(),
+      totalOrders: c.totalOrders ?? c.orderCount ?? c._count?.orders ?? 0,
+      totalSpent: c.totalSpent ?? c.totalPurchase ?? 0,
+      tags: Array.isArray(c.tags)
+        ? c.tags
+        : typeof c.tags === 'string'
+          ? safeParseTags(c.tags)
+          : [],
+    }));
   } catch (error: any) {
     console.error('顧客一覧取得エラー:', error);
     throw new Error(error.response?.data?.message || '顧客一覧の取得に失敗しました');

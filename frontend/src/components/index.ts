@@ -1,4 +1,6 @@
 export { Header } from './Header';
+export { Footer } from './Footer';
+export { CustomerLayout } from './CustomerLayout';
 export { Sidebar } from './Sidebar';
 export { default as ProtectedRoute } from './ProtectedRoute';
 export { default as AdminLayout } from './AdminLayout';

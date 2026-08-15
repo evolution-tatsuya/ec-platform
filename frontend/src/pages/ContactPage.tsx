@@ -32,6 +32,7 @@ import {
   AccordionDetails,
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import type {
@@ -39,6 +40,12 @@ import type {
   InquiryHistory,
 } from '../types';
 import { InquiryStatus } from '../types';
+import {
+  createInquiry,
+  getInquiryHistory,
+  submitInquiryFeedback,
+  escalateInquiry as escalateInquiryApi,
+} from '../services/api/contactInquiry';
 
 const ContactPage = () => {
   const { user, isAuthenticated } = useAuth();
@@ -54,15 +61,15 @@ const ContactPage = () => {
   const [allowGuestInquiry, setAllowGuestInquiry] = useState(false);
 
   // AI回答状態
-  const [inquiryResponse] = useState<InquiryResponse | null>(null);
+  const [inquiryResponse, setInquiryResponse] = useState<InquiryResponse | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
   // エスカレーション状態
-  const [isEscalated] = useState(false);
+  const [isEscalated, setIsEscalated] = useState(false);
 
   // 過去の問い合わせ履歴
-  const [history] = useState<InquiryHistory[]>([]);
+  const [history, setHistory] = useState<InquiryHistory[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // FAQ検索
@@ -185,8 +192,8 @@ const ContactPage = () => {
 
     setIsLoadingHistory(true);
     try {
-      // TODO: 顧客向け問い合わせ履歴APIが未実装
-      throw new Error('問い合わせ履歴API（GET /api/inquiries/history）が未実装です');
+      const inquiries = await getInquiryHistory();
+      setHistory(inquiries);
     } catch (error) {
       console.error('履歴取得エラー:', error);
       // エラーは表示せず空配列のまま（履歴がない状態として扱う）
@@ -200,30 +207,63 @@ const ContactPage = () => {
     e.preventDefault();
     setSubmitError('');
     setIsSubmitting(true);
+    setInquiryResponse(null);
+    setIsEscalated(false);
 
     try {
-      // TODO: 顧客向け問い合わせ送信APIが未実装
-      throw new Error(
-        '問い合わせ送信API（POST /api/inquiries）が未実装です。\n' +
-        'バックエンドに顧客向け問い合わせAPIの実装が必要です。'
-      );
+      const response = await createInquiry({
+        name,
+        email,
+        question,
+        orderNumber: orderNumber || undefined,
+      });
+
+      setInquiryResponse(response);
+
+      // AIが解決できずエスカレーションされた場合はオペレーター案内を表示
+      if (response.inquiry.isEscalated) {
+        setIsEscalated(true);
+      }
+
+      // ログイン時は履歴を再取得して最新化
+      if (isAuthenticated) {
+        loadHistory();
+      }
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'エラーが発生しました');
+      if (axios.isAxiosError(error)) {
+        setSubmitError(
+          error.response?.data?.message ?? '問い合わせの送信に失敗しました'
+        );
+      } else {
+        setSubmitError(error instanceof Error ? error.message : 'エラーが発生しました');
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // 満足度フィードバック
-  const handleFeedback = async () => {
+  const handleFeedback = async (isSatisfied: boolean) => {
     if (!inquiryResponse) return;
 
     try {
-      // TODO: フィードバックAPIが未実装
-      throw new Error('フィードバックAPI（PUT /api/inquiries/:id/feedback）が未実装です');
+      const updated = await submitInquiryFeedback(
+        inquiryResponse.inquiry.id,
+        isSatisfied
+      );
+      setInquiryResponse({ ...inquiryResponse, inquiry: updated });
+
+      // 「解決しなかった」場合はオペレーター案内を表示
+      if (!isSatisfied) {
+        setIsEscalated(true);
+      }
+
+      if (isAuthenticated) {
+        loadHistory();
+      }
     } catch (error) {
       console.error('フィードバック送信エラー:', error);
-      alert('フィードバックの送信に失敗しました。APIが未実装です。');
+      alert('フィードバックの送信に失敗しました。');
     }
   };
 
@@ -232,11 +272,17 @@ const ContactPage = () => {
     if (!inquiryResponse) return;
 
     try {
-      // TODO: エスカレーションAPIが未実装
-      throw new Error('エスカレーションAPI（PUT /api/inquiries/:id/escalate）が未実装です');
+      const updated = await escalateInquiryApi(inquiryResponse.inquiry.id);
+      setInquiryResponse({ ...inquiryResponse, inquiry: updated });
+      setIsEscalated(true);
+
+      if (isAuthenticated) {
+        loadHistory();
+      }
+      alert('オペレーターにおつなぎします。担当者より改めてご連絡いたします。');
     } catch (error) {
       console.error('エスカレーションエラー:', error);
-      alert('エスカレーションに失敗しました。APIが未実装です。');
+      alert('エスカレーションに失敗しました。');
     }
   };
 
@@ -509,14 +555,14 @@ const ContactPage = () => {
                     <Box sx={{ display: 'flex', gap: 1.5 }}>
                       <Button
                         variant="contained"
-                        onClick={() => handleFeedback()}
+                        onClick={() => handleFeedback(true)}
                         sx={{ fontWeight: 700 }}
                       >
                         解決した
                       </Button>
                       <Button
                         variant="outlined"
-                        onClick={() => handleFeedback()}
+                        onClick={() => handleFeedback(false)}
                         sx={{ fontWeight: 700 }}
                       >
                         解決しなかった

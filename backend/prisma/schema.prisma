@@ -8,8 +8,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ===== 会員・管理者モデル =====
@@ -23,6 +23,10 @@ model User {
   defaultAddress     String?  @map("default_address") // デフォルト配送先住所
   defaultPostalCode  String?  @map("default_postal_code") // デフォルト配送先郵便番号
   defaultPhone       String?  @map("default_phone") // デフォルト配送先電話番号
+  // ブルートフォース対策: 連続ログイン失敗回数とロック解除時刻
+  failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
+  lockedUntil        DateTime? @map("locked_until") // この時刻まではログイン不可（nullなら未ロック）
+  tags               String   @default("[]") // 顧客タグ配列（JSON文字列形式、例: ["VIP","リピーター"]）
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -88,6 +92,7 @@ model Product {
   isActive             Boolean  @default(true)
   productType          String // 'physical' | 'digital' | 'event' | 'external'
   externalUrl          String?  @map("external_url") // 外部申し込みURL（productType='external'の場合）
+  eventAttributes      String?  @map("event_attributes") // イベントのカスタムフォーム定義（JSON文字列、productType='event'の場合）
   preparationDays      Int      @default(3) @map("preparation_days") // 配送準備日数（デフォルト3日）
   allowWeekendDelivery Boolean  @default(true) @map("allow_weekend_delivery") // 土日配送可否（デフォルトtrue）
   tags                 String   @default("[]") // タグ配列（JSON文字列形式）
@@ -438,10 +443,16 @@ model Inquiry {
   email      String // 送信者メール
   subject    String // 件名
   message    String // 問い合わせ本文
-  status     String    @default("pending") // 'pending' | 'replied' | 'closed'
+  orderNumber String?  @map("order_number") // 関連注文番号（任意）
+  status     String    @default("pending") // 'pending' | 'replied' | 'closed' | 'ai_resolved'
   reply      String? // 管理者の返信
   repliedAt  DateTime? @map("replied_at") // 返信日時
   repliedBy  String?   @map("replied_by") // 返信者（管理者）ID
+  // AI自動返答関連
+  aiResponse  String?  @map("ai_response") // AI自動返答本文
+  aiModel     String?  @map("ai_model") // 使用したAIモデル（faq | gemini | gpt-4o-mini）
+  isEscalated Boolean  @default(false) @map("is_escalated") // 人間オペレーターへエスカレーション済みか
+  isSatisfied Boolean? @map("is_satisfied") // ユーザー満足度フィードバック（未回答=null）
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
@@ -454,6 +465,20 @@ model Inquiry {
   @@index([status])
   @@index([createdAt])
   @@map("inquiries")
+}
+
+// ===== AI使用量ログモデル =====
+// 目的: AI自動返答の呼び出しを記録し、日次レート制限（Gemini 20回/日）と
+//       管理画面の使用量統計（geminiUsageCount, aiResponseRate, monthlyCost）に利用する。
+model AiUsageLog {
+  id        String   @id @default(cuid())
+  model     String // 'faq' | 'gemini' | 'gpt-4o-mini'
+  inquiryId String?  @map("inquiry_id") // 紐づく問い合わせ（任意）
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([model])
+  @@index([createdAt])
+  @@map("ai_usage_logs")
 }
 
 // ===== お気に入りモデル =====
@@ -472,4 +497,60 @@ model Favorite {
   @@index([userId])
   @@index([productId])
   @@map("favorites")
+}
+
+// ===== イベント管理モデル =====
+
+model EventFormTemplate {
+  id          String   @id @default(cuid())
+  productId   String   @unique @map("product_id") // イベント商品と1:1関連
+  name        String // テンプレート名（例: "カーミーティング参加フォーム"）
+  description String? // テンプレート説明
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  fields       EventFormField[]
+  submissions  EventFormSubmission[]
+
+  @@index([productId])
+  @@map("event_form_templates")
+}
+
+model EventFormField {
+  id               String   @id @default(cuid())
+  templateId       String   @map("template_id")
+  label            String // フィールドラベル（例: "参加者名"）
+  description      String? // フィールド説明
+  fieldType        String   @map("field_type") // 'TEXT' | 'TEXTAREA' | 'RADIO' | 'CHECKBOX' | 'DROPDOWN' | 'DATE' | 'EMAIL' | 'PHONE'
+  isRequired       Boolean  @default(false) @map("is_required") // 必須項目かどうか
+  order            Int      @default(0) // 表示順序
+  options          String?  // 選択肢（JSON配列文字列、RADIO/CHECKBOX/DROPDOWNの場合）
+  conditionalField String?  @map("conditional_field") // 条件分岐: 親フィールドのID
+  conditionalValue String?  @map("conditional_value") // 条件分岐: 親フィールドの値
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  template EventFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@index([order])
+  @@map("event_form_fields")
+}
+
+model EventFormSubmission {
+  id         String   @id @default(cuid())
+  orderId    String   @unique @map("order_id") // 注文と1:1関連
+  templateId String   @map("template_id")
+  formData   String   @map("form_data") // フォーム回答データ（JSON文字列）
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  template EventFormTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([templateId])
+  @@map("event_form_submissions")
 }

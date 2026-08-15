@@ -61,6 +61,10 @@ export const components: Components<Theme> = {
         borderRadius: 12,
         boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
         transition: 'all 0.2s ease-in-out',
+        // フォーム（Select/TextField）のshrinkしたラベルがカード上端で
+        // 切れる問題を防ぐため overflow を visible にする。
+        // MUIのCardはデフォルトで overflow:hidden のためラベルが欠けていた。
+        overflow: 'visible',
         '&:hover': {
           boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.12)',
           transform: 'translateY(-2px)',
@@ -87,6 +91,9 @@ export const components: Components<Theme> = {
   MuiAppBar: {
     styleOverrides: {
       root: {
+        // AppBarはPaperを継承するためborderRadius:12が効いて角丸になる。
+        // ヘッダー（管理画面・顧客ページ共通）は直角にするため0に上書き。
+        borderRadius: 0,
         boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
       },
     },

@@ -11,7 +11,6 @@ import {
   Link,
   Paper,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { useNavigate } from 'react-router-dom';
 import { DirectionsCar, Build } from '@mui/icons-material';
 
@@ -81,10 +80,16 @@ export const CarsTopPage: React.FC = () => {
           </Typography>
         </Paper>
 
-        {/* 二軸ナビゲーション */}
-        <Grid container spacing={ 3} sx={{ mb: 5 }}>
+        {/* 二軸ナビゲーション（CSS Gridでカード間の余白を確実に確保） */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+            gap: 3,
+            mb: 5,
+          }}
+        >
           {/* 車種から探す */}
-          <Grid xs={12} md={6}>
             <Card
               elevation={3}
               sx={{
@@ -122,10 +127,8 @@ export const CarsTopPage: React.FC = () => {
                 車種から探す
               </Button>
             </Card>
-          </Grid>
 
           {/* パーツから探す */}
-          <Grid xs={12} md={6}>
             <Card
               elevation={3}
               sx={{
@@ -163,54 +166,66 @@ export const CarsTopPage: React.FC = () => {
                 パーツから探す
               </Button>
             </Card>
-          </Grid>
-        </Grid>
+        </Box>
 
         {/* 注目車種 */}
-        <Box sx={{ mb: 5 }}>
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+        <Box sx={{ mb: 5, mt: 2 }}>
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
             注目車種
           </Typography>
 
-          <Grid container spacing={3}>
+          {/* トップページと同じCSS Gridでカード間の余白を確実に確保 */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+              gap: 3,
+            }}
+          >
             {featuredCars.map((car) => (
-              <Grid xs={12} sm={6} md={3} key={car.id}>
-                <Card
+              <Card
+                key={car.id}
+                sx={{
+                  // トップページの商品カードと同じスタイルに統一
+                  borderRadius: 1,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                  },
+                }}
+                onClick={() => navigate(`/cars/${car.maker}/${car.name}/${car.model}`)}
+              >
+                {/* 画像部分: トップページと同じ 高さ180px + 中央テキスト */}
+                <Box
                   sx={{
-                    cursor: 'pointer',
-                    borderRadius: 2,
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                    },
+                    width: '100%',
+                    height: 180,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: 18,
+                    fontWeight: 500,
                   }}
-                  onClick={() => navigate(`/cars/${car.maker}/${car.name}/${car.model}`)}
                 >
-                  <Box
-                    sx={{
-                      height: 200,
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                    }}
-                  >
-                    <DirectionsCar sx={{ fontSize: 64 }} />
-                  </Box>
+                  車種画像
+                </Box>
 
-                  <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
-                      {car.maker} {car.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {car.model} / {car.years}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+                {/* 情報部分: トップページと同じ p:2 + fontSize統一 */}
+                <Box sx={{ p: 2 }}>
+                  <Typography sx={{ fontSize: 16, fontWeight: 500, mb: 1, color: '#333' }}>
+                    {car.maker} {car.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: 14, color: 'text.secondary' }}>
+                    {car.model} / {car.years}
+                  </Typography>
+                </Box>
+              </Card>
             ))}
-          </Grid>
+          </Box>
         </Box>
 
         {/* タグクラウド */}
@@ -243,10 +258,16 @@ export const CarsTopPage: React.FC = () => {
             新着パーツ
           </Typography>
 
-          <Grid container spacing={2.5}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: 2.5,
+            }}
+          >
             {newParts.map((part) => (
-              <Grid xs={12} sm={6} md={3} key={part.id}>
                 <Card
+                  key={part.id}
                   sx={{
                     cursor: 'pointer',
                     borderRadius: 2,
@@ -285,9 +306,8 @@ export const CarsTopPage: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
-              </Grid>
             ))}
-          </Grid>
+          </Box>
         </Box>
       </Container>
     </Box>

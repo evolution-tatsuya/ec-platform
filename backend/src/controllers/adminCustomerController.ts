@@ -142,6 +142,7 @@ export const getCustomerById = async (req: Request, res: Response) => {
         defaultPostalCode: true,
         defaultPhone: true,
         isAdmin: true,
+        tags: true,
         createdAt: true,
         updatedAt: true,
         orders: {
@@ -179,8 +180,17 @@ export const getCustomerById = async (req: Request, res: Response) => {
       },
     });
 
+    // tagsはJSON文字列で保存されているため配列にパースして返す
+    let parsedTags: string[] = [];
+    try {
+      parsedTags = customer.tags ? JSON.parse(customer.tags) : [];
+    } catch {
+      parsedTags = [];
+    }
+
     return res.json({
       ...customer,
+      tags: parsedTags,
       totalPurchase: orderStats._sum?.totalAmount || 0,
       orderCount: customer.orders.length,
     });
@@ -390,44 +400,37 @@ export const updateCustomerTags = async (req: Request, res: Response) => {
       });
     }
 
-    // TODO: 現在のスキーマにはtagsフィールドがないため、
-    // 将来的にUser.tags: String[]フィールドを追加する必要があります。
-    // 暫定的に、タグ情報はメモリ上で管理するか、
-    // 別途CustomerTagテーブルを作成することを推奨します。
-    //
-    // 理想的な実装:
-    // const updatedCustomer = await prisma.user.update({
-    //   where: { id },
-    //   data: { tags },
-    // });
+    // タグは文字列配列であることを検証（各要素が文字列）
+    const normalizedTags = tags
+      .filter((t: unknown): t is string => typeof t === 'string')
+      .map((t: string) => t.trim())
+      .filter((t: string) => t.length > 0);
 
-    // 暫定実装: 501 Not Implemented を返す
-    return res.status(501).json({
-      success: false,
-      message: 'タグ機能は実装準備中です（スキーマにtagsフィールドを追加する必要があります）',
-      requestedTags: tags,
-      note: 'User.tags: String[]フィールドをPrismaスキーマに追加後に本実装予定',
+    // 重複を除去
+    const uniqueTags = Array.from(new Set(normalizedTags));
+
+    // JSON文字列として保存（Product.tagsと同じ方式）
+    const updatedCustomer = await prisma.user.update({
+      where: { id },
+      data: { tags: JSON.stringify(uniqueTags) },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        tags: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
-    // 将来の実装例（スキーマ拡張後）:
-    // const updatedCustomer = await prisma.user.update({
-    //   where: { id },
-    //   data: { tags },
-    //   select: {
-    //     id: true,
-    //     email: true,
-    //     name: true,
-    //     tags: true,
-    //     createdAt: true,
-    //     updatedAt: true,
-    //   },
-    // });
-    //
-    // return res.json({
-    //   success: true,
-    //   message: 'タグを更新しました',
-    //   customer: updatedCustomer,
-    // });
+    return res.json({
+      success: true,
+      message: 'タグを更新しました',
+      customer: {
+        ...updatedCustomer,
+        tags: uniqueTags, // レスポンスは配列で返す
+      },
+    });
   } catch (error: any) {
     console.error('顧客タグ更新エラー:', error);
     return res.status(500).json({

@@ -37,7 +37,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Description, Receipt, RequestQuote, Send } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -45,7 +44,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ja } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { Header } from '../components';
 import {
   useAdminOrders,
   useShipOrder,
@@ -270,93 +268,84 @@ export default function AdminOrdersPage() {
   // ローディング・エラーハンドリング
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress />
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Alert severity="error">
-            注文一覧の取得に失敗しました: {error.message}
-          </Alert>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Alert severity="error">
+          注文一覧の取得に失敗しました: {error.message}
+        </Alert>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          注文管理
-        </Typography>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        注文管理
+      </Typography>
 
         {/* 検索・絞り込み */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Grid container spacing={2}>
-              <Grid xs={12} sm={6} md={3}>
-                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-                  <DatePicker
-                    label="期間（開始）"
-                    value={filterStartDate}
-                    onChange={(newValue) => setFilterStartDate(newValue as Date | null)}
-                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-                  <DatePicker
-                    label="期間（終了）"
-                    value={filterEndDate}
-                    onChange={(newValue) => setFilterEndDate(newValue as Date | null)}
-                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>ステータス</InputLabel>
-                  <Select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    label="ステータス"
-                  >
-                    <MenuItem value="all">すべて</MenuItem>
-                    <MenuItem value="PENDING_PAYMENT">入金待ち</MenuItem>
-                    <MenuItem value="PREPARING">発送準備中</MenuItem>
-                    <MenuItem value="SHIPPED">発送済み</MenuItem>
-                    <MenuItem value="DELIVERED">配達完了</MenuItem>
-                    <MenuItem value="CANCELLED">キャンセル</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>決済方法</InputLabel>
-                  <Select
-                    value={filterPaymentMethod}
-                    onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                    label="決済方法"
-                  >
-                    <MenuItem value="all">すべて</MenuItem>
-                    <MenuItem value="BANK_TRANSFER">銀行振込</MenuItem>
-                    <MenuItem value="CREDIT_CARD">クレジットカード</MenuItem>
-                    <MenuItem value="PAYPAY">PayPay</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+                gap: 2,
+                alignItems: 'center',
+              }}
+            >
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
+                <DatePicker
+                  label="期間（開始）"
+                  value={filterStartDate}
+                  onChange={(newValue) => setFilterStartDate(newValue as Date | null)}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
+                <DatePicker
+                  label="期間（終了）"
+                  value={filterEndDate}
+                  onChange={(newValue) => setFilterEndDate(newValue as Date | null)}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
+              <FormControl fullWidth size="small">
+                <InputLabel>ステータス</InputLabel>
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  label="ステータス"
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="PENDING_PAYMENT">入金待ち</MenuItem>
+                  <MenuItem value="PREPARING">発送準備中</MenuItem>
+                  <MenuItem value="SHIPPED">発送済み</MenuItem>
+                  <MenuItem value="DELIVERED">配達完了</MenuItem>
+                  <MenuItem value="CANCELLED">キャンセル</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>決済方法</InputLabel>
+                <Select
+                  value={filterPaymentMethod}
+                  onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                  label="決済方法"
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="BANK_TRANSFER">銀行振込</MenuItem>
+                  <MenuItem value="CREDIT_CARD">クレジットカード</MenuItem>
+                  <MenuItem value="PAYPAY">PayPay</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </CardContent>
         </Card>
 
@@ -374,12 +363,23 @@ export default function AdminOrdersPage() {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               autoHeight
+              sx={{
+                // 全セルの中身を縦横センターに揃える（行ごとの上下バラつきを解消）
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-cell > *': {
+                  width: '100%',
+                },
+              }}
             />
           </CardContent>
         </Card>
 
         {/* 注文詳細ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={detailDialogOpen}
           onClose={handleCloseDetailDialog}
           maxWidth="md"
@@ -543,7 +543,9 @@ export default function AdminOrdersPage() {
         </Dialog>
 
         {/* 発送処理ダイアログ */}
-        <Dialog open={shipDialogOpen} onClose={handleCloseShipDialog} maxWidth="sm" fullWidth>
+        <Dialog
+        disablePortal={false}
+        open={shipDialogOpen} onClose={handleCloseShipDialog} maxWidth="sm" fullWidth>
           <DialogTitle>発送処理</DialogTitle>
           <DialogContent>
             {selectedOrder && (
@@ -594,7 +596,6 @@ export default function AdminOrdersPage() {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
-    </>
+    </Container>
   );
 }

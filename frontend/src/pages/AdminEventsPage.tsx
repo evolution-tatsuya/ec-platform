@@ -43,7 +43,6 @@ import {
   CheckCircle,
   Cancel,
 } from '@mui/icons-material';
-import { Header } from '../components';
 import {
   useAdminEvents,
   useAdminEventFormTemplate,
@@ -331,44 +330,33 @@ const AdminEventsPage = () => {
   // ローディング・エラー表示
   if (eventsLoading) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress />
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (eventsError) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-          <Alert severity="error">イベントの取得に失敗しました</Alert>
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+        <Alert severity="error">イベントの取得に失敗しました</Alert>
+      </Box>
     );
   }
 
   if (!events || events.length === 0) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-          <Alert severity="info">イベントが登録されていません</Alert>
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+        <Alert severity="info">イベントが登録されていません</Alert>
+      </Box>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          イベント・チケット管理
-        </Typography>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        イベント・チケット管理
+      </Typography>
 
         {/* タブ */}
         <Paper sx={{ mb: 3 }}>
@@ -614,7 +602,9 @@ const AdminEventsPage = () => {
         </TabPanel>
 
         {/* フォーム項目追加ダイアログ */}
-        <Dialog open={openFieldDialog} onClose={() => setOpenFieldDialog(false)} maxWidth="sm" fullWidth>
+        <Dialog
+        disablePortal={false}
+        open={openFieldDialog} onClose={() => setOpenFieldDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>フォーム項目追加</DialogTitle>
           <DialogContent>
             <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -677,7 +667,9 @@ const AdminEventsPage = () => {
         </Dialog>
 
         {/* QRスキャン手動入力ダイアログ */}
-        <Dialog open={openScanDialog} onClose={() => setOpenScanDialog(false)} maxWidth="sm" fullWidth>
+        <Dialog
+        disablePortal={false}
+        open={openScanDialog} onClose={() => setOpenScanDialog(false)} maxWidth="sm" fullWidth>
           <DialogTitle>チケットコード手動入力</DialogTitle>
           <DialogContent>
             <Box sx={{ pt: 2 }}>
@@ -703,8 +695,7 @@ const AdminEventsPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Box>
-    </>
+    </Box>
   );
 };
 

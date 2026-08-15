@@ -5,6 +5,12 @@
 .env.staging
 .env.development
 
+# 本番シークレットを含むファイル（絶対にコミットしない）
+env.yaml
+backend/env.yaml
+*.env.yaml
+.env.production.local
+
 # Dependencies
 node_modules/
 *.log

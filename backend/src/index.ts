@@ -27,17 +27,24 @@ import adminInquiryRoutes from './routes/adminInquiryRoutes';
 import adminSettingsExtendedRoutes from './routes/adminSettingsRoutes';
 import adminNavigationAxisRoutes from './routes/adminNavigationAxisRoutes';
 import favoriteRoutes from './routes/favoriteRoutes';
+import inquiryRoutes from './routes/inquiryRoutes';
 import adminFavoriteRoutes from './routes/adminFavoriteRoutes';
 import adminEventRoutes from './routes/adminEventRoutes';
 
 const app = express();
 
+// ===== プロキシ信頼設定 (Cloud Run用) =====
+// Cloud RunはGoogle Front Endプロキシ経由でリクエストを受け取るため、
+// secure cookieを正しく設定するにはプロキシを信頼する必要がある
+app.set('trust proxy', 1);
+
 // ===== セキュリティヘッダー =====
 app.use(helmet());
 
 // ===== CORS設定 =====
-// 複数のオリジンを許可（localhost と IPアドレスの両方）
-const allowedOrigins = [
+// 本番環境では設定されたオリジンのみ許可し、開発用のlocalhost/LAN IPは信頼しない。
+// 開発環境では利便性のため複数のlocalhost/LAN IPを許可する。
+const devOrigins = [
   'http://localhost:5173',
   'http://localhost:3247',
   'http://localhost:3248',
@@ -51,8 +58,17 @@ const allowedOrigins = [
   'http://172.20.10.10:5173',
   'http://172.20.10.10:3249',
   'http://172.20.10.10:3250',
-  config.corsOrigin,
 ];
+
+const isProduction = config.nodeEnv === 'production';
+
+// 本番: CORS_ORIGIN と FRONTEND_URL のみ許可
+// 開発: 上記に加えてlocalhost/LAN IP群も許可
+const allowedOrigins = [
+  config.corsOrigin,
+  config.frontendUrl,
+  ...(isProduction ? [] : devOrigins),
+].filter(Boolean);
 
 app.use(
   cors({
@@ -84,7 +100,7 @@ app.use(
       httpOnly: true,
       secure: config.nodeEnv === 'production', // 本番環境ではHTTPSのみ
       maxAge: 12 * 60 * 60 * 1000, // 12時間
-      sameSite: config.nodeEnv === 'production' ? 'strict' : 'lax',
+      sameSite: config.nodeEnv === 'production' ? 'none' : 'lax', // 本番環境ではクロスサイトCookie許可
     },
   })
 );
@@ -120,6 +136,7 @@ app.use('/api/users', usersRoutes);
 app.use('/api/top-page', topPageRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/favorites', favoriteRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/orders', adminOrderRouter);
 app.use('/api/admin/products', adminProductRoutes);
@@ -134,7 +151,6 @@ app.use('/api/admin', adminFavoriteRoutes);
 app.use('/api/admin/events', adminEventRoutes);
 
 // TODO: 他のルーターを追加
-// app.use('/api/inquiries', inquiryRoutes);
 // app.use('/api/admin', adminRoutes);
 
 // ===== 404エラーハンドリング =====

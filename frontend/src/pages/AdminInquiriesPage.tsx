@@ -44,7 +44,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Header } from '../components';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useAdminInquiries, useReplyToInquiry, useInquiryStats, useInquiryTrends } from '../hooks/useInquiries';
@@ -232,35 +231,27 @@ const AdminInquiriesPage = () => {
   // ローディング状態
   if (isInquiriesLoading || isStatsLoading || isTrendLoading) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3, textAlign: 'center' }}>
-          <CircularProgress />
-          <Typography sx={{ mt: 2 }}>読み込み中...</Typography>
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3, textAlign: 'center' }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>読み込み中...</Typography>
+      </Box>
     );
   }
 
   // エラー状態
   if (inquiriesError) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-          <Alert severity="error">問い合わせ一覧の取得に失敗しました</Alert>
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+        <Alert severity="error">問い合わせ一覧の取得に失敗しました</Alert>
+      </Box>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          問い合わせ管理
-        </Typography>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        問い合わせ管理
+      </Typography>
 
         {/* タブ */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -471,7 +462,9 @@ const AdminInquiriesPage = () => {
         )}
 
         {/* 問い合わせ詳細ダイアログ */}
-        <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth>
+        <Dialog
+        disablePortal={false}
+        open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="md" fullWidth>
           <DialogTitle>問い合わせ詳細</DialogTitle>
           <DialogContent>
             {selectedInquiry && (
@@ -585,8 +578,7 @@ const AdminInquiriesPage = () => {
             </Button>
           </DialogActions>
         </Dialog>
-      </Box>
-    </>
+    </Box>
   );
 };
 

@@ -7,7 +7,6 @@ import {
   Link,
   Paper,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { useNavigate } from 'react-router-dom';
 import { NavigationAxes, TagFilter, EventCard } from '../components';
 import type { CategoryNavigationAxis, NavigationFilterState, Tag, Event } from '../types';
@@ -186,14 +185,23 @@ export const EventsListPage: React.FC = () => {
         {/* タグフィルター */}
         <TagFilter tags={tags} selectedTags={selectedTags} onTagToggle={handleTagToggle} />
 
-        {/* イベントカードグリッド */}
-        <Grid container spacing={3}>
+        {/* イベントカードグリッド（CSS Gridでカード間の余白を確実に確保） */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)',
+              lg: 'repeat(4, 1fr)',
+            },
+            gap: 3,
+          }}
+        >
           {events.map((event) => (
-            <Grid xs={12} sm={6} md={4} lg={3} key={event.id}>
-              <EventCard event={event} onClick={() => handleEventClick()} />
-            </Grid>
+            <EventCard key={event.id} event={event} onClick={() => handleEventClick()} />
           ))}
-        </Grid>
+        </Box>
       </Container>
     </Box>
   );

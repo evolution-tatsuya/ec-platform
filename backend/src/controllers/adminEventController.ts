@@ -316,7 +316,22 @@ export async function setEventForm(req: Request, res: Response) {
       return res.status(400).json({ success: false, message: 'イベントIDが必要です' });
     }
 
-    // 将来の実装用: const { formTemplate } = req.body;
+    const { formTemplate } = req.body;
+
+    // バリデーション: formTemplate と fields配列が必須
+    if (!formTemplate || typeof formTemplate !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'formTemplate（フォームテンプレート）が必要です',
+      });
+    }
+
+    if (!Array.isArray(formTemplate.fields)) {
+      return res.status(400).json({
+        success: false,
+        message: 'formTemplate.fields（フィールド配列）が必要です',
+      });
+    }
 
     // イベント存在確認
     const event = await prisma.product.findUnique({
@@ -337,17 +352,99 @@ export async function setEventForm(req: Request, res: Response) {
       });
     }
 
-    // TODO: eventAttributes JSONフィールドを追加後に実装
-    // 現在は未実装のため501エラーを返す
-    return res.status(501).json({
-      success: false,
-      message: 'カスタムフォーム機能は実装準備中です（スキーマ更新が必要）',
+    // フィールドにIDを付与（フロントは id/templateId を省略して送る）
+    const fieldsWithIds = formTemplate.fields.map((field: any, index: number) => ({
+      ...field,
+      id: field.id ?? `field-${id}-${index}`,
+      templateId: id,
+      order: field.order ?? index,
+    }));
+
+    const savedTemplate = {
+      id,
+      eventId: id,
+      name: formTemplate.name ?? 'カスタムフォーム',
+      description: formTemplate.description ?? '',
+      fields: fieldsWithIds,
+    };
+
+    // eventAttributes(JSON文字列)としてProductに保存
+    await prisma.product.update({
+      where: { id },
+      data: { eventAttributes: JSON.stringify(savedTemplate) },
+    });
+
+    return res.json({
+      success: true,
+      message: 'フォームテンプレートを保存しました',
+      formTemplate: savedTemplate,
     });
   } catch (error: any) {
     console.error('フォーム設定エラー:', error);
     return res.status(500).json({
       success: false,
       message: error.message || 'フォームの設定に失敗しました',
+    });
+  }
+}
+
+/**
+ * GET /api/admin/events/:id/form - カスタムフォーム取得
+ *
+ * パスパラメータ:
+ * - id: イベントID
+ */
+export async function getEventForm(req: Request, res: Response) {
+  try {
+    const id = getStringParam(req.params.id);
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'イベントIDが必要です' });
+    }
+
+    const event = await prisma.product.findUnique({
+      where: { id },
+    });
+
+    if (!event) {
+      return res.status(404).json({
+        success: false,
+        message: 'イベントが見つかりません',
+      });
+    }
+
+    if (event.productType !== 'event') {
+      return res.status(400).json({
+        success: false,
+        message: 'この商品はイベントではありません',
+      });
+    }
+
+    // 未設定の場合は空のフォームテンプレートを返す
+    let formTemplate: unknown = {
+      id,
+      eventId: id,
+      name: '',
+      description: '',
+      fields: [],
+    };
+
+    if (event.eventAttributes) {
+      try {
+        formTemplate = JSON.parse(event.eventAttributes);
+      } catch {
+        // パース失敗時は空テンプレートのまま
+      }
+    }
+
+    return res.json({
+      success: true,
+      formTemplate,
+    });
+  } catch (error: any) {
+    console.error('フォーム取得エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'フォームの取得に失敗しました',
     });
   }
 }

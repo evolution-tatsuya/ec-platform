@@ -315,7 +315,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -327,12 +327,19 @@ export default function TopPage() {
           className="swiper"
           sx={{
             width: '100%',
-            height: 320,
+            // スライドを最も高いカードに合わせて揃える（新着商品グリッドと同じ挙動に）
+            '& .swiper-slide': {
+              height: 'auto',
+            },
           }}
         >
-          <Box className="swiper-wrapper">
+          <Box className="swiper-wrapper" sx={{ alignItems: 'stretch' }}>
             {topPageData.pickupProducts.map((product) => (
-              <Box key={product.id} className="swiper-slide">
+              <Box
+                key={product.id}
+                className="swiper-slide"
+                sx={{ display: 'flex', height: 'auto' }}
+              >
                 <Box
                   onClick={() => handleProductClick(product.id)}
                   sx={{
@@ -342,6 +349,10 @@ export default function TopPage() {
                     boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     cursor: 'pointer',
                     transition: 'all 0.3s ease',
+                    // カードをスライド高さいっぱいに伸ばし、全カードの高さを揃える
+                    display: 'flex',
+                    flexDirection: 'column',
+                    width: '100%',
                     '&:hover': {
                       boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                     },
@@ -351,6 +362,7 @@ export default function TopPage() {
                     sx={{
                       width: '100%',
                       height: 180,
+                      flexShrink: 0,
                       background:
                         (product as any).gradient ||
                         (product.product.images && product.product.images[0]
@@ -366,9 +378,17 @@ export default function TopPage() {
                   >
                     {!(product as any).gradient &&
                       (!product.product.images || !product.product.images[0]) &&
-                      `商品画像 ${product.id}`}
+                      `商品画像`}
                   </Box>
-                  <Box sx={{ p: 2 }}>
+                  {/* 商品情報: flexGrowで残り領域を埋め、価格を下端に揃える */}
+                  <Box
+                    sx={{
+                      p: 2,
+                      flexGrow: 1,
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
                     <Typography
                       sx={{
                         fontSize: 16,
@@ -383,7 +403,8 @@ export default function TopPage() {
                       sx={{
                         fontSize: 20,
                         fontWeight: 700,
-                        color: '#1976d2',
+                        color: '#7c4dff',
+                        mt: 'auto',
                       }}
                     >
                       ¥{product.product.price.toLocaleString()}
@@ -397,6 +418,7 @@ export default function TopPage() {
       </Box>
 
       {/* 新着商品 */}
+      {topPageData.newProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -413,7 +435,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -462,7 +484,7 @@ export default function TopPage() {
               >
                 {!(product as any).gradient &&
                   (!product.images || !product.images[0]) &&
-                  `新着 ${product.id}`}
+                  `新着`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -479,7 +501,7 @@ export default function TopPage() {
                   sx={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: '#1976d2',
+                    color: '#7c4dff',
                   }}
                 >
                   ¥{product.price.toLocaleString()}
@@ -490,7 +512,10 @@ export default function TopPage() {
         </Box>
       </Box>
 
+      )}
+
       {/* セール商品 */}
+      {topPageData.saleProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -507,7 +532,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -556,7 +581,7 @@ export default function TopPage() {
               >
                 {!(product as any).gradient &&
                   (!product.images || !product.images[0]) &&
-                  `セール ${product.id}`}
+                  `セール`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -573,7 +598,7 @@ export default function TopPage() {
                   sx={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: '#1976d2',
+                    color: '#7c4dff',
                   }}
                 >
                   ¥{product.price.toLocaleString()}
@@ -584,7 +609,10 @@ export default function TopPage() {
         </Box>
       </Box>
 
+      )}
+
       {/* 人気商品 */}
+      {topPageData.popularProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -601,7 +629,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >
@@ -650,7 +678,7 @@ export default function TopPage() {
               >
                 {!(product as any).gradient &&
                   (!product.images || !product.images[0]) &&
-                  `人気 ${product.id}`}
+                  `人気`}
               </Box>
               <Box sx={{ p: 2 }}>
                 <Typography
@@ -667,7 +695,7 @@ export default function TopPage() {
                   sx={{
                     fontSize: 20,
                     fontWeight: 700,
-                    color: '#1976d2',
+                    color: '#7c4dff',
                   }}
                 >
                   ¥{product.price.toLocaleString()}
@@ -677,6 +705,7 @@ export default function TopPage() {
           ))}
         </Box>
       </Box>
+      )}
 
       {/* お知らせ・ニュース */}
       <Box
@@ -695,7 +724,7 @@ export default function TopPage() {
             fontWeight: 700,
             mb: 3,
             color: '#333',
-            borderLeft: '4px solid #1976d2',
+            borderLeft: '4px solid #7c4dff',
             pl: 2,
           }}
         >

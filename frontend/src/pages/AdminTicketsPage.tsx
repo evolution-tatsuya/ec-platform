@@ -25,7 +25,6 @@ import type { GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { CheckCircle, QrCode2, Refresh } from '@mui/icons-material';
 import { adminAPI } from '../lib/api';
 import type { DigitalTicket } from '../types';
-import { Header } from '../components';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -203,12 +202,10 @@ const AdminTicketsPage = () => {
   ];
 
   return (
-    <>
-      <Header />
-      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          チケット管理
-        </Typography>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        チケット管理
+      </Typography>
 
         {/* 統計カード */}
         <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -310,7 +307,9 @@ const AdminTicketsPage = () => {
         </Paper>
 
         {/* チケット詳細ダイアログ */}
-        <Dialog open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth>
+        <Dialog
+        disablePortal={false}
+        open={openDetail} onClose={() => setOpenDetail(false)} maxWidth="sm" fullWidth>
           <DialogTitle>チケット詳細</DialogTitle>
           <DialogContent>
             {selectedTicket && (
@@ -430,8 +429,7 @@ const AdminTicketsPage = () => {
             {snackbar.message}
           </Alert>
         </Snackbar>
-      </Box>
-    </>
+    </Box>
   );
 };
 
