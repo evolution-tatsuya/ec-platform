@@ -11,7 +11,6 @@ import {
   Link,
   Paper,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { useNavigate } from 'react-router-dom';
 import { DirectionsCar, Build } from '@mui/icons-material';
 
@@ -81,10 +80,16 @@ export const CarsTopPage: React.FC = () => {
           </Typography>
         </Paper>
 
-        {/* 二軸ナビゲーション */}
-        <Grid container spacing={ 3} sx={{ mb: 5 }}>
+        {/* 二軸ナビゲーション（CSS Gridでカード間の余白を確実に確保） */}
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+            gap: 3,
+            mb: 5,
+          }}
+        >
           {/* 車種から探す */}
-          <Grid xs={12} md={6}>
             <Card
               elevation={3}
               sx={{
@@ -122,10 +127,8 @@ export const CarsTopPage: React.FC = () => {
                 車種から探す
               </Button>
             </Card>
-          </Grid>
 
           {/* パーツから探す */}
-          <Grid xs={12} md={6}>
             <Card
               elevation={3}
               sx={{
@@ -163,8 +166,7 @@ export const CarsTopPage: React.FC = () => {
                 パーツから探す
               </Button>
             </Card>
-          </Grid>
-        </Grid>
+        </Box>
 
         {/* 注目車種 */}
         <Box sx={{ mb: 5, mt: 2 }}>
@@ -256,10 +258,16 @@ export const CarsTopPage: React.FC = () => {
             新着パーツ
           </Typography>
 
-          <Grid container spacing={2.5}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: 2.5,
+            }}
+          >
             {newParts.map((part) => (
-              <Grid xs={12} sm={6} md={3} key={part.id}>
                 <Card
+                  key={part.id}
                   sx={{
                     cursor: 'pointer',
                     borderRadius: 2,
@@ -298,9 +306,8 @@ export const CarsTopPage: React.FC = () => {
                     </Typography>
                   </CardContent>
                 </Card>
-              </Grid>
             ))}
-          </Grid>
+          </Box>
         </Box>
       </Container>
     </Box>
