@@ -32,8 +32,7 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
 import { UserRole } from './types';
-import { Box } from '@mui/material';
-import { Header } from './components';
+import { Header, CustomerLayout } from './components';
 import TestPage from './TestPage';
 
 function App() {
@@ -64,7 +63,7 @@ function App() {
             >
               <Route index element={<AdminDashboardPage />} />
               <Route path="products" element={<AdminProductsPage />} />
-              <Route path="navigation" element={<AdminNavigationAxesPage />} />
+              <Route path="navigation-axes" element={<AdminNavigationAxesPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="tickets" element={<AdminTicketsPage />} />
               <Route path="customers" element={<AdminCustomersPage />} />
@@ -77,10 +76,7 @@ function App() {
             <Route
               path="/"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <TopPage />
-                </Box>
+                <CustomerLayout><TopPage /></CustomerLayout>
               }
             />
 
@@ -88,10 +84,7 @@ function App() {
             <Route
               path="/products/:id"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <ProductDetailPage />
-                </Box>
+                <CustomerLayout><ProductDetailPage /></CustomerLayout>
               }
             />
 
@@ -99,10 +92,7 @@ function App() {
             <Route
               path="/cart"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <CartPage />
-                </Box>
+                <CustomerLayout><CartPage /></CustomerLayout>
               }
             />
 
@@ -110,10 +100,7 @@ function App() {
             <Route
               path="/checkout"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <CheckoutPage />
-                </Box>
+                <CustomerLayout><CheckoutPage /></CustomerLayout>
               }
             />
 
@@ -121,10 +108,7 @@ function App() {
             <Route
               path="/mypage"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <MyPage />
-                </Box>
+                <CustomerLayout><MyPage /></CustomerLayout>
               }
             />
 
@@ -132,10 +116,7 @@ function App() {
             <Route
               path="/contact"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <ContactPage />
-                </Box>
+                <CustomerLayout><ContactPage /></CustomerLayout>
               }
             />
 
@@ -143,10 +124,7 @@ function App() {
             <Route
               path="/cars"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <CarsTopPage />
-                </Box>
+                <CustomerLayout><CarsTopPage /></CustomerLayout>
               }
             />
 
@@ -154,10 +132,7 @@ function App() {
             <Route
               path="/cars/:maker/:model/:type"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <CarModelPartsListPage />
-                </Box>
+                <CustomerLayout><CarModelPartsListPage /></CustomerLayout>
               }
             />
 
@@ -165,10 +140,7 @@ function App() {
             <Route
               path="/cars/parts/:category"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <PartsCategoryListPage />
-                </Box>
+                <CustomerLayout><PartsCategoryListPage /></CustomerLayout>
               }
             />
 
@@ -176,10 +148,7 @@ function App() {
             <Route
               path="/events"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <EventsListPage />
-                </Box>
+                <CustomerLayout><EventsListPage /></CustomerLayout>
               }
             />
 
@@ -187,10 +156,7 @@ function App() {
             <Route
               path="/digital-products"
               element={
-                <Box sx={{ minHeight: '100vh', width: '100%' }}>
-                  <Header />
-                  <DigitalProductsListPage />
-                </Box>
+                <CustomerLayout><DigitalProductsListPage /></CustomerLayout>
               }
             />
 
