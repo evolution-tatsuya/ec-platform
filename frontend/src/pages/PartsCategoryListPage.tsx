@@ -13,7 +13,6 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { NavigationAxes, ProductCard } from '../components';
@@ -152,22 +151,28 @@ export const PartsCategoryListPage: React.FC = () => {
 
         {/* 商品グリッド */}
         {!isLoading && !error && products.length > 0 && (
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+              gap: 3,
+              mb: 4,
+            }}
+          >
             {products.map((product) => (
-              <Grid xs={12} sm={6} md={4} key={product.id}>
-                <ProductCard
-                  id={product.id}
-                  name={product.name}
-                  category={product.category?.name || product.productType}
-                  description={product.description || ''}
-                  price={product.price}
-                  imageUrl={product.images && product.images.length > 0 ? product.images[0] : undefined}
-                  inStock={product.isActive}
-                  stockText={product.isActive ? '在庫あり' : '在庫なし'}
-                />
-              </Grid>
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                category={product.category?.name || product.productType}
+                description={product.description || ''}
+                price={product.price}
+                imageUrl={product.images && product.images.length > 0 ? product.images[0] : undefined}
+                inStock={product.isActive}
+                stockText={product.isActive ? '在庫あり' : '在庫なし'}
+              />
             ))}
-          </Grid>
+          </Box>
         )}
 
         {/* ページネーション - 商品がある場合のみ表示 */}

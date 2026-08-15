@@ -11,7 +11,6 @@ import {
   FormControl,
   Pagination,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { useNavigate } from 'react-router-dom';
 import { NavigationAxes, DigitalProductCard } from '../components';
 import type { CategoryNavigationAxis, NavigationFilterState, DigitalProduct } from '../types';
@@ -199,13 +198,18 @@ export const DigitalProductsListPage: React.FC = () => {
         </Paper>
 
         {/* 商品グリッド */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+            gap: 3,
+            mb: 4,
+          }}
+        >
           {products.map((product) => (
-            <Grid xs={12} sm={6} md={4} key={product.id}>
-              <DigitalProductCard product={product} onClick={() => handleProductClick()} />
-            </Grid>
+            <DigitalProductCard key={product.id} product={product} onClick={() => handleProductClick()} />
           ))}
-        </Grid>
+        </Box>
 
         {/* ページネーション */}
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
