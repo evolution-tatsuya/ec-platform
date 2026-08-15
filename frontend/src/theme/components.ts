@@ -87,6 +87,9 @@ export const components: Components<Theme> = {
   MuiAppBar: {
     styleOverrides: {
       root: {
+        // AppBarはPaperを継承するためborderRadius:12が効いて角丸になる。
+        // ヘッダー（管理画面・顧客ページ共通）は直角にするため0に上書き。
+        borderRadius: 0,
         boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
       },
     },
