@@ -43,7 +43,6 @@ import type { GridColDef } from '@mui/x-data-grid';
 import { Edit } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { Header } from '../components';
 import { useAdminCustomers, useAdminCustomerById, useUpdateCustomerTags } from '../hooks/useCustomers';
 import type { CustomerWithStats } from '../types';
 
@@ -218,38 +217,30 @@ export default function AdminCustomersPage() {
   // ローディング状態
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-            <CircularProgress />
-          </Box>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
+          <CircularProgress />
+        </Box>
+      </Container>
     );
   }
 
   // エラー状態
   if (error) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Alert severity="error">
-            顧客データの取得に失敗しました: {error.message}
-          </Alert>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Alert severity="error">
+          顧客データの取得に失敗しました: {error.message}
+        </Alert>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          顧客管理
-        </Typography>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        顧客管理
+      </Typography>
 
         {/* 検索・絞り込み */}
         <Card sx={{ mb: 3 }}>
@@ -495,7 +486,6 @@ export default function AdminCustomersPage() {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
-    </>
+    </Container>
   );
 }

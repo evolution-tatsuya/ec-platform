@@ -45,7 +45,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ja } from 'date-fns/locale';
 import { format } from 'date-fns';
-import { Header } from '../components';
 import {
   useAdminOrders,
   useShipOrder,
@@ -270,35 +269,27 @@ export default function AdminOrdersPage() {
   // ローディング・エラーハンドリング
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress />
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Container>
     );
   }
 
   if (error) {
     return (
-      <>
-        <Header />
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-          <Alert severity="error">
-            注文一覧の取得に失敗しました: {error.message}
-          </Alert>
-        </Container>
-      </>
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Alert severity="error">
+          注文一覧の取得に失敗しました: {error.message}
+        </Alert>
+      </Container>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          注文管理
-        </Typography>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        注文管理
+      </Typography>
 
         {/* 検索・絞り込み */}
         <Card sx={{ mb: 3 }}>
@@ -380,6 +371,7 @@ export default function AdminOrdersPage() {
 
         {/* 注文詳細ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={detailDialogOpen}
           onClose={handleCloseDetailDialog}
           maxWidth="md"
@@ -543,7 +535,9 @@ export default function AdminOrdersPage() {
         </Dialog>
 
         {/* 発送処理ダイアログ */}
-        <Dialog open={shipDialogOpen} onClose={handleCloseShipDialog} maxWidth="sm" fullWidth>
+        <Dialog
+        disablePortal={false}
+        open={shipDialogOpen} onClose={handleCloseShipDialog} maxWidth="sm" fullWidth>
           <DialogTitle>発送処理</DialogTitle>
           <DialogContent>
             {selectedOrder && (
@@ -594,7 +588,6 @@ export default function AdminOrdersPage() {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
-    </>
+    </Container>
   );
 }

@@ -28,7 +28,6 @@ import {
   Visibility,
   Settings,
 } from '@mui/icons-material';
-import { Header } from '../components';
 import {
   useAdminSettings,
   useUpdateCompanySettings,
@@ -208,50 +207,39 @@ const AdminSettingsPage = () => {
   // ローディング表示
   if (isLoading) {
     return (
-      <>
-        <Header />
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
-          <CircularProgress />
-        </Box>
-      </>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   // エラー表示
   if (error) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-          <Alert severity="error">
-            設定の取得に失敗しました: {error.message}
-          </Alert>
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+        <Alert severity="error">
+          設定の取得に失敗しました: {error.message}
+        </Alert>
+      </Box>
     );
   }
 
   // データがない場合
   if (!settings) {
     return (
-      <>
-        <Header />
-        <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-          <Alert severity="warning">
-            設定データが見つかりません
-          </Alert>
-        </Box>
-      </>
+      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+        <Alert severity="warning">
+          設定データが見つかりません
+        </Alert>
+      </Box>
     );
   }
 
   return (
-    <>
-      <Header />
-      <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
-        <Typography variant="h4" gutterBottom fontWeight="bold">
-          システム設定
-        </Typography>
+    <Box sx={{ maxWidth: 1400, mx: 'auto', p: 3 }}>
+      <Typography variant="h4" gutterBottom fontWeight="bold">
+        システム設定
+      </Typography>
 
         {/* タブ */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
@@ -765,8 +753,7 @@ const AdminSettingsPage = () => {
             </Box>
           </Box>
         )}
-      </Box>
-    </>
+    </Box>
   );
 };
 
