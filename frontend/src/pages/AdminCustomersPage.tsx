@@ -112,11 +112,15 @@ export default function AdminCustomersPage() {
       field: 'registeredAt',
       headerName: '登録日',
       width: 120,
-      renderCell: (params) => (
-        <Typography variant="body2">
-          {format(new Date(params.value as string), 'yyyy/MM/dd', { locale: ja })}
-        </Typography>
-      ),
+      renderCell: (params) => {
+        const d = params.value ? new Date(params.value as string) : null;
+        const valid = d && !isNaN(d.getTime());
+        return (
+          <Typography variant="body2">
+            {valid ? format(d as Date, 'yyyy/MM/dd', { locale: ja }) : '-'}
+          </Typography>
+        );
+      },
     },
     {
       field: 'totalOrders',
@@ -136,7 +140,7 @@ export default function AdminCustomersPage() {
       align: 'right',
       renderCell: (params) => (
         <Typography variant="body2" fontWeight="bold">
-          ¥{params.value.toLocaleString()}
+          ¥{(params.value ?? 0).toLocaleString()}
         </Typography>
       ),
     },
@@ -147,7 +151,7 @@ export default function AdminCustomersPage() {
       sortable: false,
       renderCell: (params) => (
         <Stack direction="row" spacing={0.5}>
-          {(params.value as string[]).map((tag, index) => (
+          {(Array.isArray(params.value) ? (params.value as string[]) : []).map((tag, index) => (
             <Chip key={index} label={tag} size="small" color="primary" />
           ))}
         </Stack>
@@ -304,6 +308,7 @@ export default function AdminCustomersPage() {
 
         {/* 顧客詳細ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={detailDialogOpen}
           onClose={handleCloseDetailDialog}
           maxWidth="md"

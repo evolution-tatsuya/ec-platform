@@ -19,7 +19,6 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import {
   Save,
   Upload,
@@ -270,160 +269,145 @@ const AdminSettingsPage = () => {
             {/* 会社情報 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   会社情報
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="会社名"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12} md={6}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Upload />}
-                      fullWidth
-                      sx={{ height: 56 }}
-                    >
-                      ロゴ画像をアップロード
-                    </Button>
-                  </Grid>
-                  <Grid xs={12} md={4}>
-                    <TextField
-                      label="郵便番号"
-                      value={postalCode}
-                      onChange={(e) => setPostalCode(e.target.value)}
-                      fullWidth
-                      placeholder="100-0001"
-                    />
-                  </Grid>
-                  <Grid xs={12} md={8}>
-                    <TextField
-                      label="住所"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="電話番号"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      fullWidth
-                      placeholder="03-1234-5678"
-                    />
-                  </Grid>
-                </Grid>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 2 }}>
+                  <TextField
+                    label="会社名"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                  <Button
+                    variant="outlined"
+                    startIcon={<Upload />}
+                    fullWidth
+                    sx={{ height: 56, gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  >
+                    ロゴ画像をアップロード
+                  </Button>
+                  <TextField
+                    label="郵便番号"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
+                    fullWidth
+                    placeholder="100-0001"
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 4' } }}
+                  />
+                  <TextField
+                    label="住所"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 8' } }}
+                  />
+                  <TextField
+                    label="電話番号"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    fullWidth
+                    placeholder="03-1234-5678"
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                </Box>
               </CardContent>
             </Card>
 
             {/* 銀行振込先情報 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   銀行振込先情報
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="銀行名"
-                      value={bankName}
-                      onChange={(e) => setBankName(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="支店名"
-                      value={branchName}
-                      onChange={(e) => setBranchName(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12} md={4}>
-                    <TextField
-                      select
-                      label="口座種別"
-                      value={accountType}
-                      onChange={(e) => setAccountType(e.target.value as 'checking' | 'savings')}
-                      fullWidth
-                      SelectProps={{ native: true }}
-                    >
-                      {accountTypeOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </TextField>
-                  </Grid>
-                  <Grid xs={12} md={4}>
-                    <TextField
-                      label="口座番号"
-                      value={accountNumber}
-                      onChange={(e) => setAccountNumber(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12} md={4}>
-                    <TextField
-                      label="口座名義"
-                      value={accountHolder}
-                      onChange={(e) => setAccountHolder(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                </Grid>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 2 }}>
+                  <TextField
+                    label="銀行名"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                  <TextField
+                    label="支店名"
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                  <TextField
+                    select
+                    label="口座種別"
+                    value={accountType}
+                    onChange={(e) => setAccountType(e.target.value as 'checking' | 'savings')}
+                    fullWidth
+                    SelectProps={{ native: true }}
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 4' } }}
+                  >
+                    {accountTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </TextField>
+                  <TextField
+                    label="口座番号"
+                    value={accountNumber}
+                    onChange={(e) => setAccountNumber(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 4' } }}
+                  />
+                  <TextField
+                    label="口座名義"
+                    value={accountHolder}
+                    onChange={(e) => setAccountHolder(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 4' } }}
+                  />
+                </Box>
               </CardContent>
             </Card>
 
             {/* デザイン設定 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   <Palette sx={{ mr: 1, verticalAlign: 'middle' }} />
                   デザイン設定
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="プライマリーカラー"
-                      type="color"
-                      value={primaryColor}
-                      onChange={(e) => setPrimaryColor(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="セカンダリーカラー"
-                      type="color"
-                      value={secondaryColor}
-                      onChange={(e) => setSecondaryColor(e.target.value)}
-                      fullWidth
-                    />
-                  </Grid>
-                  <Grid xs={12}>
-                    <Button variant="outlined" startIcon={<Upload />} fullWidth>
-                      ヒーロー画像をアップロード
-                    </Button>
-                  </Grid>
-                </Grid>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 2 }}>
+                  <TextField
+                    label="プライマリーカラー"
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                  <TextField
+                    label="セカンダリーカラー"
+                    type="color"
+                    value={secondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    fullWidth
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                  <Button variant="outlined" startIcon={<Upload />} fullWidth sx={{ gridColumn: '1 / -1' }}>
+                    ヒーロー画像をアップロード
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
 
             {/* 画像最適化設定 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   画像最適化設定
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid xs={12}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 3 }}>
+                  <Box sx={{ gridColumn: '1 / -1' }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -436,8 +420,8 @@ const AdminSettingsPage = () => {
                     <Typography variant="caption" color="text.secondary" display="block" ml={4}>
                       アップロード時に自動的にWebP形式に変換し、ファイルサイズを削減します
                     </Typography>
-                  </Grid>
-                  <Grid xs={12}>
+                  </Box>
+                  <Box sx={{ gridColumn: '1 / -1' }}>
                     <Typography variant="body2" gutterBottom>
                       圧縮品質: {compressionQuality}%
                     </Typography>
@@ -453,20 +437,19 @@ const AdminSettingsPage = () => {
                     <Typography variant="caption" color="text.secondary">
                       品質が低いほどファイルサイズが小さくなりますが、画質が劣化します
                     </Typography>
-                  </Grid>
-                  <Grid xs={12} md={6}>
-                    <TextField
-                      label="サムネイルサイズ（幅）"
-                      type="number"
-                      value={thumbnailSize}
-                      onChange={(e) => setThumbnailSize(Number(e.target.value))}
-                      fullWidth
-                      InputProps={{
-                        endAdornment: <InputAdornment position="end">px</InputAdornment>,
-                      }}
-                    />
-                  </Grid>
-                </Grid>
+                  </Box>
+                  <TextField
+                    label="サムネイルサイズ（幅）"
+                    type="number"
+                    value={thumbnailSize}
+                    onChange={(e) => setThumbnailSize(Number(e.target.value))}
+                    fullWidth
+                    InputProps={{
+                      endAdornment: <InputAdornment position="end">px</InputAdornment>,
+                    }}
+                    sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
+                  />
+                </Box>
               </CardContent>
             </Card>
 
@@ -485,11 +468,11 @@ const AdminSettingsPage = () => {
             {/* 銀行振込設定 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   銀行振込設定
                 </Typography>
-                <Grid container spacing={3}>
-                  <Grid xs={12}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 3 }}>
+                  <Box sx={{ gridColumn: '1 / -1' }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -499,10 +482,10 @@ const AdminSettingsPage = () => {
                       }
                       label="銀行振込を有効化"
                     />
-                  </Grid>
+                  </Box>
                   {bankTransferEnabled && (
                     <>
-                      <Grid xs={12}>
+                      <Box sx={{ gridColumn: '1 / -1' }}>
                         <Typography variant="body2" gutterBottom>
                           銀行振込割引率: {bankTransferDiscountRate}%
                         </Typography>
@@ -522,21 +505,21 @@ const AdminSettingsPage = () => {
                         <Alert severity="info" sx={{ mt: 2 }}>
                           銀行振込を選択した顧客に対して割引を適用します。クレジットカード決済手数料との差額を還元できます。
                         </Alert>
-                      </Grid>
+                      </Box>
                     </>
                   )}
-                </Grid>
+                </Box>
               </CardContent>
             </Card>
 
             {/* クレジットカード設定 */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   クレジットカード決済設定（Stripe）
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid xs={12}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 2 }}>
+                  <Box sx={{ gridColumn: '1 / -1' }}>
                     <FormControlLabel
                       control={
                         <Switch
@@ -546,36 +529,34 @@ const AdminSettingsPage = () => {
                       }
                       label="クレジットカード決済を有効化"
                     />
-                  </Grid>
+                  </Box>
                   {creditCardEnabled && (
                     <>
-                      <Grid xs={12}>
-                        <TextField
-                          label="Stripe公開可能キー"
-                          value={stripePublicKey}
-                          onChange={(e) => setStripePublicKey(e.target.value)}
-                          fullWidth
-                          placeholder="pk_live_xxxxxx"
-                        />
-                      </Grid>
-                      <Grid xs={12}>
-                        <TextField
-                          label="Stripeシークレットキー"
-                          value={stripeSecretKey}
-                          onChange={(e) => setStripeSecretKey(e.target.value)}
-                          fullWidth
-                          type="password"
-                          placeholder="sk_live_xxxxxx"
-                        />
-                      </Grid>
-                      <Grid xs={12}>
+                      <TextField
+                        label="Stripe公開可能キー"
+                        value={stripePublicKey}
+                        onChange={(e) => setStripePublicKey(e.target.value)}
+                        fullWidth
+                        placeholder="pk_live_xxxxxx"
+                        sx={{ gridColumn: '1 / -1' }}
+                      />
+                      <TextField
+                        label="Stripeシークレットキー"
+                        value={stripeSecretKey}
+                        onChange={(e) => setStripeSecretKey(e.target.value)}
+                        fullWidth
+                        type="password"
+                        placeholder="sk_live_xxxxxx"
+                        sx={{ gridColumn: '1 / -1' }}
+                      />
+                      <Box sx={{ gridColumn: '1 / -1' }}>
                         <Alert severity="warning">
                           Stripeのシークレットキーは厳重に管理してください。本番環境ではpk_live_、sk_live_で始まるキーを使用してください。
                         </Alert>
-                      </Grid>
+                      </Box>
                     </>
                   )}
-                </Grid>
+                </Box>
               </CardContent>
             </Card>
 
@@ -593,21 +574,20 @@ const AdminSettingsPage = () => {
           <Box>
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Typography variant="h6" gutterBottom fontWeight="bold">
+                <Typography variant="h6" gutterBottom fontWeight="bold" sx={{ mb: 2 }}>
                   メール設定
                 </Typography>
-                <Grid container spacing={2}>
-                  <Grid xs={12}>
-                    <TextField
-                      label="送信元メールアドレス"
-                      value={senderEmail}
-                      onChange={(e) => setSenderEmail(e.target.value)}
-                      fullWidth
-                      placeholder="noreply@example.com"
-                      helperText="顧客に送信されるメールの送信元アドレスです"
-                    />
-                  </Grid>
-                  <Grid xs={12}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 2 }}>
+                  <TextField
+                    label="送信元メールアドレス"
+                    value={senderEmail}
+                    onChange={(e) => setSenderEmail(e.target.value)}
+                    fullWidth
+                    placeholder="noreply@example.com"
+                    helperText="顧客に送信されるメールの送信元アドレスです"
+                    sx={{ gridColumn: '1 / -1' }}
+                  />
+                  <Box sx={{ gridColumn: '1 / -1' }}>
                     <Divider sx={{ my: 2 }} />
                     <Typography variant="subtitle1" gutterBottom fontWeight="bold">
                       発送通知メールテンプレート
@@ -624,8 +604,8 @@ const AdminSettingsPage = () => {
                       rows={12}
                       fullWidth
                     />
-                  </Grid>
-                </Grid>
+                  </Box>
+                </Box>
               </CardContent>
             </Card>
 
@@ -647,16 +627,16 @@ const AdminSettingsPage = () => {
             </Alert>
 
             {/* 書類種別選択 */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid xs={12} md={4}>
-                <Card
-                  sx={{
-                    cursor: 'pointer',
-                    border: selectedDocument === 'invoice' ? 2 : 0,
-                    borderColor: 'primary.main',
-                  }}
-                  onClick={() => setSelectedDocument('invoice')}
-                >
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(12, 1fr)' }, gap: 2, mb: 3 }}>
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  border: selectedDocument === 'invoice' ? 2 : 0,
+                  borderColor: 'primary.main',
+                  gridColumn: { xs: '1 / -1', md: 'span 4' },
+                }}
+                onClick={() => setSelectedDocument('invoice')}
+              >
                   <CardContent>
                     <Typography variant="h6" fontWeight="bold" align="center">
                       納品書
@@ -683,17 +663,16 @@ const AdminSettingsPage = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
 
-              <Grid xs={12} md={4}>
-                <Card
-                  sx={{
-                    cursor: 'pointer',
-                    border: selectedDocument === 'receipt' ? 2 : 0,
-                    borderColor: 'primary.main',
-                  }}
-                  onClick={() => setSelectedDocument('receipt')}
-                >
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  border: selectedDocument === 'receipt' ? 2 : 0,
+                  borderColor: 'primary.main',
+                  gridColumn: { xs: '1 / -1', md: 'span 4' },
+                }}
+                onClick={() => setSelectedDocument('receipt')}
+              >
                   <CardContent>
                     <Typography variant="h6" fontWeight="bold" align="center">
                       領収書
@@ -720,17 +699,16 @@ const AdminSettingsPage = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
 
-              <Grid xs={12} md={4}>
-                <Card
-                  sx={{
-                    cursor: 'pointer',
-                    border: selectedDocument === 'estimate' ? 2 : 0,
-                    borderColor: 'primary.main',
-                  }}
-                  onClick={() => setSelectedDocument('estimate')}
-                >
+              <Card
+                sx={{
+                  cursor: 'pointer',
+                  border: selectedDocument === 'estimate' ? 2 : 0,
+                  borderColor: 'primary.main',
+                  gridColumn: { xs: '1 / -1', md: 'span 4' },
+                }}
+                onClick={() => setSelectedDocument('estimate')}
+              >
                   <CardContent>
                     <Typography variant="h6" fontWeight="bold" align="center">
                       見積書
@@ -757,8 +735,7 @@ const AdminSettingsPage = () => {
                     </Box>
                   </CardContent>
                 </Card>
-              </Grid>
-            </Grid>
+            </Box>
 
             {/* pdfme Designer プレースホルダー */}
             <Card sx={{ mb: 3 }}>
