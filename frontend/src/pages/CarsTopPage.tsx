@@ -167,8 +167,8 @@ export const CarsTopPage: React.FC = () => {
         </Grid>
 
         {/* 注目車種 */}
-        <Box sx={{ mb: 5 }}>
-          <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+        <Box sx={{ mb: 5, mt: 2 }}>
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
             注目車種
           </Typography>
 
@@ -177,30 +177,43 @@ export const CarsTopPage: React.FC = () => {
               <Grid xs={12} sm={6} md={4} key={car.id}>
                 <Card
                   sx={{
+                    // トップページの商品カードと同じスタイルに統一
+                    borderRadius: 1,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                     cursor: 'pointer',
-                    borderRadius: 2,
-                    transition: 'transform 0.2s',
+                    transition: 'all 0.3s ease',
                     '&:hover': {
-                      transform: 'translateY(-4px)',
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
                     },
                   }}
                   onClick={() => navigate(`/cars/${car.maker}/${car.name}/${car.model}`)}
                 >
+                  {/* 画像部分: トップページと同じ 高さ180px + 中央テキスト */}
                   <Box
                     sx={{
-                      height: 220,
+                      width: '100%',
+                      height: 180,
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      fontSize: 18,
+                      fontWeight: 500,
                     }}
-                  />
+                  >
+                    車種画像
+                  </Box>
 
-                  <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  {/* 情報部分: トップページと同じ p:2 + fontSize統一 */}
+                  <Box sx={{ p: 2 }}>
+                    <Typography sx={{ fontSize: 16, fontWeight: 500, mb: 1, color: '#333' }}>
                       {car.maker} {car.name}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography sx={{ fontSize: 14, color: 'text.secondary' }}>
                       {car.model} / {car.years}
                     </Typography>
-                  </CardContent>
+                  </Box>
                 </Card>
               </Grid>
             ))}
