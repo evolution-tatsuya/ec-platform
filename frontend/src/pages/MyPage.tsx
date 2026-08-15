@@ -247,7 +247,7 @@ const MyPage = () => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', pt: 12, pb: 4 }}>
+    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5', pt: 12, pb: 4 }}>
       <Container maxWidth="lg">
         {/* ページヘッダー */}
         <Paper
