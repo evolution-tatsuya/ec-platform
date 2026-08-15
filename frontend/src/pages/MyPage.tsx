@@ -21,7 +21,6 @@ import {
   DialogContent,
   IconButton,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import {
   ShoppingBag,
   Settings,
@@ -353,25 +352,28 @@ const MyPage = () => {
               <Typography variant="h6" fontWeight={700} gutterBottom sx={{ pb: 1, borderBottom: 2, borderColor: 'divider' }}>
                 基本情報
               </Typography>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="氏名"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </Grid>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="メールアドレス"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 2,
+                  mt: 1,
+                }}
+              >
+                <TextField
+                  fullWidth
+                  label="氏名"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  label="メールアドレス"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </Box>
             </Box>
 
             {/* デフォルト配送先 */}
@@ -379,40 +381,41 @@ const MyPage = () => {
               <Typography variant="h6" fontWeight={700} gutterBottom sx={{ pb: 1, borderBottom: 2, borderColor: 'divider' }}>
                 デフォルト配送先
               </Typography>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="郵便番号"
-                    value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
-                  />
-                </Grid>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="電話番号"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </Grid>
-                <Grid xs={12}>
-                  <TextField
-                    fullWidth
-                    label="住所"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                  />
-                </Grid>
-                <Grid xs={12}>
-                  <TextField
-                    fullWidth
-                    label="建物名・部屋番号（任意）"
-                    value={building}
-                    onChange={(e) => setBuilding(e.target.value)}
-                  />
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 2,
+                  mt: 1,
+                }}
+              >
+                <TextField
+                  fullWidth
+                  label="郵便番号"
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  label="電話番号"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+                <TextField
+                  fullWidth
+                  label="住所"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  sx={{ gridColumn: { md: '1 / -1' } }}
+                />
+                <TextField
+                  fullWidth
+                  label="建物名・部屋番号（任意）"
+                  value={building}
+                  onChange={(e) => setBuilding(e.target.value)}
+                  sx={{ gridColumn: { md: '1 / -1' } }}
+                />
+              </Box>
             </Box>
 
             {/* パスワード変更 */}
@@ -420,38 +423,40 @@ const MyPage = () => {
               <Typography variant="h6" fontWeight={700} gutterBottom sx={{ pb: 1, borderBottom: 2, borderColor: 'divider' }}>
                 パスワード変更
               </Typography>
-              <Grid container spacing={2} sx={{ mt: 1 }}>
-                <Grid xs={12}>
-                  <TextField
-                    fullWidth
-                    label="現在のパスワード"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="現在のパスワードを入力"
-                  />
-                </Grid>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="新しいパスワード"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="8文字以上"
-                  />
-                </Grid>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    label="新しいパスワード（確認）"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="再入力"
-                  />
-                </Grid>
-              </Grid>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' },
+                  gap: 2,
+                  mt: 1,
+                }}
+              >
+                <TextField
+                  fullWidth
+                  label="現在のパスワード"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="現在のパスワードを入力"
+                  sx={{ gridColumn: { md: '1 / -1' } }}
+                />
+                <TextField
+                  fullWidth
+                  label="新しいパスワード"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="8文字以上"
+                />
+                <TextField
+                  fullWidth
+                  label="新しいパスワード（確認）"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="再入力"
+                />
+              </Box>
             </Box>
 
             {/* 保存ボタン */}
@@ -476,6 +481,7 @@ const MyPage = () => {
 
       {/* QRコード表示ダイアログ */}
       <Dialog
+        disablePortal={false}
         open={qrDialogOpen}
         onClose={handleCloseQRDialog}
         maxWidth="sm"

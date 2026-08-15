@@ -8,7 +8,6 @@ import {
   CardActionArea,
   CardContent,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import EventIcon from '@mui/icons-material/Event';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
@@ -85,10 +84,16 @@ export const HomePage: React.FC = () => {
           カテゴリーから探す
         </Typography>
 
-        <Grid container spacing={4}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+            gap: 4,
+          }}
+        >
           {categories.map((category) => (
-            <Grid xs={12} md={4} key={category.title}>
               <Card
+                key={category.title}
                 sx={{
                   height: '100%',
                   transition: 'transform 0.2s, box-shadow 0.2s',
@@ -129,9 +134,8 @@ export const HomePage: React.FC = () => {
                   </CardContent>
                 </CardActionArea>
               </Card>
-            </Grid>
           ))}
-        </Grid>
+        </Box>
 
         {/* サービス紹介セクション */}
         <Box sx={{ mt: 8, textAlign: 'center' }}>
@@ -139,38 +143,38 @@ export const HomePage: React.FC = () => {
             私たちのサービス
           </Typography>
 
-          <Grid container spacing={3}>
-            <Grid xs={12} md={4}>
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  豊富な品揃え
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  車パーツから限定イベントまで、幅広い商品を取り扱っています
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid xs={12} md={4}>
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  安心の決済
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  銀行振込・クレジットカードに対応。安全な決済システムを提供
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid xs={12} md={4}>
-              <Box sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                  迅速な配送
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  配達日時指定も可能。お客様のご都合に合わせてお届けします
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' },
+              gap: 3,
+            }}
+          >
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                豊富な品揃え
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                車パーツから限定イベントまで、幅広い商品を取り扱っています
+              </Typography>
+            </Box>
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                安心の決済
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                銀行振込・クレジットカードに対応。安全な決済システムを提供
+              </Typography>
+            </Box>
+            <Box sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+                迅速な配送
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                配達日時指定も可能。お客様のご都合に合わせてお届けします
+              </Typography>
+            </Box>
+          </Box>
         </Box>
       </Container>
     </Box>
