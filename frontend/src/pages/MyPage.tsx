@@ -30,7 +30,9 @@ import {
 } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import QRCode from 'qrcode';
+import axios from 'axios';
 import { orderAPI } from '../lib/api';
+import { getMe, updateProfile, updatePassword } from '../services/api/users';
 
 // タブパネルコンポーネント
 interface TabPanelProps {
@@ -81,6 +83,8 @@ const MyPage = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [saveMsg, setSaveMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   // 注文データを取得
   const {
@@ -96,6 +100,26 @@ const MyPage = () => {
   const orders = ordersData?.orders || [];
 
   // QRコード生成
+  // ログイン中ユーザーの実データをフォームに読み込む
+  useEffect(() => {
+    let active = true;
+    getMe()
+      .then((me) => {
+        if (!active) return;
+        setName(me.name ?? '');
+        setEmail(me.email ?? '');
+        setPostalCode(me.defaultPostalCode ?? '');
+        setPhone(me.defaultPhone ?? '');
+        setAddress(me.defaultAddress ?? '');
+      })
+      .catch(() => {
+        // 未ログイン等は無視（フォームは空のまま）
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (qrDialogOpen && selectedOrderNumber) {
       // ダイアログのアニメーション完了後にQRコードを生成
@@ -133,9 +157,54 @@ const MyPage = () => {
     setTabValue(newValue);
   };
 
-  const handleSaveSettings = () => {
-    // 実装時はAPIで更新
-    alert('アカウント情報を保存しました！');
+  const handleSaveSettings = async () => {
+    setSaveMsg(null);
+
+    // パスワード変更のバリデーション（入力がある場合のみ）
+    const wantsPasswordChange = Boolean(currentPassword || newPassword || confirmPassword);
+    if (wantsPasswordChange) {
+      if (!currentPassword || !newPassword) {
+        setSaveMsg({ type: 'error', text: '現在のパスワードと新しいパスワードを入力してください' });
+        return;
+      }
+      if (newPassword.length < 8) {
+        setSaveMsg({ type: 'error', text: '新しいパスワードは8文字以上で入力してください' });
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setSaveMsg({ type: 'error', text: '新しいパスワード（確認）が一致しません' });
+        return;
+      }
+    }
+
+    setSaving(true);
+    try {
+      // プロフィール（氏名・メール・配送先）を更新
+      await updateProfile({
+        name,
+        email,
+        defaultAddress: address,
+        defaultPostalCode: postalCode,
+        defaultPhone: phone,
+      });
+
+      // パスワード変更が要求されていれば更新
+      if (wantsPasswordChange) {
+        await updatePassword({ currentPassword, newPassword });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+
+      setSaveMsg({ type: 'success', text: 'アカウント情報を保存しました' });
+    } catch (e) {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data?.message ?? '保存に失敗しました')
+        : '保存に失敗しました';
+      setSaveMsg({ type: 'error', text: msg });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleShowQR = (orderNumber: string) => {
@@ -459,11 +528,19 @@ const MyPage = () => {
               </Box>
             </Box>
 
+            {/* 保存結果メッセージ */}
+            {saveMsg && (
+              <Alert severity={saveMsg.type} sx={{ mb: 2 }}>
+                {saveMsg.text}
+              </Alert>
+            )}
+
             {/* 保存ボタン */}
             <Button
               variant="contained"
               size="large"
               onClick={handleSaveSettings}
+              disabled={saving}
               startIcon={<CheckCircle />}
               sx={{
                 backgroundColor: '#48bb78',

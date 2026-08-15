@@ -13,6 +13,9 @@ export interface MeResponse {
     id: string;
     email: string;
     name: string | null;
+    defaultAddress?: string | null;
+    defaultPostalCode?: string | null;
+    defaultPhone?: string | null;
     isAdmin: boolean;
     createdAt: string;
     updatedAt: string;
@@ -22,6 +25,9 @@ export interface MeResponse {
 export interface UpdateProfileRequest {
   name?: string;
   email?: string;
+  defaultAddress?: string;
+  defaultPostalCode?: string;
+  defaultPhone?: string;
 }
 
 export interface UpdatePasswordRequest {
