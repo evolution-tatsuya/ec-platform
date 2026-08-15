@@ -37,7 +37,6 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import Grid from '@mui/material/GridLegacy';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Description, Receipt, RequestQuote, Send } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -294,60 +293,59 @@ export default function AdminOrdersPage() {
         {/* 検索・絞り込み */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Grid container spacing={2}>
-              <Grid xs={12} sm={6} md={3}>
-                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-                  <DatePicker
-                    label="期間（開始）"
-                    value={filterStartDate}
-                    onChange={(newValue) => setFilterStartDate(newValue as Date | null)}
-                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
-                  <DatePicker
-                    label="期間（終了）"
-                    value={filterEndDate}
-                    onChange={(newValue) => setFilterEndDate(newValue as Date | null)}
-                    slotProps={{ textField: { fullWidth: true, size: 'small' } }}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>ステータス</InputLabel>
-                  <Select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    label="ステータス"
-                  >
-                    <MenuItem value="all">すべて</MenuItem>
-                    <MenuItem value="PENDING_PAYMENT">入金待ち</MenuItem>
-                    <MenuItem value="PREPARING">発送準備中</MenuItem>
-                    <MenuItem value="SHIPPED">発送済み</MenuItem>
-                    <MenuItem value="DELIVERED">配達完了</MenuItem>
-                    <MenuItem value="CANCELLED">キャンセル</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid xs={12} sm={6} md={3}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>決済方法</InputLabel>
-                  <Select
-                    value={filterPaymentMethod}
-                    onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                    label="決済方法"
-                  >
-                    <MenuItem value="all">すべて</MenuItem>
-                    <MenuItem value="BANK_TRANSFER">銀行振込</MenuItem>
-                    <MenuItem value="CREDIT_CARD">クレジットカード</MenuItem>
-                    <MenuItem value="PAYPAY">PayPay</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+                gap: 2,
+                alignItems: 'center',
+              }}
+            >
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
+                <DatePicker
+                  label="期間（開始）"
+                  value={filterStartDate}
+                  onChange={(newValue) => setFilterStartDate(newValue as Date | null)}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
+              <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ja}>
+                <DatePicker
+                  label="期間（終了）"
+                  value={filterEndDate}
+                  onChange={(newValue) => setFilterEndDate(newValue as Date | null)}
+                  slotProps={{ textField: { fullWidth: true, size: 'small' } }}
+                />
+              </LocalizationProvider>
+              <FormControl fullWidth size="small">
+                <InputLabel>ステータス</InputLabel>
+                <Select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  label="ステータス"
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="PENDING_PAYMENT">入金待ち</MenuItem>
+                  <MenuItem value="PREPARING">発送準備中</MenuItem>
+                  <MenuItem value="SHIPPED">発送済み</MenuItem>
+                  <MenuItem value="DELIVERED">配達完了</MenuItem>
+                  <MenuItem value="CANCELLED">キャンセル</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>決済方法</InputLabel>
+                <Select
+                  value={filterPaymentMethod}
+                  onChange={(e) => setFilterPaymentMethod(e.target.value)}
+                  label="決済方法"
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="BANK_TRANSFER">銀行振込</MenuItem>
+                  <MenuItem value="CREDIT_CARD">クレジットカード</MenuItem>
+                  <MenuItem value="PAYPAY">PayPay</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </CardContent>
         </Card>
 
@@ -365,6 +363,16 @@ export default function AdminOrdersPage() {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               autoHeight
+              sx={{
+                // 全セルの中身を縦横センターに揃える（行ごとの上下バラつきを解消）
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-cell > *': {
+                  width: '100%',
+                },
+              }}
             />
           </CardContent>
         </Card>

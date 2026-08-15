@@ -245,34 +245,37 @@ export default function AdminCustomersPage() {
         {/* 検索・絞り込み */}
         <Card sx={{ mb: 3 }}>
           <CardContent>
-            <Grid container spacing={2}>
-              <Grid xs={12} sm={8}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="顧客検索"
-                  placeholder="名前またはメールアドレスで検索"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </Grid>
-              <Grid xs={12} sm={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>購入回数</InputLabel>
-                  <Select
-                    value={filterOrderCount}
-                    onChange={(e) => setFilterOrderCount(e.target.value)}
-                    label="購入回数"
-                  >
-                    <MenuItem value="all">すべて</MenuItem>
-                    <MenuItem value="1">1回</MenuItem>
-                    <MenuItem value="2-5">2〜5回</MenuItem>
-                    <MenuItem value="6-10">6〜10回</MenuItem>
-                    <MenuItem value="11+">11回以上</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '2fr 1fr' },
+                gap: 2,
+                alignItems: 'center',
+              }}
+            >
+              <TextField
+                fullWidth
+                size="small"
+                label="顧客検索"
+                placeholder="名前またはメールアドレスで検索"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel>購入回数</InputLabel>
+                <Select
+                  value={filterOrderCount}
+                  onChange={(e) => setFilterOrderCount(e.target.value)}
+                  label="購入回数"
+                >
+                  <MenuItem value="all">すべて</MenuItem>
+                  <MenuItem value="1">1回</MenuItem>
+                  <MenuItem value="2-5">2〜5回</MenuItem>
+                  <MenuItem value="6-10">6〜10回</MenuItem>
+                  <MenuItem value="11+">11回以上</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
           </CardContent>
         </Card>
 
@@ -293,6 +296,16 @@ export default function AdminCustomersPage() {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               autoHeight
+              sx={{
+                // 全セルの中身を縦センターに揃える（行ごとの上下バラつきを解消）
+                '& .MuiDataGrid-cell': {
+                  display: 'flex',
+                  alignItems: 'center',
+                },
+                '& .MuiDataGrid-cell > *': {
+                  width: '100%',
+                },
+              }}
             />
           </CardContent>
         </Card>
