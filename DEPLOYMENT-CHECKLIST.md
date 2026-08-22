@@ -1,30 +1,64 @@
 # 本番デプロイ チェックリスト
 
 **作成日**: 2026-05-26
-**最終確認**: 2026-08-19（実測で現在地を反映）
+**最終確認**: 2026-08-22（本番デプロイ完了・稼働確認）
 **使い方**: デプロイ前・デプロイ中・デプロイ後の各段階でチェック
 
 ---
 
-## 📍 現在地サマリー（2026-08-19 実測）
+## 🟢 本番稼働中（2026-08-22 デプロイ完了・動作確認済み）
 
-デプロイの「準備」はほぼ完了。残るは **実際のデプロイ実行**（Cloud Run / Vercelへのアップロード）。
+**ECサイトは本番公開されており、正常稼働中。**
+
+### 本番URL・ログイン情報
+
+| 用途 | URL / 値 |
+|------|---------|
+| 顧客向けサイト（固定） | `https://frontend-tatsuyas-projects-20cab125.vercel.app` |
+| 管理画面ログイン | `https://frontend-tatsuyas-projects-20cab125.vercel.app/admin/login` |
+| バックエンドAPI（Cloud Run） | `https://ec-platform-backend-production-16645406962.asia-northeast1.run.app` |
+| 管理者メール | `admin@ec-platform.local` ※動作確認中はこのまま。運営前に実メールへ変更 |
+| 管理者パスワード | `TestAdmin2025!` ※動作確認中はこのまま。運営前に本番用へ変更 |
+
+### デプロイ構成
+
+| コンポーネント | 環境 | 状態 |
+|--------------|------|------|
+| フロントエンド | Vercel（プロジェクト`frontend`） | ✅ 稼働・最新コード・コンソールエラー0 |
+| バックエンド | Cloud Run（`ec-platform-backend-production`, asia-northeast1, revision 00017） | ✅ 稼働・API 200・最新コード |
+| DB | Neon（本番 ep-fragrant-sunset） | ✅ 最新スキーマ適用済み・管理者1名・商品/注文0件 |
+| CORS/接続 | 固定フロントURLをCORS_ORIGIN/FRONTEND_URLに設定 | ✅ 疎通確認済み |
+| AI | OPENAI/GEMINIキー空 | ✅ オフ（課金リスクなし） |
+| 決済 | 銀行振込のみ | Stripe未実装（運営後） |
+
+### デプロイ手順メモ（再デプロイ時の参考）
+
+- **バック再デプロイ**: `backend/` で `gcloud run deploy ec-platform-backend-production --source . --region asia-northeast1 --env-vars-file deploy-env.yaml`
+  - `deploy-env.yaml` は `env.yaml` ベースにAIキー空＋FRONTEND_URL/BACKEND_URL追加したもの（`.gitignore`済み）
+- **フロント再デプロイ**: `frontend/` で `vercel --prod`（Vercel環境変数 VITE_API_URL / VITE_API_BASE_URL が本番バックURLを指す。末尾改行`\n`に注意）
+- **本番DBスキーマ更新**: `DATABASE_URL=<本番URL> npx prisma db push`（適用前に `prisma migrate diff` でDROPが無いか確認）
+
+### ⚠️ 運営開始前の残タスク
+
+- [ ] 本番管理者を実在メール＋本番用パスワードへ変更（管理画面のアカウント設定から）
+- [ ] （任意）カスタムドメイン設定
+- [ ] （任意）カード決済=Stripe実装
+
+---
+
+## 📍 準備状況サマリー（デプロイ前に確認した項目）
 
 | 項目 | 状態 |
 |------|------|
 | コード（品質固め・デザイン統一・機能修正） | ✅ mainにマージ済み・ビルド通過 |
 | 外部アカウント（Neon/R2/Vercel/Cloud Run/Resend/Stripe） | ✅ すべて作成済み |
-| 環境変数（`backend/env.yaml`） | ✅ 18項目設定済み（R2/Resend/Stripe/Neon/SESSION等） |
+| 環境変数（`backend/env.yaml`） | ✅ 設定済み |
 | CLIツール（gcloud/vercel/docker/psql） | ✅ すべてインストール済み |
-| **開発/本番DB分離** | ✅ 別ホスト（開発=ep-soft-water / 本番=ep-fragrant-sunset）で分離確認済み |
-| **決済方針** | 運営初期は**銀行振込のみ**（カード決済=Stripe実装は運営後） |
-| **AI方針** | 運営初期は**AIオフ**（OPENAI/GEMINIキーを空に。課金リスク回避） |
-| **未確定（デプロイ後に確定）** | FRONTEND_URL / BACKEND_URL（デプロイURL） |
-| **本番DBマイグレーション** | ✅ 済み（24テーブル適用済み、商品/注文0件のクリーン状態） |
-| **本番管理者アカウント** | ✅ 作成済み（admin@ec-platform.local）※運営前に実メール＋新パスワードへ変更推奨 |
-| **実際のデプロイ実行** | ❌ 未実行 ← 次はここ |
+| **開発/本番DB分離** | ✅ 別ホスト（開発=ep-soft-water / 本番=ep-fragrant-sunset） |
+| **決済方針** | 運営初期は**銀行振込のみ** |
+| **AI方針** | 運営初期は**AIオフ** |
 
-> ⚠️ `backend/env.yaml` は全シークレット平文。Git履歴には無く `.gitignore` で保護済み。**絶対にコミットしないこと。**
+> ⚠️ `backend/env.yaml` と `backend/deploy-env.yaml` は全シークレット平文。Git履歴には無く `.gitignore` で保護済み。**絶対にコミットしないこと。**
 
 ---
 
