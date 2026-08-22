@@ -161,11 +161,11 @@ export default function AdminProductsPage() {
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
-      price: 0,
+      price: undefined as any, // 空スタート。0だと先頭0が残り手打ちしづらいため
       description: '',
       productType: ProductType.PHYSICAL,
       categoryType: 'cars' as any,
-      initialStock: 0,
+      initialStock: undefined as any,
       externalUrl: '',
       preparationDays: 3,
       allowWeekendDelivery: false,
@@ -685,6 +685,7 @@ export default function AdminProductsPage() {
 
         {/* 商品登録・編集ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={openProductDialog}
           onClose={() => setOpenProductDialog(false)}
           maxWidth="md"
@@ -731,14 +732,21 @@ export default function AdminProductsPage() {
                     control={control}
                     render={({ field }) => (
                       <TextField
-                        {...field}
                         fullWidth
                         label="価格（円）"
                         type="number"
                         required
+                        inputProps={{ min: 0, inputMode: 'numeric' }}
                         error={!!errors.price}
                         helperText={errors.price?.message}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === '' ? undefined : Number(v));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        inputRef={field.ref}
                       />
                     )}
                   />
@@ -749,13 +757,20 @@ export default function AdminProductsPage() {
                     control={control}
                     render={({ field }) => (
                       <TextField
-                        {...field}
                         fullWidth
                         label="初期在庫数"
                         type="number"
+                        inputProps={{ min: 0, inputMode: 'numeric' }}
                         error={!!errors.initialStock}
                         helperText={errors.initialStock?.message}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === '' ? undefined : Number(v));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        inputRef={field.ref}
                       />
                     )}
                   />
@@ -891,11 +906,18 @@ export default function AdminProductsPage() {
                     control={control}
                     render={({ field }) => (
                       <TextField
-                        {...field}
                         fullWidth
                         label="準備日数"
                         type="number"
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        inputProps={{ min: 0, inputMode: 'numeric' }}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === '' ? undefined : Number(v));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        inputRef={field.ref}
                       />
                     )}
                   />
@@ -924,6 +946,7 @@ export default function AdminProductsPage() {
 
         {/* 在庫調整ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={openInventoryDialog}
           onClose={() => setOpenInventoryDialog(false)}
           maxWidth="sm"
@@ -972,14 +995,21 @@ export default function AdminProductsPage() {
                     control={inventoryForm.control}
                     render={({ field }) => (
                       <TextField
-                        {...field}
                         fullWidth
                         label="数量"
                         type="number"
                         required
+                        inputProps={{ inputMode: 'numeric' }}
                         error={!!inventoryForm.formState.errors.quantity}
                         helperText={inventoryForm.formState.errors.quantity?.message}
-                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        value={field.value ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          field.onChange(v === '' ? undefined : Number(v));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        inputRef={field.ref}
                       />
                     )}
                   />
@@ -1023,6 +1053,7 @@ export default function AdminProductsPage() {
 
         {/* 削除確認ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={deleteConfirmDialog.open}
           onClose={() => setDeleteConfirmDialog({ open: false, productId: null, productName: null })}
         >

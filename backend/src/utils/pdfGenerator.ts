@@ -494,165 +494,177 @@ export async function generateQuotePDF(orderData: {
   const shippingFee = orderData.shippingFee || 0;
   const subtotal = orderData.totalAmount - shippingFee;
 
-  // 商品明細テーブル生成（最大10行）
-  const itemRows = [];
-  for (let i = 0; i < 10; i++) {
-    const item = orderData.items[i];
-    if (item) {
-      itemRows.push({
-        productName: item.productName,
-        quantity: `${item.quantity}`,
-        price: `¥${item.price.toLocaleString()}`,
-      });
-    } else {
-      itemRows.push({ productName: '', quantity: '', price: '' });
-    }
-  }
+  // 実際に存在する商品のみ（最大10行）
+  const items = orderData.items.slice(0, 10);
 
-  // pdfmeライブラリの型定義制限のため、カスタムプロパティ名に型アサーションが必要
-  const template: Template = {
-    basePdf: { width: 210, height: 297, padding: [20, 20, 20, 20] },
-    schemas: [
-      // タイトル
-      {
-        title: {
-          type: 'text',
-          position: { x: 20, y: 20 },
-          width: 170,
-          height: 15,
-          alignment: 'center',
-          fontSize: 20,
-          fontColor: '#333333',
-        },
-      } as any,
-      // 見積番号・有効期限
-      {
-        orderNumber: {
-          type: 'text',
-          position: { x: 20, y: 40 },
-          width: 170,
-          height: 8,
-          fontSize: 12,
-          fontColor: '#333333',
-        },
-        validUntil: {
-          type: 'text',
-          position: { x: 20, y: 50 },
-          width: 170,
-          height: 8,
-          fontSize: 12,
-          fontColor: '#333333',
-        },
-      } as any,
-      // お客様情報
-      {
-        customerInfo: {
-          type: 'text',
-          position: { x: 20, y: 65 },
-          width: 170,
-          height: 20,
-          fontSize: 11,
-          fontColor: '#333333',
-        },
-      } as any,
-      // 商品明細ヘッダー
-      {
-        itemsHeader: {
-          type: 'text',
-          position: { x: 20, y: 95 },
-          width: 170,
-          height: 8,
-          fontSize: 11,
-          fontColor: '#333333',
-        },
-      } as any,
-      // 商品明細（10行分）
-      ...itemRows.map((_, index) => ({
-        [`item${index}_name`]: {
-          type: 'text',
-          position: { x: 20, y: 105 + index * 8 },
-          width: 90,
-          height: 8,
-          fontSize: 10,
-          fontColor: '#333333',
-        },
-        [`item${index}_qty`]: {
-          type: 'text',
-          position: { x: 110, y: 105 + index * 8 },
-          width: 30,
-          height: 8,
-          fontSize: 10,
-          fontColor: '#333333',
-          alignment: 'right',
-        },
-        [`item${index}_price`]: {
-          type: 'text',
-          position: { x: 140, y: 105 + index * 8 },
-          width: 50,
-          height: 8,
-          fontSize: 10,
-          fontColor: '#333333',
-          alignment: 'right',
-        },
-      } as any)),
-      // 合計金額
-      {
-        subtotal: {
-          type: 'text',
-          position: { x: 110, y: 195 },
-          width: 80,
-          height: 8,
-          fontSize: 11,
-          fontColor: '#333333',
-          alignment: 'right',
-        },
-        shippingFee: {
-          type: 'text',
-          position: { x: 110, y: 205 },
-          width: 80,
-          height: 8,
-          fontSize: 11,
-          fontColor: '#333333',
-          alignment: 'right',
-        },
-        total: {
-          type: 'text',
-          position: { x: 110, y: 215 },
-          width: 80,
-          height: 10,
-          fontSize: 14,
-          fontColor: '#FF5722',
-          alignment: 'right',
-        },
-      } as any,
-      // フッター
-      {
-        footer: {
-          type: 'text',
-          position: { x: 20, y: 270 },
-          width: 170,
-          height: 20,
-          fontSize: 9,
-          fontColor: '#666666',
-          alignment: 'center',
-        },
-      } as any,
-    ],
+  // スキーマは1ページ = 1オブジェクトにまとめる。
+  // （pdfmeはschemas配列の要素数だけページを生成するため、
+  //  1ページに収めるには全フィールドを単一オブジェクトに入れる）
+  const schema: any = {
+    title: {
+      type: 'text',
+      position: { x: 20, y: 20 },
+      width: 170,
+      height: 15,
+      alignment: 'center',
+      fontSize: 20,
+      fontColor: '#333333',
+    },
+    orderNumber: {
+      type: 'text',
+      position: { x: 20, y: 40 },
+      width: 170,
+      height: 8,
+      fontSize: 12,
+      fontColor: '#333333',
+    },
+    validUntil: {
+      type: 'text',
+      position: { x: 20, y: 48 },
+      width: 170,
+      height: 8,
+      fontSize: 12,
+      fontColor: '#333333',
+    },
+    customerInfo: {
+      type: 'text',
+      position: { x: 20, y: 60 },
+      width: 170,
+      height: 16,
+      fontSize: 11,
+      fontColor: '#333333',
+    },
+    // 明細ヘッダー（列見出し）
+    headerName: {
+      type: 'text',
+      position: { x: 20, y: 84 },
+      width: 90,
+      height: 7,
+      fontSize: 10,
+      fontColor: '#333333',
+    },
+    headerQty: {
+      type: 'text',
+      position: { x: 115, y: 84 },
+      width: 25,
+      height: 7,
+      fontSize: 10,
+      fontColor: '#333333',
+      alignment: 'right',
+    },
+    headerPrice: {
+      type: 'text',
+      position: { x: 142, y: 84 },
+      width: 48,
+      height: 7,
+      fontSize: 10,
+      fontColor: '#333333',
+      alignment: 'right',
+    },
+    headerDivider: {
+      type: 'text',
+      position: { x: 20, y: 90 },
+      width: 170,
+      height: 4,
+      fontSize: 8,
+      fontColor: '#999999',
+    },
   };
+
+  // 商品明細行（存在する分だけ、同一ページ内に配置）
+  const rowStartY = 95;
+  items.forEach((_, index) => {
+    const y = rowStartY + index * 8;
+    schema[`item${index}_name`] = {
+      type: 'text',
+      position: { x: 20, y },
+      width: 90,
+      height: 8,
+      fontSize: 10,
+      fontColor: '#333333',
+    };
+    schema[`item${index}_qty`] = {
+      type: 'text',
+      position: { x: 115, y },
+      width: 25,
+      height: 8,
+      fontSize: 10,
+      fontColor: '#333333',
+      alignment: 'right',
+    };
+    schema[`item${index}_price`] = {
+      type: 'text',
+      position: { x: 142, y },
+      width: 48,
+      height: 8,
+      fontSize: 10,
+      fontColor: '#333333',
+      alignment: 'right',
+    };
+  });
+
+  // 合計欄は明細の下に配置
+  const summaryY = rowStartY + items.length * 8 + 8;
+  schema['subtotal'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY },
+    width: 80,
+    height: 8,
+    fontSize: 11,
+    fontColor: '#333333',
+    alignment: 'right',
+  };
+  schema['shippingFee'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY + 8 },
+    width: 80,
+    height: 8,
+    fontSize: 11,
+    fontColor: '#333333',
+    alignment: 'right',
+  };
+  schema['total'] = {
+    type: 'text',
+    position: { x: 110, y: summaryY + 18 },
+    width: 80,
+    height: 10,
+    fontSize: 14,
+    fontColor: '#FF5722',
+    alignment: 'right',
+  };
+  schema['footer'] = {
+    type: 'text',
+    position: { x: 20, y: 272 },
+    width: 170,
+    height: 18,
+    fontSize: 9,
+    fontColor: '#666666',
+    alignment: 'center',
+  };
+
+  const template: Template = {
+    basePdf: BLANK_PDF,
+    schemas: [schema],
+  };
+
+  const itemInputs: Record<string, string> = {};
+  items.forEach((item, index) => {
+    itemInputs[`item${index}_name`] = item.productName;
+    itemInputs[`item${index}_qty`] = `${item.quantity}`;
+    itemInputs[`item${index}_price`] = `¥${item.price.toLocaleString()}`;
+  });
 
   const inputs = [
     {
       title: '御見積書',
       orderNumber: `見積番号: ${orderData.orderNumber}`,
       validUntil: `有効期限: ${orderData.validUntil.toLocaleDateString('ja-JP')}`,
-      customerInfo: `お客様名: ${orderData.customerName}\nメールアドレス: ${orderData.customerEmail}`,
-      itemsHeader: '商品名                                                  数量              金額',
-      ...itemRows.reduce((acc, item, index) => {
-        acc[`item${index}_name`] = item.productName;
-        acc[`item${index}_qty`] = item.quantity;
-        acc[`item${index}_price`] = item.price;
-        return acc;
-      }, {} as Record<string, string>),
+      customerInfo: `お客様名: ${orderData.customerName} 様\nメールアドレス: ${orderData.customerEmail}`,
+      headerName: '商品名',
+      headerQty: '数量',
+      headerPrice: '金額',
+      headerDivider: '──────────────────────────────────────────────────────',
+      ...itemInputs,
       subtotal: `小計: ¥${subtotal.toLocaleString()}`,
       shippingFee: `送料: ¥${shippingFee.toLocaleString()}`,
       total: `合計金額: ¥${orderData.totalAmount.toLocaleString()}`,

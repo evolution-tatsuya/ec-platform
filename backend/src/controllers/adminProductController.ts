@@ -65,8 +65,12 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
       where.productType = productType as string;
     }
 
+    // isActiveフィルター（デフォルト: true = 公開商品のみ）
     if (isActive !== undefined) {
       where.isActive = isActive === 'true';
+    } else {
+      // デフォルトは公開商品のみ（削除済み商品を除外）
+      where.isActive = true;
     }
 
     if (search) {
@@ -174,12 +178,28 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       ? allowWeekendDelivery === 'true'
       : allowWeekendDelivery;
 
-    // categoryType（スラッグ）からcategoryIdを解決（商品一覧取得APIと同じロジック）
+    // categoryType（cars/events/digital 等）からcategoryIdを解決。
+    // フロントのcategoryTypeとDBのslugを対応付け、存在しなければ自動作成する。
     let categoryId = requestCategoryId;
     if (categoryType && !categoryId) {
-      const category = await prisma.category.findUnique({
-        where: { slug: categoryType as string },
+      // フロントのcategoryType → DBカテゴリー定義のマップ
+      const CATEGORY_MAP: Record<string, { slugs: string[]; name: string; slug: string }> = {
+        cars: { slugs: ['cars', 'car-parts'], name: '車パーツ', slug: 'car-parts' },
+        events: { slugs: ['events', 'event'], name: 'イベント', slug: 'events' },
+        digital: { slugs: ['digital', 'digital-products'], name: 'デジタル', slug: 'digital' },
+      };
+      const def = CATEGORY_MAP[categoryType as string];
+      // 対応する候補slugのいずれかで既存カテゴリーを探す
+      const candidateSlugs = def ? def.slugs : [categoryType as string];
+      let category = await prisma.category.findFirst({
+        where: { slug: { in: candidateSlugs } },
       });
+      // 無ければ自動作成（運営初期にカテゴリー未整備でも商品登録できるように）
+      if (!category && def) {
+        category = await prisma.category.create({
+          data: { name: def.name, slug: def.slug, description: `${def.name}カテゴリー` },
+        });
+      }
       if (category) {
         categoryId = category.id;
       } else {

@@ -63,11 +63,31 @@ export const useShipOrder = () => {
 };
 
 /**
+ * 生成されたPDFを自動ダウンロード（+新規タブ表示）する。
+ * 各書類生成フックのonSuccessから呼ぶ共通処理。
+ */
+const triggerDocumentDownload = (data: DocumentGenerationResponse): void => {
+  if (!data.documentUrl) return;
+  // 新規タブでプレビュー表示
+  window.open(data.documentUrl, '_blank');
+  // ダウンロードもトリガー（ファイル名付き）
+  const link = document.createElement('a');
+  link.href = data.documentUrl;
+  link.download = data.fileName ?? 'document.pdf';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  // 生成したObject URLを後片付け（少し遅延させてから解放）
+  setTimeout(() => URL.revokeObjectURL(data.documentUrl), 10000);
+};
+
+/**
  * 納品書生成フック（管理者）
  */
 export const useGenerateInvoice = () => {
   return useMutation<DocumentGenerationResponse, Error, string>({
     mutationFn: generateInvoice,
+    onSuccess: triggerDocumentDownload,
   });
 };
 
@@ -77,6 +97,7 @@ export const useGenerateInvoice = () => {
 export const useGenerateReceipt = () => {
   return useMutation<DocumentGenerationResponse, Error, string>({
     mutationFn: generateReceipt,
+    onSuccess: triggerDocumentDownload,
   });
 };
 
@@ -86,5 +107,6 @@ export const useGenerateReceipt = () => {
 export const useGenerateQuote = () => {
   return useMutation<DocumentGenerationResponse, Error, string>({
     mutationFn: generateQuote,
+    onSuccess: triggerDocumentDownload,
   });
 };
