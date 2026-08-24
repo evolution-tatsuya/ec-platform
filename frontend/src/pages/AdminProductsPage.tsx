@@ -173,6 +173,12 @@ export default function AdminProductsPage() {
     },
   });
 
+  // 数値フィールドにフォーカスした際、既存の値（特に先頭の0）を全選択して
+  // 打ち始めたら上書きできるようにする。0199のような入力ミスを防ぐ。
+  const handleNumberFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.target.select();
+  };
+
   // 商品種別を監視して動的にフィールド表示を制御
   const watchProductType = watch('productType');
 
@@ -740,6 +746,7 @@ export default function AdminProductsPage() {
                         error={!!errors.price}
                         helperText={errors.price?.message}
                         value={field.value ?? ''}
+                        onFocus={handleNumberFocus}
                         onChange={(e) => {
                           const v = e.target.value;
                           field.onChange(v === '' ? undefined : Number(v));
@@ -764,6 +771,7 @@ export default function AdminProductsPage() {
                         error={!!errors.initialStock}
                         helperText={errors.initialStock?.message}
                         value={field.value ?? ''}
+                        onFocus={handleNumberFocus}
                         onChange={(e) => {
                           const v = e.target.value;
                           field.onChange(v === '' ? undefined : Number(v));
@@ -911,6 +919,7 @@ export default function AdminProductsPage() {
                         type="number"
                         inputProps={{ min: 0, inputMode: 'numeric' }}
                         value={field.value ?? ''}
+                        onFocus={handleNumberFocus}
                         onChange={(e) => {
                           const v = e.target.value;
                           field.onChange(v === '' ? undefined : Number(v));
@@ -1003,6 +1012,7 @@ export default function AdminProductsPage() {
                         error={!!inventoryForm.formState.errors.quantity}
                         helperText={inventoryForm.formState.errors.quantity?.message}
                         value={field.value ?? ''}
+                        onFocus={handleNumberFocus}
                         onChange={(e) => {
                           const v = e.target.value;
                           field.onChange(v === '' ? undefined : Number(v));
