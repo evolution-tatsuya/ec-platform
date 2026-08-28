@@ -22,6 +22,12 @@ export const errorHandler = (
     console.error('Error:', err);
   }
 
+  // 本番の500エラーは原因調査のためスタックをログ出力（詳細はレスポンスには含めない）
+  // TODO: 画像アップロード500の原因特定後に削除する一時ログ
+  if (statusCode === 500) {
+    console.error('[500 Error]', err?.message, '\n', err?.stack);
+  }
+
   // 本番環境では詳細なエラー情報を隠す
   res.status(statusCode).json({
     success: false,

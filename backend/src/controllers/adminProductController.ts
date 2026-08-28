@@ -65,12 +65,11 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
       where.productType = productType as string;
     }
 
-    // isActiveフィルター（デフォルト: true = 公開商品のみ）
+    // isActiveフィルター
+    // 管理者一覧は公開・非公開の両方を表示するため、未指定なら絞り込まない。
+    // （非公開にした商品が一覧から消えないようにする）
     if (isActive !== undefined) {
       where.isActive = isActive === 'true';
-    } else {
-      // デフォルトは公開商品のみ（削除済み商品を除外）
-      where.isActive = true;
     }
 
     if (search) {
