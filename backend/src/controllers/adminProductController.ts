@@ -155,6 +155,13 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
  */
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // フロントは 'images'（複数）で送信するため、先頭の1枚を req.file として扱う
+    // （画像処理ロジックは1枚のみ対応のため）
+    const uploadedFiles = req.files as Express.Multer.File[] | undefined;
+    if (!req.file && uploadedFiles && uploadedFiles.length > 0) {
+      req.file = uploadedFiles[0];
+    }
+
     console.log('=== 商品作成API リクエストデバッグ ===');
     console.log('req.body:', req.body);
     console.log('req.file:', req.file);
@@ -428,6 +435,12 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
  */
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // フロントは 'images'（複数）で送信するため、先頭の1枚を req.file として扱う
+    const uploadedFiles = req.files as Express.Multer.File[] | undefined;
+    if (!req.file && uploadedFiles && uploadedFiles.length > 0) {
+      req.file = uploadedFiles[0];
+    }
+
     const id = getStringParam(req.params.id);
     if (!id) return next(createError('商品IDが必要です', 400));
 

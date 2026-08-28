@@ -25,7 +25,8 @@ router.get('/', getAdminProducts);
 
 // ===== 商品登録（画像アップロード対応） =====
 // POST /api/admin/products
-router.post('/', upload.single('image'), createProduct);
+// フロントは 'images'（複数）フィールドで送信するため array で受ける
+router.post('/', upload.array('images', 10), createProduct);
 
 // ===== 商品詳細取得 =====
 // GET /api/admin/products/:id
@@ -33,7 +34,8 @@ router.get('/:id', getProductById);
 
 // ===== 商品更新（画像アップロード対応） =====
 // PUT /api/admin/products/:id
-router.put('/:id', upload.single('image'), updateProduct);
+// フロントは 'images'（複数）フィールドで送信するため array で受ける
+router.put('/:id', upload.array('images', 10), updateProduct);
 
 // ===== 商品削除 =====
 // DELETE /api/admin/products/:id
