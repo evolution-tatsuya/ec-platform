@@ -10,16 +10,23 @@ export interface AppError extends Error {
 
 export const errorHandler = (
   err: AppError,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction
 ) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
-  // 開発環境ではスタックトレースをログ出力
+  // 開発環境では全エラーをスタックトレース付きで出力
   if (process.env.NODE_ENV === 'development') {
     console.error('Error:', err);
+  } else if (statusCode >= 500) {
+    // 本番環境ではサーバー側の想定外エラー(5xx)のみログ出力。
+    // 400/404などの想定内エラーはノイズになるため出さない。
+    // レスポンスに詳細は含めない（下記参照）が、Cloud Runログで原因を追えるようにする。
+    console.error(
+      `[${statusCode}] ${req.method} ${req.originalUrl} - ${err.message}\n${err.stack}`
+    );
   }
 
   // 本番環境では詳細なエラー情報を隠す
