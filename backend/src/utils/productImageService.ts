@@ -6,11 +6,21 @@
  * R2キー: products/{productId}/{imageId}/{sizeType}.webp （imageIdで複数画像を区別）
  */
 
-import type { Prisma, PrismaClient, ProductImage } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 import { uploadFile, deleteFile, generateSignedUrl } from './r2Client';
 import { generateMultipleSizes, validateImageFormat } from './imageProcessor';
 
 type TxClient = Prisma.TransactionClient | PrismaClient;
+
+// ProductImageのDB行の型（@prisma/clientの生成型に依存せず、ビルド順序の影響を受けない）
+interface ProductImageRow {
+  id: string;
+  productId: string;
+  imageKey: string;
+  sizeType: string;
+  order: number;
+  createdAt: Date;
+}
 
 const SIZE_TYPES = ['thumbnail', 'list', 'detail'] as const;
 
@@ -83,7 +93,7 @@ export async function deleteAllProductImages(
  * @returns [{ id(=imageIdフォルダ), order, thumbnailUrl, listUrl, detailUrl }]
  */
 export async function buildProductImageList(
-  rows: ProductImage[],
+  rows: ProductImageRow[],
 ): Promise<
   {
     id: string;
@@ -95,7 +105,7 @@ export async function buildProductImageList(
 > {
   // imageKey: products/{productId}/{imageId}/{sizeType}.webp
   // 旧形式(products/{productId}/{sizeType}.webp)は imageId部分が無いので order+sizeType で束ねる
-  const groups = new Map<string, Partial<Record<string, ProductImage>>>();
+  const groups = new Map<string, Partial<Record<string, ProductImageRow>>>();
 
   for (const row of rows) {
     const parts = row.imageKey.split('/');
@@ -142,7 +152,7 @@ export async function buildProductImageList(
  * order順の表示用URL文字列配列（detail優先）。
  * 既存の images: string[] 消費側（カード等）との互換用。
  */
-export async function buildProductImageUrls(rows: ProductImage[]): Promise<string[]> {
+export async function buildProductImageUrls(rows: ProductImageRow[]): Promise<string[]> {
   const list = await buildProductImageList(rows);
   return list.map((img) => img.detailUrl).filter(Boolean);
 }
