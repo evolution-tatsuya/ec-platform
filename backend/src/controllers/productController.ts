@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 
 import { prisma } from '../config/prisma';
 import { createError } from '../middleware/errorHandler';
+import { buildProductImageList } from '../utils/productImageService';
 
 /**
  * 商品一覧取得
@@ -49,6 +50,7 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
         where,
         include: {
           category: true,
+          images: true,
         },
         orderBy: {
           createdAt: 'desc',
@@ -59,9 +61,21 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
       prisma.product.count({ where }),
     ]);
 
+    // 各商品の画像URL(order順)を付与
+    const productsWithImages = await Promise.all(
+      products.map(async (product) => {
+        const productImages = await buildProductImageList(product.images);
+        return {
+          ...product,
+          images: productImages.map((img) => img.detailUrl),
+          productImages,
+        };
+      }),
+    );
+
     return res.json({
       success: true,
-      products,
+      products: productsWithImages,
       pagination: {
         total,
         limit: limitNum,
@@ -86,6 +100,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
       where: { id: typeof id === 'string' ? id : id[0] },
       include: {
         category: true,
+        images: true,
         inventoryLogs: {
           orderBy: {
             createdAt: 'desc',
@@ -110,11 +125,14 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
     });
 
     const currentStock = inventorySum._sum?.quantity || 0;
+    const productImages = await buildProductImageList(product.images);
 
     return res.json({
       success: true,
       product: {
         ...product,
+        images: productImages.map((img) => img.detailUrl),
+        productImages,
         currentStock,
       },
     });

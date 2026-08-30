@@ -51,6 +51,15 @@ export enum CategoryType {
 // Product Interface (Enumの直後に配置)
 // ========================================
 
+// 商品画像（order順・各サイズの署名付きURL）
+export interface ProductImage {
+  id: string;
+  order: number;
+  thumbnailUrl: string;
+  listUrl: string;
+  detailUrl: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -60,6 +69,7 @@ export interface Product {
   productType: ProductType;
   categoryType: CategoryType;
   images: string[];
+  productImages?: ProductImage[];
   externalUrl?: string;
   shippingSettings?: ShippingSettings;
   preparationDays?: number;

@@ -4,8 +4,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import { createError } from '../middleware/errorHandler';
-import { validateImageFormat, generateMultipleSizes } from '../utils/imageProcessor';
-import { uploadFile, deleteFile } from '../utils/r2Client';
+import { deleteFile } from '../utils/r2Client';
+import {
+  saveProductImages,
+  buildProductImageList,
+  buildProductImageUrls,
+} from '../utils/productImageService';
 
 // ヘルパー関数: string | string[] を string に変換
 const getStringParam = (param: string | string[] | undefined): string | undefined => {
@@ -90,6 +94,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
         where,
         include: {
           category: true,
+          images: true,
         },
         orderBy,
         take: limitNum,
@@ -98,7 +103,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
       prisma.product.count({ where }),
     ]);
 
-    // 各商品の在庫数を計算し、categoryTypeを追加
+    // 各商品の在庫数を計算し、categoryTypeと画像URLを追加
     let productsWithStock = await Promise.all(
       products.map(async (product) => {
         const inventorySum = await prisma.inventoryLog.aggregate({
@@ -107,8 +112,12 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
         });
         // tagsをJSON配列にパース
         const parsedTags = typeof product.tags === 'string' ? JSON.parse(product.tags) : product.tags;
+        // 画像を order順の [{id, order, thumbnailUrl, listUrl, detailUrl}] と URL文字列配列に変換
+        const productImages = await buildProductImageList(product.images);
         return {
           ...product,
+          images: productImages.map((img) => img.detailUrl), // 互換: images: string[]
+          productImages, // 管理UI用の詳細（並べ替え・削除に使用）
           tags: parsedTags,
           categoryType: product.category?.slug, // categoryTypeをスラッグから追加
           currentStock: inventorySum._sum?.quantity || 0,
@@ -155,16 +164,12 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
  */
 export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // フロントは 'images'（複数）で送信するため、先頭の1枚を req.file として扱う
-    // （画像処理ロジックは1枚のみ対応のため）
-    const uploadedFiles = req.files as Express.Multer.File[] | undefined;
-    if (!req.file && uploadedFiles && uploadedFiles.length > 0) {
-      req.file = uploadedFiles[0];
-    }
+    // フロントは 'images'（複数）で送信する
+    const uploadedFiles = (req.files as Express.Multer.File[] | undefined) || [];
 
     console.log('=== 商品作成API リクエストデバッグ ===');
     console.log('req.body:', req.body);
-    console.log('req.file:', req.file);
+    console.log('画像枚数:', uploadedFiles.length);
 
     const {
       name,
@@ -254,34 +259,6 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       }
     }
 
-    // 画像アップロード処理
-    let imageKeys: { thumbnail: string; list: string; detail: string } | null = null;
-
-    if (req.file) {
-      // 画像形式バリデーション
-      const isValid = await validateImageFormat(req.file.buffer);
-      if (!isValid) {
-        return next(createError('サポートされていない画像形式です（JPEG, PNG, WebPのみ）', 400));
-      }
-
-      // 3サイズのWebP画像を生成
-      const images = await generateMultipleSizes(req.file.buffer);
-
-      // R2にアップロード（仮のproductIdで保存、後でトランザクション内で実際のIDに置き換え）
-      const tempId = Date.now().toString();
-      imageKeys = {
-        thumbnail: `products/${tempId}/thumbnail.webp`,
-        list: `products/${tempId}/list.webp`,
-        detail: `products/${tempId}/detail.webp`,
-      };
-
-      await Promise.all([
-        uploadFile(imageKeys.thumbnail, images.thumbnail, 'image/webp'),
-        uploadFile(imageKeys.list, images.list, 'image/webp'),
-        uploadFile(imageKeys.detail, images.detail, 'image/webp'),
-      ]);
-    }
-
     // トランザクション処理
     const product = await prisma.$transaction(async (tx) => {
       // 商品作成
@@ -302,57 +279,9 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
         },
       });
 
-      // 画像がアップロードされている場合、R2の画像キーを更新してProductImageレコード作成
-      if (imageKeys) {
-        const actualImageKeys = {
-          thumbnail: `products/${newProduct.id}/thumbnail.webp`,
-          list: `products/${newProduct.id}/list.webp`,
-          detail: `products/${newProduct.id}/detail.webp`,
-        };
-
-        // 仮キーから実際のキーにR2上でコピー（実際にはキーを変更できないので削除して再アップロード）
-        // ここでは簡略化のため、実際のキーで最初からアップロードし直す
-        const images = await generateMultipleSizes(req.file!.buffer);
-        await Promise.all([
-          uploadFile(actualImageKeys.thumbnail, images.thumbnail, 'image/webp'),
-          uploadFile(actualImageKeys.list, images.list, 'image/webp'),
-          uploadFile(actualImageKeys.detail, images.detail, 'image/webp'),
-        ]);
-
-        // 仮キーを削除
-        await Promise.all([
-          deleteFile(imageKeys.thumbnail),
-          deleteFile(imageKeys.list),
-          deleteFile(imageKeys.detail),
-        ]);
-
-        // ProductImageレコード作成
-        await Promise.all([
-          tx.productImage.create({
-            data: {
-              productId: newProduct.id,
-              imageKey: actualImageKeys.thumbnail,
-              sizeType: 'thumbnail',
-              order: 0,
-            },
-          }),
-          tx.productImage.create({
-            data: {
-              productId: newProduct.id,
-              imageKey: actualImageKeys.list,
-              sizeType: 'list',
-              order: 0,
-            },
-          }),
-          tx.productImage.create({
-            data: {
-              productId: newProduct.id,
-              imageKey: actualImageKeys.detail,
-              sizeType: 'detail',
-              order: 0,
-            },
-          }),
-        ]);
+      // 画像がアップロードされている場合、複数画像を保存
+      if (uploadedFiles.length > 0) {
+        await saveProductImages(tx, newProduct.id, uploadedFiles);
       }
 
       // 初期在庫がある場合、在庫ログ作成
@@ -399,6 +328,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
       where: { id },
       include: {
         category: true,
+        images: true,
       },
     });
 
@@ -414,11 +344,14 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
 
     // tagsをJSON配列にパース
     const parsedTags = typeof product.tags === 'string' ? JSON.parse(product.tags) : product.tags;
+    const productImages = await buildProductImageList(product.images);
 
     return res.json({
       success: true,
       product: {
         ...product,
+        images: productImages.map((img) => img.detailUrl),
+        productImages,
         tags: parsedTags,
         currentStock: inventorySum._sum?.quantity || 0,
       },
@@ -435,11 +368,8 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
  */
 export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // フロントは 'images'（複数）で送信するため、先頭の1枚を req.file として扱う
-    const uploadedFiles = req.files as Express.Multer.File[] | undefined;
-    if (!req.file && uploadedFiles && uploadedFiles.length > 0) {
-      req.file = uploadedFiles[0];
-    }
+    // フロントは新規画像を 'images'（複数）で送信する
+    const uploadedFiles = (req.files as Express.Multer.File[] | undefined) || [];
 
     const id = getStringParam(req.params.id);
     if (!id) return next(createError('商品IDが必要です', 400));
@@ -457,6 +387,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       allowWeekendDelivery,
       isActive,
       tags,
+      existingImages, // 残す既存画像の [{ id, order }] をJSON文字列で受け取る（並べ替え・削除に対応）
     } = req.body;
 
     // 商品存在チェック
@@ -503,67 +434,56 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       }
     }
 
-    // 画像アップロード処理
-    if (req.file) {
-      // 画像形式バリデーション
-      const isValid = await validateImageFormat(req.file.buffer);
-      if (!isValid) {
-        return next(createError('サポートされていない画像形式です（JPEG, PNG, WebPのみ）', 400));
+    // ===== 画像の更新処理 =====
+    // existingImages(残す既存画像) が送られてきた場合のみ画像を再構成する。
+    // 未送信(フィールド無し)の場合は画像に触れない（他項目だけの更新を壊さない）。
+    if (existingImages !== undefined || uploadedFiles.length > 0) {
+      // 残す既存画像: [{ id: '<order>:<imageId>' | '<order>', order: number }]
+      let keep: { id: string; order: number }[] = [];
+      if (existingImages) {
+        try {
+          keep = typeof existingImages === 'string' ? JSON.parse(existingImages) : existingImages;
+        } catch {
+          keep = [];
+        }
       }
 
-      // 既存の画像を削除
-      const existingImages = await prisma.productImage.findMany({
-        where: { productId: id },
-      });
+      const currentRows = await prisma.productImage.findMany({ where: { productId: id } });
 
-      for (const img of existingImages) {
-        await deleteFile(img.imageKey);
-        await prisma.productImage.delete({ where: { id: img.id } });
-      }
-
-      // 3サイズのWebP画像を生成
-      const images = await generateMultipleSizes(req.file.buffer);
-
-      // R2にアップロード
-      const imageKeys = {
-        thumbnail: `products/${id}/thumbnail.webp`,
-        list: `products/${id}/list.webp`,
-        detail: `products/${id}/detail.webp`,
+      // 論理画像ごとにグルーピング（buildProductImageListと同じキー規則）
+      const keepIds = new Set(keep.map((k) => k.id));
+      const orderById = new Map(keep.map((k) => [k.id, k.order]));
+      const groupKeyOf = (row: typeof currentRows[number]): string => {
+        const parts = row.imageKey.split('/');
+        const hasImageId = parts.length >= 4;
+        return hasImageId ? `${row.order}:${parts[parts.length - 2]}` : `${row.order}`;
       };
 
-      await Promise.all([
-        uploadFile(imageKeys.thumbnail, images.thumbnail, 'image/webp'),
-        uploadFile(imageKeys.list, images.list, 'image/webp'),
-        uploadFile(imageKeys.detail, images.detail, 'image/webp'),
-      ]);
+      await prisma.$transaction(async (tx) => {
+        // 残さない画像はR2/DBから削除、残す画像はorderを更新
+        for (const row of currentRows) {
+          const gkey = groupKeyOf(row);
+          if (!keepIds.has(gkey)) {
+            try {
+              await deleteFile(row.imageKey);
+            } catch {
+              // R2削除失敗は許容
+            }
+            await tx.productImage.delete({ where: { id: row.id } });
+          } else {
+            const newOrder = orderById.get(gkey);
+            if (newOrder !== undefined && newOrder !== row.order) {
+              await tx.productImage.update({ where: { id: row.id }, data: { order: newOrder } });
+            }
+          }
+        }
 
-      // ProductImageレコード作成
-      await Promise.all([
-        prisma.productImage.create({
-          data: {
-            productId: id,
-            imageKey: imageKeys.thumbnail,
-            sizeType: 'thumbnail',
-            order: 0,
-          },
-        }),
-        prisma.productImage.create({
-          data: {
-            productId: id,
-            imageKey: imageKeys.list,
-            sizeType: 'list',
-            order: 0,
-          },
-        }),
-        prisma.productImage.create({
-          data: {
-            productId: id,
-            imageKey: imageKeys.detail,
-            sizeType: 'detail',
-            order: 0,
-          },
-        }),
-      ]);
+        // 新規画像を末尾に追加
+        if (uploadedFiles.length > 0) {
+          const maxKeepOrder = keep.length > 0 ? Math.max(...keep.map((k) => k.order)) : -1;
+          await saveProductImages(tx, id, uploadedFiles, maxKeepOrder + 1);
+        }
+      });
     }
 
     // multipart/form-dataの場合、全て文字列として送信されるので変換
@@ -598,6 +518,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       },
       include: {
         category: true,
+        images: true,
       },
     });
 
@@ -609,11 +530,14 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
     // tagsをJSON配列にパース
     const parsedResponseTags = typeof updatedProduct.tags === 'string' ? JSON.parse(updatedProduct.tags) : updatedProduct.tags;
+    const productImages = await buildProductImageList(updatedProduct.images);
 
     return res.json({
       success: true,
       product: {
         ...updatedProduct,
+        images: productImages.map((img) => img.detailUrl),
+        productImages,
         tags: parsedResponseTags,
         currentStock: inventorySum._sum?.quantity || 0,
       },

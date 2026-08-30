@@ -1,5 +1,7 @@
 import { createTheme } from '@mui/material/styles';
 import type { ThemeOptions } from '@mui/material/styles';
+import { jaJP as coreJaJP } from '@mui/material/locale';
+import { jaJP as dataGridJaJP } from '@mui/x-data-grid/locales';
 import { palette } from './palette';
 import { typography } from './typography';
 import { components } from './components';
@@ -83,6 +85,7 @@ const themeOptions: ThemeOptions = {
  * }
  * ```
  */
-export const theme = createTheme(themeOptions);
+// MUIコンポーネントとDataGridの表示を日本語化（在庫ログ等のカラムメニューを日本語表示）
+export const theme = createTheme(themeOptions, coreJaJP, dataGridJaJP);
 
 export default theme;

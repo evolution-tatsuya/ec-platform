@@ -39,6 +39,8 @@ export interface UpdateProductRequest {
   description?: string;
   isActive?: boolean;
   images?: string[];
+  // 残す既存画像を現在の並び順で指定（並べ替え・削除に対応）
+  existingImages?: { id: string; order: number }[];
   externalUrl?: string;
   preparationDays?: number;
   allowWeekendDelivery?: boolean;
@@ -193,7 +195,12 @@ export const updateAdminProduct = async (
     if (data.attributes !== undefined) formData.append('attributes', JSON.stringify(data.attributes));
     if (data.tags !== undefined) formData.append('tags', JSON.stringify(data.tags));
 
-    // 画像
+    // 残す既存画像（並べ替え・削除）。undefinedでない場合は必ず送る（空配列=全削除）。
+    if (data.existingImages !== undefined) {
+      formData.append('existingImages', JSON.stringify(data.existingImages));
+    }
+
+    // 新規画像
     if (data.images && data.images.length > 0) {
       data.images.forEach((image) => {
         formData.append('images', image);

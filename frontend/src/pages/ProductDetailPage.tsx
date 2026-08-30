@@ -291,48 +291,69 @@ export default function ProductDetailPage() {
         {/* 画像ギャラリー */}
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {/* メイン画像 */}
-          <Box
-            sx={{
-              width: '100%',
-              aspectRatio: '1',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              borderRadius: 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: 24,
-              fontWeight: 500,
-              cursor: 'zoom-in',
-            }}
-          >
-            メイン画像
-          </Box>
+          {product?.images && product.images.length > 0 ? (
+            <Box
+              component="img"
+              src={product.images[selectedImageIndex] || product.images[0]}
+              alt={product.name}
+              sx={{
+                width: '100%',
+                aspectRatio: '1',
+                objectFit: 'cover',
+                borderRadius: 1,
+                cursor: 'zoom-in',
+                bgcolor: 'grey.100',
+              }}
+            />
+          ) : (
+            <Box
+              sx={{
+                width: '100%',
+                aspectRatio: '1',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                borderRadius: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: 24,
+                fontWeight: 500,
+              }}
+            >
+              画像なし
+            </Box>
+          )}
 
-          {/* サムネイル */}
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 1.5,
-            }}
-          >
-            {product?.images?.map((_, index) => (
-              <Box
-                key={index}
-                onClick={() => setSelectedImageIndex(index)}
-                sx={{
-                  aspectRatio: '1',
-                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                  borderRadius: 0.5,
-                  cursor: 'pointer',
-                  border: selectedImageIndex === index ? '2px solid' : '2px solid transparent',
-                  borderColor: 'primary.main',
-                  transition: 'border-color 0.2s',
-                }}
-              />
-            ))}
-          </Box>
+          {/* サムネイル（2枚以上のときのみ表示） */}
+          {product?.images && product.images.length > 1 && (
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 1.5,
+              }}
+            >
+              {product.images.map((url, index) => (
+                <Box
+                  key={index}
+                  component="img"
+                  src={url}
+                  alt={`${product.name} ${index + 1}`}
+                  onClick={() => setSelectedImageIndex(index)}
+                  sx={{
+                    aspectRatio: '1',
+                    objectFit: 'cover',
+                    borderRadius: 0.5,
+                    cursor: 'pointer',
+                    bgcolor: 'grey.100',
+                    border: selectedImageIndex === index ? '2px solid' : '2px solid transparent',
+                    borderColor: selectedImageIndex === index ? 'primary.main' : 'transparent',
+                    transition: 'border-color 0.2s',
+                  }}
+                />
+              ))}
+            </Box>
+          )}
         </Box>
 
         {/* 商品情報 */}

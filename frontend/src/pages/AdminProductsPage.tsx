@@ -40,12 +40,15 @@ import {
   Close,
   Visibility,
   VisibilityOff,
+  ArrowUpward,
+  ArrowDownward,
 } from '@mui/icons-material';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { ProductType, CategoryType } from '../types';
+import type { ProductImage } from '../types';
 import {
   useCreateProduct,
   useUpdateProduct,
@@ -111,6 +114,8 @@ export default function AdminProductsPage() {
   const [selectedProducts, setSelectedProducts] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() });
   const [editingProduct, setEditingProduct] = useState<string | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  // 編集時に「残す」既存画像（並べ替え・削除に対応）。order順で保持。
+  const [existingImages, setExistingImages] = useState<ProductImage[]>([]);
   const [deleteConfirmDialog, setDeleteConfirmDialog] = useState<{
     open: boolean;
     productId: string | null;
@@ -212,6 +217,11 @@ export default function AdminProductsPage() {
         allowWeekendDelivery: editingProductData.allowWeekendDelivery || false,
         tags: (editingProductData.tags || []).map(tag => typeof tag === 'string' ? tag : tag.name),
       });
+      // 既存画像を order順で読み込む（並べ替え・削除の起点）
+      const imgs = (editingProductData.productImages || [])
+        .slice()
+        .sort((a, b) => a.order - b.order);
+      setExistingImages(imgs);
     }
   }, [editingProductData, openProductDialog, reset]);
 
@@ -244,6 +254,7 @@ export default function AdminProductsPage() {
       setOpenProductDialog(false);
       reset();
       setImageFiles([]);
+      setExistingImages([]);
       alert('商品を登録しました');
     } catch (error) {
       console.error('商品登録エラー:', error);
@@ -266,6 +277,8 @@ export default function AdminProductsPage() {
           allowWeekendDelivery: data.allowWeekendDelivery,
           tags: data.tags,
           images: imageFiles.length > 0 ? (imageFiles as any) : undefined,
+          // 残す既存画像を現在の並び順(order)で送信。削除した画像は含めない。
+          existingImages: existingImages.map((img, index) => ({ id: img.id, order: index })),
         },
       });
 
@@ -273,6 +286,7 @@ export default function AdminProductsPage() {
       reset();
       setEditingProduct(null);
       setImageFiles([]);
+      setExistingImages([]);
       alert('商品を更新しました');
     } catch (error) {
       console.error('商品更新エラー:', error);
@@ -301,8 +315,30 @@ export default function AdminProductsPage() {
   const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      setImageFiles(Array.from(files));
+      // 既存の選択に追加（複数回に分けて選べるように）
+      setImageFiles((prev) => [...prev, ...Array.from(files)]);
     }
+    // 同じファイルを再選択できるように input をリセット
+    event.target.value = '';
+  };
+
+  // 既存画像（保存済み）の並べ替え・削除
+  const moveExistingImage = (index: number, dir: -1 | 1) => {
+    setExistingImages((prev) => {
+      const next = [...prev];
+      const target = index + dir;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+  const removeExistingImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // 新規選択画像の削除
+  const removeNewImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const executeDelete = async () => {
@@ -883,7 +919,7 @@ export default function AdminProductsPage() {
                     startIcon={<CloudUpload />}
                     fullWidth
                   >
-                    画像をアップロード
+                    画像を追加
                     <input
                       type="file"
                       hidden
@@ -892,14 +928,92 @@ export default function AdminProductsPage() {
                       onChange={handleImageChange}
                     />
                   </Button>
-                  {imageFiles.length > 0 && (
-                    <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                      {imageFiles.length}枚選択中
-                    </Typography>
-                  )}
                   <Typography variant="caption" color="text.secondary" display="block" mt={1}>
-                    複数選択可。JPG, PNG形式。自動的にWebP形式に変換され88%圧縮されます。
+                    複数選択可。JPG, PNG形式。自動的にWebP形式に変換され88%圧縮されます。左が1枚目（メイン画像）です。
                   </Typography>
+
+                  {/* 既存画像（保存済み）: 並べ替え・削除 */}
+                  {existingImages.length > 0 && (
+                    <Box mt={2}>
+                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                        現在の画像（{existingImages.length}枚） — 矢印で並べ替え、ゴミ箱で削除
+                      </Typography>
+                      <Box display="flex" flexWrap="wrap" gap={1}>
+                        {existingImages.map((img, index) => (
+                          <Box
+                            key={img.id}
+                            sx={{
+                              position: 'relative',
+                              width: 96,
+                              border: '1px solid',
+                              borderColor: index === 0 ? 'primary.main' : 'divider',
+                              borderRadius: 1,
+                              overflow: 'hidden',
+                            }}
+                          >
+                            <Box
+                              component="img"
+                              src={img.thumbnailUrl || img.listUrl || img.detailUrl}
+                              alt={`商品画像${index + 1}`}
+                              sx={{ width: '100%', height: 96, objectFit: 'cover', display: 'block' }}
+                            />
+                            {index === 0 && (
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  position: 'absolute', top: 0, left: 0,
+                                  bgcolor: 'primary.main', color: 'white',
+                                  px: 0.5, fontSize: 10, borderBottomRightRadius: 4,
+                                }}
+                              >
+                                メイン
+                              </Typography>
+                            )}
+                            <Stack direction="row" justifyContent="center" sx={{ bgcolor: 'rgba(0,0,0,0.04)' }}>
+                              <IconButton size="small" disabled={index === 0} onClick={() => moveExistingImage(index, -1)}>
+                                <ArrowUpward sx={{ fontSize: 16, transform: 'rotate(-90deg)' }} />
+                              </IconButton>
+                              <IconButton size="small" disabled={index === existingImages.length - 1} onClick={() => moveExistingImage(index, 1)}>
+                                <ArrowDownward sx={{ fontSize: 16, transform: 'rotate(-90deg)' }} />
+                              </IconButton>
+                              <IconButton size="small" color="error" onClick={() => removeExistingImage(index)}>
+                                <Delete sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Stack>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {/* 新規選択画像: プレビュー・削除 */}
+                  {imageFiles.length > 0 && (
+                    <Box mt={2}>
+                      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                        追加する画像（{imageFiles.length}枚） — 保存すると末尾に追加されます
+                      </Typography>
+                      <Box display="flex" flexWrap="wrap" gap={1}>
+                        {imageFiles.map((file, index) => (
+                          <Box
+                            key={`${file.name}-${index}`}
+                            sx={{ position: 'relative', width: 96, border: '1px dashed', borderColor: 'success.main', borderRadius: 1, overflow: 'hidden' }}
+                          >
+                            <Box
+                              component="img"
+                              src={URL.createObjectURL(file)}
+                              alt={file.name}
+                              sx={{ width: '100%', height: 96, objectFit: 'cover', display: 'block' }}
+                            />
+                            <Stack direction="row" justifyContent="center" sx={{ bgcolor: 'rgba(0,0,0,0.04)' }}>
+                              <IconButton size="small" color="error" onClick={() => removeNewImage(index)}>
+                                <Delete sx={{ fontSize: 16 }} />
+                              </IconButton>
+                            </Stack>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
                 </Grid>
 
                 {/* 配送設定 */}
@@ -935,7 +1049,7 @@ export default function AdminProductsPage() {
             </form>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => { setOpenProductDialog(false); reset(); setEditingProduct(null); setImageFiles([]); }}>
+            <Button onClick={() => { setOpenProductDialog(false); reset(); setEditingProduct(null); setImageFiles([]); setExistingImages([]); }}>
               キャンセル
             </Button>
             <Button
