@@ -423,11 +423,18 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       }
     }
 
-    // categoryType（スラッグ）からcategoryIdを解決（createProductと同様のロジック）
+    // categoryType（cars/events/dig 等）からcategoryIdを解決。
+    // フロントのenum値とDBのslug(car-parts等)を対応付ける（createProductと同じ候補slug方式）。
     let resolvedCategoryId = categoryId;
     if (categoryType && !categoryId) {
-      const category = await prisma.category.findUnique({
-        where: { slug: categoryType as string },
+      const CATEGORY_MAP: Record<string, string[]> = {
+        cars: ['cars', 'car-parts'],
+        events: ['events', 'event'],
+        digital: ['digital', 'digital-products'],
+      };
+      const candidateSlugs = CATEGORY_MAP[categoryType as string] || [categoryType as string];
+      const category = await prisma.category.findFirst({
+        where: { slug: { in: candidateSlugs } },
       });
       if (category) {
         resolvedCategoryId = category.id;
