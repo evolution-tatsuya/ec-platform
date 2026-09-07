@@ -334,6 +334,8 @@ export default function ProductDetailPage() {
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: 1.5,
+                minWidth: 0,
+                width: '100%',
               }}
             >
               {product.images.map((url, index) => (
@@ -344,14 +346,18 @@ export default function ProductDetailPage() {
                   alt={`${product.name} ${index + 1}`}
                   onClick={() => setSelectedImageIndex(index)}
                   sx={{
+                    width: '100%',
+                    minWidth: 0,
                     aspectRatio: '1',
                     objectFit: 'cover',
                     borderRadius: 0.5,
                     cursor: 'pointer',
+                    display: 'block',
                     bgcolor: 'grey.100',
                     border: selectedImageIndex === index ? '2px solid' : '2px solid transparent',
                     borderColor: selectedImageIndex === index ? 'primary.main' : 'transparent',
                     transition: 'border-color 0.2s',
+                    boxSizing: 'border-box',
                   }}
                 />
               ))}
