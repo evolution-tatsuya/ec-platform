@@ -17,6 +17,18 @@ const getStringParam = (param: string | string[] | undefined): string | undefine
   return param;
 };
 
+// DBカテゴリーのslug → フロントのcategoryType(enum: cars/events/digital) に逆変換する。
+// フロントの編集フォームはenum値を期待するため、slug(car-parts等)のまま返すと選択肢に一致せず空になる。
+const slugToCategoryType = (slug?: string | null): string | undefined => {
+  if (!slug) return undefined;
+  const REVERSE: Record<string, string> = {
+    'car-parts': 'cars', cars: 'cars',
+    events: 'events', event: 'events',
+    digital: 'digital', 'digital-products': 'digital',
+  };
+  return REVERSE[slug] || slug;
+};
+
 /**
  * 管理者用商品一覧取得
  * GET /api/admin/products
@@ -119,7 +131,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
           images: productImages.map((img) => img.detailUrl), // 互換: images: string[]
           productImages, // 管理UI用の詳細（並べ替え・削除に使用）
           tags: parsedTags,
-          categoryType: product.category?.slug, // categoryTypeをスラッグから追加
+          categoryType: slugToCategoryType(product.category?.slug), // enum値に変換して返す
           currentStock: inventorySum._sum?.quantity || 0,
         };
       })
@@ -352,7 +364,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
         ...product,
         images: productImages.map((img) => img.detailUrl),
         productImages,
-        categoryType: product.category?.slug, // 編集フォームの必須項目。無いと更新がバリデーションで止まる
+        categoryType: slugToCategoryType(product.category?.slug), // enum値に変換（編集フォームの必須項目）
         tags: parsedTags,
         currentStock: inventorySum._sum?.quantity || 0,
       },
