@@ -352,6 +352,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
         ...product,
         images: productImages.map((img) => img.detailUrl),
         productImages,
+        categoryType: product.category?.slug, // 編集フォームの必須項目。無いと更新がバリデーションで止まる
         tags: parsedTags,
         currentStock: inventorySum._sum?.quantity || 0,
       },

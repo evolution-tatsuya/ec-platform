@@ -225,6 +225,16 @@ export default function AdminProductsPage() {
     }
   }, [editingProductData, openProductDialog, reset]);
 
+  // バリデーションエラー時に無反応にならないよう、内容をユーザーに知らせる
+  const onInvalidSubmit = (errs: Record<string, { message?: string }>) => {
+    const labels: Record<string, string> = {
+      name: '商品名', price: '価格', categoryType: 'カテゴリータイプ',
+      productType: '商品種別', externalUrl: '外部URL', preparationDays: '準備日数',
+    };
+    const fields = Object.keys(errs).map((k) => labels[k] || k);
+    alert(`入力内容を確認してください：${fields.join('、')} が未入力または不正です`);
+  };
+
   // Form submit handlers
   const onSubmitCreate = async (data: ProductFormData) => {
     try {
@@ -744,7 +754,7 @@ export default function AdminProductsPage() {
             </Box>
           </DialogTitle>
           <DialogContent dividers>
-            <form id="product-form" noValidate onSubmit={handleSubmit(editingProduct ? onSubmitUpdate : onSubmitCreate)}>
+            <form id="product-form" noValidate onSubmit={handleSubmit(editingProduct ? onSubmitUpdate : onSubmitCreate, onInvalidSubmit)}>
               <Grid container spacing={2}>
                 {/* 基本情報 */}
                 <Grid item xs={12}>
