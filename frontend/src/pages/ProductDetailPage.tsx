@@ -289,7 +289,8 @@ export default function ProductDetailPage() {
         }}
       >
         {/* 画像ギャラリー */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* minWidth:0 でグリッド列(1fr)がはみ出さないようにする */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           {/* メイン画像 */}
           {product?.images && product.images.length > 0 ? (
             <Box
@@ -298,11 +299,13 @@ export default function ProductDetailPage() {
               alt={product.name}
               sx={{
                 width: '100%',
+                maxWidth: '100%',
                 aspectRatio: '1',
                 objectFit: 'cover',
                 borderRadius: 1,
                 cursor: 'zoom-in',
                 bgcolor: 'grey.100',
+                display: 'block',
               }}
             />
           ) : (
@@ -357,7 +360,7 @@ export default function ProductDetailPage() {
         </Box>
 
         {/* 商品情報 */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
           {/* カテゴリーバッジ */}
           <Box>
             <Chip
