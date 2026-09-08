@@ -372,15 +372,16 @@ model NavigationAxisOption {
 // ===== トップページ管理モデル =====
 
 model HeroSlide {
-  id          String   @id @default(cuid())
-  imageUrl    String   @map("image_url") // ヒーロー画像URL
-  title       String?
-  description String?
-  linkUrl     String?  @map("link_url") // クリック時のリンク先
-  order       Int      @default(0) // 表示順序
-  isActive    Boolean  @default(true) @map("is_active") // 表示/非表示
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(cuid())
+  imageUrl         String   @map("image_url") // トリミング確定後の表示用画像（R2キー）
+  originalImageUrl String?  @map("original_image_url") // 元画像（再トリミング用、R2キー）
+  title            String?
+  description      String?
+  linkUrl          String?  @map("link_url") // クリック時のリンク先
+  order            Int      @default(0) // 表示順序
+  isActive         Boolean  @default(true) @map("is_active") // 表示/非表示
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   @@index([order])
   @@index([isActive])
@@ -392,8 +393,9 @@ model MegaCategory {
   categoryType       String   @map("category_type") // 'cars' | 'events' | 'digital'
   name               String
   description        String?
-  backgroundImageUrl String   @map("background_image_url") // 背景画像URL
-  linkUrl            String   @map("link_url") // クリック時のリンク先
+  backgroundImageUrl String   @default("") @map("background_image_url") // 背景画像（R2キー）
+  originalImageUrl   String?  @map("original_image_url") // 元画像（再トリミング用、R2キー）
+  linkUrl            String   @default("") @map("link_url") // クリック時のリンク先
   order              Int      @default(0) // 表示順序
   isActive           Boolean  @default(true) @map("is_active") // 表示/非表示
   createdAt          DateTime @default(now()) @map("created_at")

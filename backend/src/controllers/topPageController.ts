@@ -4,6 +4,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
 import { buildProductImageList } from '../utils/productImageService';
+import { generateSignedUrl } from '../utils/r2Client';
+
+// R2キー（またはURL）を表示用URLに変換
+const resolveImageUrl = async (value?: string | null): Promise<string> => {
+  if (!value) return '';
+  if (value.startsWith('http')) return value;
+  try {
+    return await generateSignedUrl(value);
+  } catch {
+    return '';
+  }
+};
 
 /**
  * トップページデータ取得
@@ -121,11 +133,22 @@ export const getTopPageData = async (
     const newProductsWithImages = await withImages(newProducts);
     const popularProductsWithImages = await withImages(sortedPopularProducts);
 
+    // ヒーロー/カテゴリーの画像(R2キー)を署名URLに変換
+    const heroSlidesWithUrls = await Promise.all(
+      heroSlides.map(async (s) => ({ ...s, imageUrl: await resolveImageUrl(s.imageUrl) })),
+    );
+    const megaCategoriesWithUrls = await Promise.all(
+      megaCategories.map(async (c) => ({
+        ...c,
+        backgroundImageUrl: await resolveImageUrl(c.backgroundImageUrl),
+      })),
+    );
+
     return res.json({
       success: true,
       data: {
-        heroSlides,
-        megaCategories,
+        heroSlides: heroSlidesWithUrls,
+        megaCategories: megaCategoriesWithUrls,
         pickupProducts,
         newProducts: newProductsWithImages,
         saleProducts,

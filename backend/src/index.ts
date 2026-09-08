@@ -32,6 +32,7 @@ import adminFavoriteRoutes from './routes/adminFavoriteRoutes';
 import adminEventRoutes from './routes/adminEventRoutes';
 import newsRoutes from './routes/newsRoutes';
 import adminNewsRoutes from './routes/adminNewsRoutes';
+import adminTopPageRoutes from './routes/adminTopPageRoutes';
 
 const app = express();
 
@@ -153,6 +154,7 @@ app.use('/api/admin', adminNavigationAxisRoutes);
 app.use('/api/admin', adminFavoriteRoutes);
 app.use('/api/admin/events', adminEventRoutes);
 app.use('/api/admin/news', adminNewsRoutes);
+app.use('/api/admin', adminTopPageRoutes);
 
 // TODO: 他のルーターを追加
 // app.use('/api/admin', adminRoutes);
