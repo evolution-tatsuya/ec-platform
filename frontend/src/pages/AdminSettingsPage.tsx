@@ -36,6 +36,7 @@ import {
   useUpdateDocumentTemplates,
   useUpdateImageOptimization,
 } from '../hooks/useSettings';
+import { uploadLogo, deleteLogo } from '../services/api/settings';
 
 // 銀行口座種別
 const accountTypeOptions = [
@@ -51,6 +52,10 @@ const AdminSettingsPage = () => {
 
   // タブ1: 基本情報
   const [companyName, setCompanyName] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined); // R2キー
+  const [logoDisplayUrl, setLogoDisplayUrl] = useState<string>(''); // プレビュー用署名URL
+  const [showShopName, setShowShopName] = useState(true);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [postalCode, setPostalCode] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
@@ -97,6 +102,9 @@ const AdminSettingsPage = () => {
     if (settings) {
       // 会社情報
       setCompanyName(settings.company.companyName);
+      setLogoUrl(settings.company.logoUrl);
+      setLogoDisplayUrl(settings.company.logoDisplayUrl || '');
+      setShowShopName(settings.company.showShopName !== false);
       setPostalCode(settings.company.postalCode);
       setAddress(settings.company.address);
       setPhone(settings.company.phone);
@@ -142,13 +150,44 @@ const AdminSettingsPage = () => {
   }, [settings]);
 
   // 保存処理
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const key = await uploadLogo(file);
+      setLogoUrl(key);
+      // アップロード直後のプレビュー用にローカルURLを表示
+      setLogoDisplayUrl(URL.createObjectURL(file));
+      alert('ロゴをアップロードしました。「保存」は不要ですぐに反映されます。');
+    } catch {
+      alert('ロゴのアップロードに失敗しました');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const handleLogoDelete = async () => {
+    if (!window.confirm('ロゴを削除しますか？')) return;
+    try {
+      await deleteLogo();
+      setLogoUrl(undefined);
+      setLogoDisplayUrl('');
+      alert('ロゴを削除しました');
+    } catch {
+      alert('ロゴの削除に失敗しました');
+    }
+  };
+
   const handleSave = async () => {
     try {
       if (tabValue === 0) {
         // タブ1: 基本情報
         await updateCompanyMutation.mutateAsync({
           companyName,
-          logoUrl: settings?.company.logoUrl,
+          logoUrl,
+          showShopName,
           postalCode,
           address,
           phone,
@@ -268,14 +307,44 @@ const AdminSettingsPage = () => {
                     fullWidth
                     sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' } }}
                   />
-                  <Button
-                    variant="outlined"
-                    startIcon={<Upload />}
-                    fullWidth
-                    sx={{ height: 56, gridColumn: { xs: '1 / -1', md: 'span 6' } }}
-                  >
-                    ロゴ画像をアップロード
-                  </Button>
+                  <Box sx={{ gridColumn: { xs: '1 / -1', md: 'span 6' }, display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {logoDisplayUrl && (
+                      <Box
+                        component="img"
+                        src={logoDisplayUrl}
+                        alt="ロゴ"
+                        sx={{ height: 56, width: 'auto', maxWidth: 120, objectFit: 'contain', border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0.5 }}
+                      />
+                    )}
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      startIcon={<Upload />}
+                      disabled={uploadingLogo}
+                      sx={{ height: 56, flex: 1 }}
+                    >
+                      {uploadingLogo ? 'アップロード中...' : logoDisplayUrl ? 'ロゴを変更' : 'ロゴ画像をアップロード'}
+                      <input type="file" hidden accept="image/*" onChange={handleLogoUpload} />
+                    </Button>
+                    {logoDisplayUrl && (
+                      <Button variant="text" color="error" onClick={handleLogoDelete} sx={{ height: 56 }}>
+                        削除
+                      </Button>
+                    )}
+                  </Box>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={showShopName}
+                        onChange={(e) => setShowShopName(e.target.checked)}
+                      />
+                    }
+                    label="ヘッダーにショップ名（会社名）を表示する"
+                    sx={{ gridColumn: '1 / -1' }}
+                  />
+                  <Typography variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1', mt: -1 }}>
+                    ※ ロゴ画像をアップロードするとヘッダーに表示されます。ショップ名の表示/非表示は上のスイッチで切り替えられます（ロゴのみ・文字のみ・両方表示が可能）。
+                  </Typography>
                   <TextField
                     label="郵便番号"
                     value={postalCode}

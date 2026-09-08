@@ -6,8 +6,11 @@ import {
   updateEmailSettings,
   updateDocumentTemplateSettings,
   updateImageOptimizationSettings,
+  uploadLogo,
+  deleteLogo,
 } from '../controllers/adminSettingsController';
 import { requireAuth, requireAdmin } from '../middleware/auth';
+import { upload } from '../config/multer';
 
 const router = Router();
 
@@ -24,6 +27,12 @@ router.get('/settings', getAdminSettings);
 
 // PUT /api/admin/settings/company - 会社情報更新
 router.put('/settings/company', updateCompanySettings);
+
+// POST /api/admin/settings/logo - ロゴ画像アップロード
+router.post('/settings/logo', upload.single('logo'), uploadLogo);
+
+// DELETE /api/admin/settings/logo - ロゴ削除
+router.delete('/settings/logo', deleteLogo);
 
 // PUT /api/admin/settings/payment - 決済設定更新
 router.put('/settings/payment', updatePaymentSettings);

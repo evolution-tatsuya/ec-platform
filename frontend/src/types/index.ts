@@ -720,6 +720,8 @@ export interface SystemSettings {
 export interface CompanySettings {
   companyName: string;
   logoUrl?: string;
+  logoDisplayUrl?: string; // 署名付き表示URL（プレビュー用）
+  showShopName?: boolean; // ヘッダーにショップ名を表示するか
   postalCode: string;
   address: string;
   phone: string;
@@ -761,6 +763,7 @@ export interface ImageOptimizationSettings {
 export interface UpdateCompanySettingsRequest {
   companyName?: string;
   logoUrl?: string;
+  showShopName?: boolean;
   postalCode?: string;
   address?: string;
   phone?: string;

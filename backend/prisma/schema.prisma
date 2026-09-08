@@ -304,8 +304,9 @@ model SiteSettings {
   bankTransferDiscount    Float    @default(0.036) @map("bank_transfer_discount") // 銀行振込割引率（デフォルト3.6%）
   enableCreditCard        Boolean  @default(true) @map("enable_credit_card") // クレジットカード決済の有効/無効
   // 会社情報
-  companyName             String?  @map("company_name") // 会社名
+  companyName             String?  @map("company_name") // 会社名（ショップ名としてヘッダー表示に使用）
   companyLogoUrl          String?  @map("company_logo_url") // ロゴURL（R2）
+  showShopName            Boolean  @default(true) @map("show_shop_name") // ヘッダーにショップ名テキストを表示するか
   companyPostalCode       String?  @map("company_postal_code") // 郵便番号
   companyAddress          String?  @map("company_address") // 住所
   companyPhone            String?  @map("company_phone") // 電話番号

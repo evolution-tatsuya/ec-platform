@@ -408,6 +408,10 @@ export const orderAPI = {
 export interface SiteSettings {
   enableDeliveryDateTime: boolean;
   bankTransferDiscount: number;
+  // ヘッダー表示用
+  shopName?: string;
+  logoUrl?: string;
+  showShopName?: boolean;
 }
 
 export interface SettingsResponse {

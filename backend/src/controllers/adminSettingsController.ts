@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { uploadFile, generateSignedUrl } from '../utils/r2Client';
+import { convertToWebP } from '../utils/imageProcessor';
 
 const prisma = new PrismaClient();
 
@@ -23,9 +25,23 @@ export const getAdminSettings = async (_req: Request, res: Response) => {
       });
     }
 
+    // ロゴのプレビュー用に署名URLを付与（companyLogoUrlはR2キー）
+    let logoDisplayUrl = '';
+    if (settings.companyLogoUrl) {
+      if (settings.companyLogoUrl.startsWith('http')) {
+        logoDisplayUrl = settings.companyLogoUrl;
+      } else {
+        try {
+          logoDisplayUrl = await generateSignedUrl(settings.companyLogoUrl);
+        } catch {
+          logoDisplayUrl = '';
+        }
+      }
+    }
+
     return res.json({
       success: true,
-      settings,
+      settings: { ...settings, logoDisplayUrl },
     });
   } catch (error) {
     console.error('設定取得エラー:', error);
@@ -45,6 +61,7 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       companyPostalCode,
       companyAddress,
       companyPhone,
+      showShopName,
       bankName,
       bankBranch,
       bankAccountType,
@@ -52,41 +69,32 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       bankAccountHolder,
     } = req.body;
 
+    const companyData = {
+      companyName,
+      companyLogoUrl,
+      companyPostalCode,
+      companyAddress,
+      companyPhone,
+      bankName,
+      bankBranch,
+      bankAccountType,
+      bankAccountNumber,
+      bankAccountHolder,
+      // showShopNameはboolのため、送られてきた時のみ更新
+      ...(typeof showShopName === 'boolean' && { showShopName }),
+    };
+
     // 既存設定を取得
     let settings = await prisma.siteSettings.findFirst();
 
     if (!settings) {
       // 存在しない場合は作成
-      settings = await prisma.siteSettings.create({
-        data: {
-          companyName,
-          companyLogoUrl,
-          companyPostalCode,
-          companyAddress,
-          companyPhone,
-          bankName,
-          bankBranch,
-          bankAccountType,
-          bankAccountNumber,
-          bankAccountHolder,
-        },
-      });
+      settings = await prisma.siteSettings.create({ data: companyData });
     } else {
       // 存在する場合は更新
       settings = await prisma.siteSettings.update({
         where: { id: settings.id },
-        data: {
-          companyName,
-          companyLogoUrl,
-          companyPostalCode,
-          companyAddress,
-          companyPhone,
-          bankName,
-          bankBranch,
-          bankAccountType,
-          bankAccountNumber,
-          bankAccountHolder,
-        },
+        data: companyData,
       });
     }
 
@@ -98,6 +106,59 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('会社情報更新エラー:', error);
     return res.status(500).json({ error: '会社情報の更新に失敗しました' });
+  }
+};
+
+/**
+ * POST /api/admin/settings/logo
+ * ロゴ画像アップロード（R2に保存し、キーをcompanyLogoUrlに記録）
+ */
+export const uploadLogo = async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, message: '画像ファイルが必要です' });
+    }
+
+    // WebP変換（ロゴは幅400px程度に）
+    const webp = await convertToWebP(file.buffer, 400, 90);
+    const imageKey = `settings/logo-${Date.now()}.webp`;
+    await uploadFile(imageKey, webp, 'image/webp');
+
+    // 設定に保存（imageKeyを保存。表示時に署名URL化する）
+    let settings = await prisma.siteSettings.findFirst();
+    if (!settings) {
+      settings = await prisma.siteSettings.create({ data: { companyLogoUrl: imageKey } });
+    } else {
+      settings = await prisma.siteSettings.update({
+        where: { id: settings.id },
+        data: { companyLogoUrl: imageKey },
+      });
+    }
+
+    return res.json({ success: true, message: 'ロゴをアップロードしました', logoKey: imageKey });
+  } catch (error: any) {
+    console.error('ロゴアップロードエラー:', error);
+    return res.status(500).json({ success: false, message: error.message || 'ロゴのアップロードに失敗しました' });
+  }
+};
+
+/**
+ * DELETE /api/admin/settings/logo
+ * ロゴ削除
+ */
+export const deleteLogo = async (_req: Request, res: Response) => {
+  try {
+    const settings = await prisma.siteSettings.findFirst();
+    if (settings) {
+      await prisma.siteSettings.update({
+        where: { id: settings.id },
+        data: { companyLogoUrl: null },
+      });
+    }
+    return res.json({ success: true, message: 'ロゴを削除しました' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'ロゴの削除に失敗しました' });
   }
 };
 

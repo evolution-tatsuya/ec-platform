@@ -34,6 +34,8 @@ export const getAdminSettings = async (): Promise<SystemSettings> => {
       company: {
         companyName: settings.companyName || '',
         logoUrl: settings.companyLogoUrl || undefined,
+        logoDisplayUrl: settings.logoDisplayUrl || undefined,
+        showShopName: settings.showShopName !== false,
         postalCode: settings.companyPostalCode || '',
         address: settings.companyAddress || '',
         phone: settings.companyPhone || '',
@@ -93,6 +95,7 @@ export const updateCompanySettings = async (
       companyPostalCode: data.postalCode,
       companyAddress: data.address,
       companyPhone: data.phone,
+      showShopName: data.showShopName,
       bankName: data.bankName,
       bankBranch: data.branchName,
       bankAccountType: data.accountType,
@@ -114,6 +117,8 @@ export const updateCompanySettings = async (
       company: {
         companyName: settings.companyName || '',
         logoUrl: settings.companyLogoUrl || undefined,
+        logoDisplayUrl: settings.logoDisplayUrl || undefined,
+        showShopName: settings.showShopName !== false,
         postalCode: settings.companyPostalCode || '',
         address: settings.companyAddress || '',
         phone: settings.companyPhone || '',
@@ -187,6 +192,8 @@ export const updatePaymentSettings = async (
       company: {
         companyName: settings.companyName || '',
         logoUrl: settings.companyLogoUrl || undefined,
+        logoDisplayUrl: settings.logoDisplayUrl || undefined,
+        showShopName: settings.showShopName !== false,
         postalCode: settings.companyPostalCode || '',
         address: settings.companyAddress || '',
         phone: settings.companyPhone || '',
@@ -258,6 +265,8 @@ export const updateEmailSettings = async (
       company: {
         companyName: settings.companyName || '',
         logoUrl: settings.companyLogoUrl || undefined,
+        logoDisplayUrl: settings.logoDisplayUrl || undefined,
+        showShopName: settings.showShopName !== false,
         postalCode: settings.companyPostalCode || '',
         address: settings.companyAddress || '',
         phone: settings.companyPhone || '',
@@ -360,6 +369,8 @@ export const updateImageOptimization = async (
       company: {
         companyName: settings.companyName || '',
         logoUrl: settings.companyLogoUrl || undefined,
+        logoDisplayUrl: settings.logoDisplayUrl || undefined,
+        showShopName: settings.showShopName !== false,
         postalCode: settings.companyPostalCode || '',
         address: settings.companyAddress || '',
         phone: settings.companyPhone || '',
@@ -400,4 +411,23 @@ export const updateImageOptimization = async (
     }
     throw error;
   }
+};
+
+/**
+ * ロゴ画像アップロード（管理者）
+ * @returns アップロード後のR2キー
+ */
+export const uploadLogo = async (file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('logo', file);
+  const response = await axios.post(`${API_URL}/api/admin/settings/logo`, formData, {
+    withCredentials: true,
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data.logoKey;
+};
+
+/** ロゴ削除（管理者） */
+export const deleteLogo = async (): Promise<void> => {
+  await axios.delete(`${API_URL}/api/admin/settings/logo`, { withCredentials: true });
 };

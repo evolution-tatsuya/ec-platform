@@ -8,8 +8,21 @@
 
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { generateSignedUrl } from '../utils/r2Client';
 
 const prisma = new PrismaClient();
+
+// ロゴのR2キー（またはURL）を表示用URLに変換する。
+// http(s)で始まる場合はそのまま、それ以外はR2キーとみなし署名URLを生成。
+const resolveLogoUrl = async (value?: string | null): Promise<string> => {
+  if (!value) return '';
+  if (value.startsWith('http://') || value.startsWith('https://')) return value;
+  try {
+    return await generateSignedUrl(value);
+  } catch {
+    return '';
+  }
+};
 
 /**
  * GET /api/settings
@@ -30,11 +43,17 @@ export async function getSettings(_req: Request, res: Response) {
       });
     }
 
+    const logoUrl = await resolveLogoUrl(settings.companyLogoUrl);
+
     return res.json({
       success: true,
       settings: {
         enableDeliveryDateTime: settings.enableDeliveryDateTime,
         bankTransferDiscount: settings.bankTransferDiscount,
+        // ヘッダー表示用（ショップ名・ロゴ・表示トグル）
+        shopName: settings.companyName || '',
+        logoUrl,
+        showShopName: settings.showShopName,
       },
     });
   } catch (error: any) {

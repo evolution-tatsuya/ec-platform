@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCartStore } from '../stores/useCartStore';
 import { UserRole } from '../types';
+import { settingsAPI } from '../lib/api';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -47,6 +48,32 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ショップ名・ロゴを設定から読み込む
+  const [shopName, setShopName] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [showShopName, setShowShopName] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    settingsAPI
+      .getSettings()
+      .then((res) => {
+        if (!active) return;
+        setShopName(res.settings.shopName || '');
+        setLogoUrl(res.settings.logoUrl || '');
+        setShowShopName(res.settings.showShopName !== false);
+      })
+      .catch(() => {
+        // 取得失敗時はデフォルト表示
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // ヘッダーに出す名前: 設定のショップ名があればそれ、無ければEC Platform
+  const displayName = shopName || 'EC Platform';
 
   const cartItemCount = getItemCount();
 
@@ -120,28 +147,35 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           }}
           onClick={() => navigate('/')}
         >
-          {/* ロゴ画像を使用する場合は以下のコメントを外して、src属性にロゴ画像のパスを設定 */}
-          {/* <Box
-            component="img"
-            src="/path/to/logo.png"
-            alt="EC Platform"
-            sx={{
-              height: 40,
-              width: 'auto',
-              objectFit: 'contain',
-            }}
-          /> */}
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{
-              fontWeight: 700,
-              letterSpacing: 1,
-            }}
-          >
-            EC Platform
-          </Typography>
+          {/* ロゴがあれば表示 */}
+          {logoUrl && (
+            <Box
+              component="img"
+              src={logoUrl}
+              alt={displayName}
+              sx={{
+                height: 40,
+                width: 'auto',
+                maxWidth: 180,
+                objectFit: 'contain',
+                display: 'block',
+              }}
+            />
+          )}
+          {/* ショップ名テキスト: 表示ONの時。ロゴが無い場合は必ず表示（空防止） */}
+          {(showShopName || !logoUrl) && (
+            <Typography
+              variant="h6"
+              noWrap
+              component="div"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: 1,
+              }}
+            >
+              {displayName}
+            </Typography>
+          )}
         </Box>
 
         {/* 検索バー（モバイル非表示） */}

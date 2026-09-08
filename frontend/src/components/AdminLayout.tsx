@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -35,6 +35,7 @@ import {
   ManageAccounts,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
+import { settingsAPI } from '../lib/api';
 
 const drawerWidth = 240;
 
@@ -63,6 +64,17 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+
+  // ショップ名（設定から）
+  const [shopName, setShopName] = useState('多機能ECプラットフォーム');
+  useEffect(() => {
+    settingsAPI
+      .getSettings()
+      .then((res) => {
+        if (res.settings.shopName) setShopName(res.settings.shopName);
+      })
+      .catch(() => {});
+  }, []);
 
   // アカウントメニュー（右上）
   const [accountAnchor, setAccountAnchor] = useState<null | HTMLElement>(null);
@@ -133,7 +145,7 @@ export default function AdminLayout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            多機能ECプラットフォーム
+            {shopName}
           </Typography>
 
           {/* 右側: アカウントメニュー */}
