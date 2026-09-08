@@ -459,23 +459,43 @@ export default function AdminProductsPage() {
   ];
 
   // 在庫ログのカラム定義
+  // 在庫ログ種別の日本語ラベル
+  const inventoryTypeLabel: Record<string, string> = {
+    purchase: '入庫',
+    sale: '販売（出庫）',
+    sale_return: '返品（入庫）',
+    adjustment: '調整',
+    initial: '初期在庫',
+  };
+
   const inventoryColumns: GridColDef[] = [
     {
       field: 'createdAt',
       headerName: '日時',
-      width: 180,
+      width: 160,
       valueGetter: (value) => format(new Date(value), 'yyyy/MM/dd HH:mm'),
+    },
+    {
+      field: 'productName',
+      headerName: '商品名',
+      flex: 1,
+      minWidth: 180,
+      valueGetter: (_value, row) => row.product?.name || '(削除済み商品)',
     },
     {
       field: 'type',
       headerName: '種類',
-      width: 100,
+      width: 120,
       renderCell: (params: GridRenderCellParams) => (
         <Chip
-          label={params.value}
+          label={inventoryTypeLabel[params.value] || params.value}
           size="small"
           color={
-            params.value === 'purchase' || params.value === 'sale_return' ? 'success' : 'error'
+            params.value === 'purchase' || params.value === 'sale_return' || params.value === 'initial'
+              ? 'success'
+              : params.value === 'adjustment'
+              ? 'warning'
+              : 'error'
           }
         />
       ),
@@ -483,7 +503,7 @@ export default function AdminProductsPage() {
     {
       field: 'quantity',
       headerName: '数量',
-      width: 100,
+      width: 90,
       renderCell: (params: GridRenderCellParams) => (
         <Typography variant="body2" color={params.value > 0 ? 'success.main' : 'error.main'}>
           {params.value > 0 ? '+' : ''}
@@ -491,7 +511,13 @@ export default function AdminProductsPage() {
         </Typography>
       ),
     },
-    { field: 'reason', headerName: '理由', flex: 1 },
+    {
+      field: 'note',
+      headerName: '理由',
+      flex: 1,
+      minWidth: 150,
+      valueGetter: (_value, row) => row.note || row.reason || '',
+    },
   ];
 
   const handleEditProduct = (id: string) => {

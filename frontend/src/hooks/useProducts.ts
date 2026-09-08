@@ -158,7 +158,7 @@ export const useInventoryLogs = (productId?: string) => {
   return useQuery<InventoryLog[], Error>({
     queryKey: ['inventoryLogs', productId],
     queryFn: () => getAdminInventoryLogs(productId),
-    staleTime: 1000 * 60 * 5, // 5分間キャッシュ
+    staleTime: 0, // 在庫調整後すぐ反映されるようキャッシュしない
   });
 };
 

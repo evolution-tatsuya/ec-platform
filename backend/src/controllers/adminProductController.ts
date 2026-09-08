@@ -64,13 +64,23 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
     // クエリ条件構築（管理者は全商品を閲覧可能）
     const where: any = {};
 
-    // categoryType（スラッグ）からcategoryIdを解決
+    // categoryType(enum: cars/events/digital)からcategoryIdを解決。
+    // フロントのenum値とDBのslug(car-parts等)を候補slug方式で対応付ける。
     if (categoryType) {
-      const category = await prisma.category.findUnique({
-        where: { slug: categoryType as string },
+      const CATEGORY_MAP: Record<string, string[]> = {
+        cars: ['cars', 'car-parts'],
+        events: ['events', 'event'],
+        digital: ['digital', 'digital-products'],
+      };
+      const candidateSlugs = CATEGORY_MAP[categoryType as string] || [categoryType as string];
+      const category = await prisma.category.findFirst({
+        where: { slug: { in: candidateSlugs } },
       });
       if (category) {
         where.categoryId = category.id;
+      } else {
+        // 該当カテゴリーが無ければ全件返さず0件にする（フィルターが無視される不具合を防ぐ）
+        where.categoryId = '__no_such_category__';
       }
     } else if (categoryId) {
       // 互換性のためcategoryIdも受け付ける

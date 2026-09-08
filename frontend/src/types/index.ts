@@ -482,7 +482,9 @@ export interface InventoryLog {
   quantity: number;
   type: string;
   orderId?: string;
-  reason?: string;
+  note?: string | null; // 理由メモ（DBカラムはnote）
+  reason?: string; // 後方互換
+  product?: { id: string; name: string; slug?: string } | null; // 一覧表示用
   createdAt: Date;
 }
 
