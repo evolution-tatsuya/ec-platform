@@ -307,6 +307,7 @@ model SiteSettings {
   companyName             String?  @map("company_name") // 会社名（ショップ名としてヘッダー表示に使用）
   companyLogoUrl          String?  @map("company_logo_url") // ロゴURL（R2）
   showShopName            Boolean  @default(true) @map("show_shop_name") // ヘッダーにショップ名テキストを表示するか
+  logoSize                String   @default("medium") @map("logo_size") // ロゴ表示サイズ: small / medium / large
   companyPostalCode       String?  @map("company_postal_code") // 郵便番号
   companyAddress          String?  @map("company_address") // 住所
   companyPhone            String?  @map("company_phone") // 電話番号

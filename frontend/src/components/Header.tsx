@@ -53,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const [shopName, setShopName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [showShopName, setShowShopName] = useState(true);
+  const [logoSize, setLogoSize] = useState<'small' | 'medium' | 'large'>('medium');
 
   useEffect(() => {
     let active = true;
@@ -63,6 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         setShopName(res.settings.shopName || '');
         setLogoUrl(res.settings.logoUrl || '');
         setShowShopName(res.settings.showShopName !== false);
+        setLogoSize(res.settings.logoSize || 'medium');
       })
       .catch(() => {
         // 取得失敗時はデフォルト表示
@@ -71,6 +73,10 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       active = false;
     };
   }, []);
+
+  // ロゴサイズ（ヘッダー内で切れないよう、Toolbar高さも合わせて広げる）
+  const logoHeightMap = { small: 32, medium: 44, large: 60 } as const;
+  const logoHeight = logoHeightMap[logoSize];
 
   // ヘッダーに出す名前: 設定のショップ名があればそれ、無ければEC Platform
   const displayName = shopName || 'EC Platform';
@@ -123,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
       elevation={2}
       sx={{ borderRadius: 0 }}
     >
-      <Toolbar sx={{ maxWidth: 1200, mx: 'auto', width: '100%' }}>
+      <Toolbar sx={{ maxWidth: 1200, mx: 'auto', width: '100%', minHeight: `${logoHeight + 20}px !important`, py: 1 }}>
         {/* モバイルメニューアイコン */}
         {isMobile && onMenuClick && (
           <IconButton
@@ -147,18 +153,20 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
           }}
           onClick={() => navigate('/')}
         >
-          {/* ロゴがあれば表示 */}
+          {/* ロゴがあれば表示（縦横比を保ち、上下が切れないようにcontain） */}
           {logoUrl && (
             <Box
               component="img"
               src={logoUrl}
               alt={displayName}
               sx={{
-                height: 40,
+                height: logoHeight,
+                maxHeight: logoHeight,
                 width: 'auto',
-                maxWidth: 180,
+                maxWidth: 220,
                 objectFit: 'contain',
                 display: 'block',
+                flexShrink: 0,
               }}
             />
           )}
@@ -171,6 +179,7 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
               sx={{
                 fontWeight: 700,
                 letterSpacing: 1,
+                fontSize: { xs: '1.05rem', sm: '1.25rem' },
               }}
             >
               {displayName}

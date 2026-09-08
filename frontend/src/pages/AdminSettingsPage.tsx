@@ -55,6 +55,7 @@ const AdminSettingsPage = () => {
   const [logoUrl, setLogoUrl] = useState<string | undefined>(undefined); // R2キー
   const [logoDisplayUrl, setLogoDisplayUrl] = useState<string>(''); // プレビュー用署名URL
   const [showShopName, setShowShopName] = useState(true);
+  const [logoSize, setLogoSize] = useState<'small' | 'medium' | 'large'>('medium');
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [postalCode, setPostalCode] = useState('');
   const [address, setAddress] = useState('');
@@ -105,6 +106,7 @@ const AdminSettingsPage = () => {
       setLogoUrl(settings.company.logoUrl);
       setLogoDisplayUrl(settings.company.logoDisplayUrl || '');
       setShowShopName(settings.company.showShopName !== false);
+      setLogoSize(settings.company.logoSize || 'medium');
       setPostalCode(settings.company.postalCode);
       setAddress(settings.company.address);
       setPhone(settings.company.phone);
@@ -188,6 +190,7 @@ const AdminSettingsPage = () => {
           companyName,
           logoUrl,
           showShopName,
+          logoSize,
           postalCode,
           address,
           phone,
@@ -345,6 +348,36 @@ const AdminSettingsPage = () => {
                   <Typography variant="caption" color="text.secondary" sx={{ gridColumn: '1 / -1', mt: -1 }}>
                     ※ ロゴ画像をアップロードするとヘッダーに表示されます。ショップ名の表示/非表示は上のスイッチで切り替えられます（ロゴのみ・文字のみ・両方表示が可能）。
                   </Typography>
+                  {/* ロゴ表示サイズ */}
+                  <Box sx={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Typography variant="body2" sx={{ minWidth: 100 }}>ロゴの表示サイズ</Typography>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {(['small', 'medium', 'large'] as const).map((sz) => (
+                        <Button
+                          key={sz}
+                          variant={logoSize === sz ? 'contained' : 'outlined'}
+                          size="small"
+                          onClick={() => setLogoSize(sz)}
+                        >
+                          {sz === 'small' ? '小' : sz === 'medium' ? '中' : '大'}
+                        </Button>
+                      ))}
+                    </Box>
+                    {/* ヘッダー風プレビュー */}
+                    {(logoDisplayUrl || showShopName) && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2, px: 2, py: 1, bgcolor: 'primary.main', borderRadius: 1 }}>
+                        {logoDisplayUrl && (
+                          <Box component="img" src={logoDisplayUrl} alt="preview"
+                            sx={{ height: logoSize === 'small' ? 32 : logoSize === 'large' ? 60 : 44, width: 'auto', maxWidth: 160, objectFit: 'contain', display: 'block' }} />
+                        )}
+                        {(showShopName || !logoDisplayUrl) && (
+                          <Typography sx={{ color: 'white', fontWeight: 700, letterSpacing: 1 }}>
+                            {companyName || 'ショップ名'}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
                   <TextField
                     label="郵便番号"
                     value={postalCode}

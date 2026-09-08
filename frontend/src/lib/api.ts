@@ -412,6 +412,7 @@ export interface SiteSettings {
   shopName?: string;
   logoUrl?: string;
   showShopName?: boolean;
+  logoSize?: 'small' | 'medium' | 'large';
 }
 
 export interface SettingsResponse {

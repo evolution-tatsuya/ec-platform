@@ -62,6 +62,7 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       companyAddress,
       companyPhone,
       showShopName,
+      logoSize,
       bankName,
       bankBranch,
       bankAccountType,
@@ -82,6 +83,8 @@ export const updateCompanySettings = async (req: Request, res: Response) => {
       bankAccountHolder,
       // showShopNameはboolのため、送られてきた時のみ更新
       ...(typeof showShopName === 'boolean' && { showShopName }),
+      // logoSizeは指定時のみ更新
+      ...(typeof logoSize === 'string' && ['small', 'medium', 'large'].includes(logoSize) && { logoSize }),
     };
 
     // 既存設定を取得

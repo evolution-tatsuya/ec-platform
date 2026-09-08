@@ -722,6 +722,7 @@ export interface CompanySettings {
   logoUrl?: string;
   logoDisplayUrl?: string; // 署名付き表示URL（プレビュー用）
   showShopName?: boolean; // ヘッダーにショップ名を表示するか
+  logoSize?: 'small' | 'medium' | 'large'; // ロゴ表示サイズ
   postalCode: string;
   address: string;
   phone: string;
@@ -764,6 +765,7 @@ export interface UpdateCompanySettingsRequest {
   companyName?: string;
   logoUrl?: string;
   showShopName?: boolean;
+  logoSize?: 'small' | 'medium' | 'large';
   postalCode?: string;
   address?: string;
   phone?: string;

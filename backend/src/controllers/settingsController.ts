@@ -50,10 +50,11 @@ export async function getSettings(_req: Request, res: Response) {
       settings: {
         enableDeliveryDateTime: settings.enableDeliveryDateTime,
         bankTransferDiscount: settings.bankTransferDiscount,
-        // ヘッダー表示用（ショップ名・ロゴ・表示トグル）
+        // ヘッダー表示用（ショップ名・ロゴ・表示トグル・ロゴサイズ）
         shopName: settings.companyName || '',
         logoUrl,
         showShopName: settings.showShopName,
+        logoSize: settings.logoSize || 'medium',
       },
     });
   } catch (error: any) {
