@@ -65,13 +65,17 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // ショップ名（設定から）
+  // ショップ名・ロゴ（設定から）
   const [shopName, setShopName] = useState('多機能ECプラットフォーム');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [showShopName, setShowShopName] = useState(true);
   useEffect(() => {
     settingsAPI
       .getSettings()
       .then((res) => {
         if (res.settings.shopName) setShopName(res.settings.shopName);
+        setLogoUrl(res.settings.logoUrl || '');
+        setShowShopName(res.settings.showShopName !== false);
       })
       .catch(() => {});
   }, []);
@@ -144,9 +148,21 @@ export default function AdminLayout() {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
-            {shopName}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {logoUrl && (
+              <Box
+                component="img"
+                src={logoUrl}
+                alt={shopName}
+                sx={{ height: 40, maxHeight: 40, width: 'auto', maxWidth: 180, objectFit: 'contain', display: 'block' }}
+              />
+            )}
+            {(showShopName || !logoUrl) && (
+              <Typography variant="h6" noWrap component="div">
+                {shopName}
+              </Typography>
+            )}
+          </Box>
 
           {/* 右側: アカウントメニュー */}
           <Box sx={{ flexGrow: 1 }} />

@@ -48,7 +48,7 @@ const AdminSettingsPage = () => {
   const [tabValue, setTabValue] = useState(0);
 
   // API取得
-  const { data: settings, isLoading, error } = useAdminSettings();
+  const { data: settings, isLoading, error, refetch: refetchSettings } = useAdminSettings();
 
   // タブ1: 基本情報
   const [companyName, setCompanyName] = useState('');
@@ -162,6 +162,8 @@ const AdminSettingsPage = () => {
       setLogoUrl(key);
       // アップロード直後のプレビュー用にローカルURLを表示
       setLogoDisplayUrl(URL.createObjectURL(file));
+      // キャッシュを更新（再訪問時にロゴが消えないように）
+      await refetchSettings();
       alert('ロゴをアップロードしました。「保存」は不要ですぐに反映されます。');
     } catch {
       alert('ロゴのアップロードに失敗しました');
@@ -176,6 +178,7 @@ const AdminSettingsPage = () => {
       await deleteLogo();
       setLogoUrl(undefined);
       setLogoDisplayUrl('');
+      await refetchSettings();
       alert('ロゴを削除しました');
     } catch {
       alert('ロゴの削除に失敗しました');

@@ -31,7 +31,8 @@ export const useAdminSettings = () => {
   return useQuery<SystemSettings, Error>({
     queryKey: SETTINGS_QUERY_KEY,
     queryFn: getAdminSettings,
-    staleTime: 5 * 60 * 1000, // 5分間はキャッシュを利用
+    staleTime: 0, // ロゴアップロード等で即時反映されるようキャッシュしない
+    refetchOnMount: 'always',
     refetchOnWindowFocus: true,
   });
 };
