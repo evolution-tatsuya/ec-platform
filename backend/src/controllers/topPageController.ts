@@ -3,6 +3,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../config/prisma';
+import { buildProductImageList } from '../utils/productImageService';
 
 /**
  * トップページデータ取得
@@ -62,6 +63,7 @@ export const getTopPageData = async (
         where: { isActive: true },
         include: {
           category: true,
+          images: true,
         },
         orderBy: { createdAt: 'desc' },
         take: 6,
@@ -72,6 +74,7 @@ export const getTopPageData = async (
         where: { isActive: true },
         include: {
           category: true,
+          images: true,
           orderItems: {
             select: { quantity: true },
           },
@@ -106,15 +109,27 @@ export const getTopPageData = async (
     // セール商品は現時点では未実装（将来的にsalePriceフィールドを追加予定）
     const saleProducts: any[] = [];
 
+    // 商品画像を署名付きURL(order順)に変換して付与
+    const withImages = async (products: any[]) =>
+      Promise.all(
+        products.map(async (p) => {
+          const productImages = await buildProductImageList(p.images || []);
+          return { ...p, images: productImages.map((img) => img.detailUrl), productImages };
+        }),
+      );
+
+    const newProductsWithImages = await withImages(newProducts);
+    const popularProductsWithImages = await withImages(sortedPopularProducts);
+
     return res.json({
       success: true,
       data: {
         heroSlides,
         megaCategories,
         pickupProducts,
-        newProducts,
+        newProducts: newProductsWithImages,
         saleProducts,
-        popularProducts: sortedPopularProducts,
+        popularProducts: popularProductsWithImages,
         news,
       },
     });
