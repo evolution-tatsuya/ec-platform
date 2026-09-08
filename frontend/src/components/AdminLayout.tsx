@@ -29,6 +29,7 @@ import {
   ContactMail,
   Settings,
   Navigation as NavigationIcon,
+  Campaign as NewsIcon,
   AccountCircle,
   Logout,
   ManageAccounts,
@@ -50,6 +51,7 @@ const navItems: NavItem[] = [
   { text: 'イベント・チケット', icon: <Event />, path: '/admin/events' },
   { text: '顧客管理', icon: <People />, path: '/admin/customers' },
   { text: '問い合わせ管理', icon: <ContactMail />, path: '/admin/inquiries' },
+  { text: 'お知らせ管理', icon: <NewsIcon />, path: '/admin/news' },
   { text: 'システム設定', icon: <Settings />, path: '/admin/settings' },
   { text: 'ナビゲーション軸', icon: <NavigationIcon />, path: '/admin/navigation-axes' },
 ];
