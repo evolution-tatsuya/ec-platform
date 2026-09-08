@@ -36,6 +36,7 @@ import LegalPage from './pages/LegalPage';
 import PrivacyPage from './pages/PrivacyPage';
 import AdminAccountPage from './pages/AdminAccountPage';
 import AdminNewsPage from './pages/AdminNewsPage';
+import AdminTopPagePage from './pages/AdminTopPagePage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import NewsListPage from './pages/NewsListPage';
 import { UserRole } from './types';
@@ -78,6 +79,7 @@ function App() {
               <Route path="settings" element={<AdminSettingsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="news" element={<AdminNewsPage />} />
+              <Route path="top-page" element={<AdminTopPagePage />} />
               <Route path="account" element={<AdminAccountPage />} />
             </Route>
 
