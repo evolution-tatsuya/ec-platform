@@ -67,11 +67,14 @@ import {
 // バリデーションスキーマ
 const productSchema = z.object({
   name: z.string().min(1, '商品名は必須です').max(200, '200文字以内で入力してください'),
-  price: z.preprocess(
-    (v) => (v === '' || v === undefined || v === null || Number.isNaN(v) ? undefined : v),
-    z.number({ required_error: '金額を入力してください', invalid_type_error: '金額を入力してください' })
-      .min(0, '価格は0以上で入力してください'),
-  ),
+  price: z
+    .union([z.number(), z.nan(), z.undefined(), z.null()])
+    .refine((v) => typeof v === 'number' && !Number.isNaN(v), {
+      message: '金額を入力してください',
+    })
+    .refine((v) => typeof v === 'number' && v >= 0, {
+      message: '価格は0以上で入力してください',
+    }) as unknown as z.ZodType<number>,
   description: z.string().optional(),
   productType: z.enum(['PHYSICAL', 'DIGITAL', 'DIGITAL_TICKET', 'EXTERNAL_LINK']),
   categoryType: z.enum(['cars', 'events', 'digital']),
