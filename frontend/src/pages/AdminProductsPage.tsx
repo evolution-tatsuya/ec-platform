@@ -841,15 +841,15 @@ export default function AdminProductsPage() {
                       <TextField
                         fullWidth
                         label="初期在庫数"
-                        type="number"
-                        inputProps={{ min: 0, inputMode: 'numeric' }}
+                        type="text"
+                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                         error={!!errors.initialStock}
                         helperText={errors.initialStock?.message}
                         value={field.value ?? ''}
                         onFocus={handleNumberFocus}
                         onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === '' ? undefined : Number(v));
+                          const digits = e.target.value.replace(/[^0-9]/g, '');
+                          field.onChange(digits === '' ? undefined : Number(digits));
                         }}
                         onBlur={field.onBlur}
                         name={field.name}
@@ -1069,13 +1069,13 @@ export default function AdminProductsPage() {
                       <TextField
                         fullWidth
                         label="準備日数"
-                        type="number"
-                        inputProps={{ min: 0, inputMode: 'numeric' }}
+                        type="text"
+                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                         value={field.value ?? ''}
                         onFocus={handleNumberFocus}
                         onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === '' ? undefined : Number(v));
+                          const digits = e.target.value.replace(/[^0-9]/g, '');
+                          field.onChange(digits === '' ? undefined : Number(digits));
                         }}
                         onBlur={field.onBlur}
                         name={field.name}
@@ -1159,16 +1159,18 @@ export default function AdminProductsPage() {
                       <TextField
                         fullWidth
                         label="数量"
-                        type="number"
+                        type="text"
                         required
-                        inputProps={{ inputMode: 'numeric' }}
+                        inputProps={{ inputMode: 'numeric', pattern: '-?[0-9]*' }}
                         error={!!inventoryForm.formState.errors.quantity}
-                        helperText={inventoryForm.formState.errors.quantity?.message}
+                        helperText={inventoryForm.formState.errors.quantity?.message || '出庫はマイナス（例: -5）で入力'}
                         value={field.value ?? ''}
                         onFocus={handleNumberFocus}
                         onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === '' ? undefined : Number(v));
+                          // 数量は出庫でマイナスも許可。先頭の-のみ残す
+                          let v = e.target.value.replace(/[^0-9-]/g, '');
+                          v = v.replace(/(?!^)-/g, ''); // 先頭以外の-を除去
+                          field.onChange(v === '' || v === '-' ? undefined : Number(v));
                         }}
                         onBlur={field.onBlur}
                         name={field.name}
