@@ -67,7 +67,9 @@ import {
 // バリデーションスキーマ
 const productSchema = z.object({
   name: z.string().min(1, '商品名は必須です').max(200, '200文字以内で入力してください'),
-  price: z.number().min(0, '価格は0以上で入力してください'),
+  price: z
+    .number({ required_error: '金額を入力してください', invalid_type_error: '金額を入力してください' })
+    .min(0, '価格は0以上で入力してください'),
   description: z.string().optional(),
   productType: z.enum(['PHYSICAL', 'DIGITAL', 'DIGITAL_TICKET', 'EXTERNAL_LINK']),
   categoryType: z.enum(['cars', 'events', 'digital']),
@@ -812,16 +814,17 @@ export default function AdminProductsPage() {
                       <TextField
                         fullWidth
                         label="価格（円）"
-                        type="number"
+                        type="text"
                         required
-                        inputProps={{ min: 0, inputMode: 'numeric' }}
+                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                         error={!!errors.price}
-                        helperText={errors.price?.message}
+                        helperText={errors.price?.message || '半角数字で入力'}
                         value={field.value ?? ''}
                         onFocus={handleNumberFocus}
                         onChange={(e) => {
-                          const v = e.target.value;
-                          field.onChange(v === '' ? undefined : Number(v));
+                          // 数字以外を除去。空なら undefined（全消しできる）
+                          const digits = e.target.value.replace(/[^0-9]/g, '');
+                          field.onChange(digits === '' ? undefined : Number(digits));
                         }}
                         onBlur={field.onBlur}
                         name={field.name}
