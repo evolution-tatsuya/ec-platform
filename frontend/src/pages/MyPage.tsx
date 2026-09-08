@@ -286,14 +286,14 @@ const MyPage = () => {
                 fontWeight: 600,
               }}
             >
-              {MOCK_USER.name.charAt(0)}
+              {(name || '?').charAt(0)}
             </Avatar>
             <Box>
               <Typography variant="h6" fontWeight={600}>
-                {MOCK_USER.name}
+                {name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {MOCK_USER.email}
+                {email}
               </Typography>
             </Box>
           </Box>

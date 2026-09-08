@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -27,6 +27,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/ja';
 import { cartAPI, orderAPI, settingsAPI } from '../lib/api';
+import { getMe } from '../services/api/users';
 import { PaymentMethod } from '../types';
 
 // dayjsのロケールを日本語に設定
@@ -88,13 +89,32 @@ export default function CheckoutPage() {
 
   const enableDeliveryDateTime = settingsData?.settings.enableDeliveryDateTime ?? true;
 
-  // フォーム状態
+  // フォーム状態（ログイン中ユーザーの情報を後で読み込む。初期はサンプルを入れない）
   const [useDefaultAddress, setUseDefaultAddress] = useState(true);
-  const [name, setName] = useState('山田 太郎');
-  const [postalCode, setPostalCode] = useState('150-0001');
-  const [address, setAddress] = useState('東京都渋谷区神宮前1-2-3');
-  const [building, setBuilding] = useState('サンプルマンション101');
-  const [phone, setPhone] = useState('090-1234-5678');
+  const [name, setName] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [address, setAddress] = useState('');
+  const [building, setBuilding] = useState('');
+  const [phone, setPhone] = useState('');
+
+  // ログイン中ユーザーの登録情報を配送先の初期値として読み込む
+  useEffect(() => {
+    let active = true;
+    getMe()
+      .then((me) => {
+        if (!active) return;
+        setName(me.name ?? '');
+        setPostalCode(me.defaultPostalCode ?? '');
+        setAddress(me.defaultAddress ?? '');
+        setPhone(me.defaultPhone ?? '');
+      })
+      .catch(() => {
+        // 未ログイン等は無視（フォームは空のまま）
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const [weekendDelivery, setWeekendDelivery] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState<Dayjs | null>(null);
