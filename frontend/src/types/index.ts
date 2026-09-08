@@ -527,10 +527,14 @@ export interface PickupProduct {
   product: Product;
 }
 
+export type NewsCategory = 'new_product' | 'holiday' | 'shipping' | 'other';
+
 export interface NewsItem {
   id: string;
   title: string;
-  content?: string;
+  content?: string | null;
+  category: NewsCategory;
+  linkUrl?: string | null; // 外部リンク（指定時はクリックでこのURLへ）
   publishedAt: Date;
   isPublished: boolean;
   createdAt: Date;

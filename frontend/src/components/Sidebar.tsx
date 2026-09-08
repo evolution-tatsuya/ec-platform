@@ -26,6 +26,7 @@ import {
   QuestionAnswer as InquiriesIcon,
   Settings as SettingsIcon,
   ViewQuilt as NavigationIcon,
+  Campaign as NewsIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -119,13 +120,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <InquiriesIcon />,
     },
     {
+      label: 'お知らせ管理',
+      path: '/admin/news',
+      icon: <NewsIcon />,
+    },
+    {
       label: 'システム設定',
       path: '/admin/settings',
       icon: <SettingsIcon />,
     },
     {
       label: 'ナビゲーション軸',
-      path: '/admin/navigation',
+      path: '/admin/navigation-axes',
       icon: <NavigationIcon />,
     },
   ];

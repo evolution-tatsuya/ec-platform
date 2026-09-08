@@ -1,4 +1,4 @@
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, Chip, Button } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Swiper from 'swiper';
@@ -87,8 +87,20 @@ export default function TopPage() {
     navigate(linkUrl);
   };
 
-  const handleNewsClick = (newsId: string) => {
-    navigate(`/news/${newsId}`);
+  const handleNewsClick = (newsItem: { id: string; linkUrl?: string | null }) => {
+    // 外部リンクが指定されていればそのURLへ、無ければ詳細ページへ
+    if (newsItem.linkUrl) {
+      window.open(newsItem.linkUrl, '_blank', 'noopener');
+    } else {
+      navigate(`/news/${newsItem.id}`);
+    }
+  };
+
+  const NEWS_CATEGORY_LABELS: Record<string, string> = {
+    new_product: '新商品',
+    holiday: '休業',
+    shipping: '発送案内',
+    other: 'その他',
   };
 
   // ローディング表示
@@ -187,7 +199,8 @@ export default function TopPage() {
         </Box>
       </Box>
 
-      {/* メガカテゴリー選択 */}
+      {/* メガカテゴリー選択（設定がある時のみ表示） */}
+      {topPageData.megaCategories.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -297,8 +310,10 @@ export default function TopPage() {
           ))}
         </Box>
       </Box>
+      )}
 
-      {/* ピックアップ商品 */}
+      {/* ピックアップ商品（設定がある時のみ表示） */}
+      {topPageData.pickupProducts.length > 0 && (
       <Box
         component="section"
         sx={{
@@ -416,6 +431,7 @@ export default function TopPage() {
           </Box>
         </Box>
       </Box>
+      )}
 
       {/* 新着商品 */}
       {topPageData.newProducts.length > 0 && (
@@ -707,79 +723,92 @@ export default function TopPage() {
       </Box>
       )}
 
-      {/* お知らせ・ニュース */}
-      <Box
-        component="section"
-        sx={{
-          maxWidth: 1200,
-          margin: '48px auto 80px',
-          padding: '0 16px',
-        }}
-      >
-        <Typography
-          variant="h4"
-          component="h2"
-          sx={{
-            fontSize: 28,
-            fontWeight: 700,
-            mb: 3,
-            color: '#333',
-            borderLeft: '4px solid #7c4dff',
-            pl: 2,
-          }}
-        >
-          お知らせ・ニュース
-        </Typography>
-
+      {/* お知らせ・ニュース（お知らせがある時のみ表示） */}
+      {topPageData.news.length > 0 && (
         <Box
+          component="section"
           sx={{
-            background: 'white',
-            borderRadius: 1,
-            p: 3,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            maxWidth: 1200,
+            margin: '48px auto 80px',
+            padding: '0 16px',
           }}
         >
-          {topPageData.news.map((newsItem, index) => (
-            <Box
-              key={newsItem.id}
-              onClick={() => handleNewsClick(newsItem.id)}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography
+              variant="h4"
+              component="h2"
               sx={{
-                py: 2,
-                borderBottom:
-                  index !== topPageData.news.length - 1
-                    ? '1px solid #e0e0e0'
-                    : 'none',
-                display: 'flex',
-                gap: 2,
-                cursor: 'pointer',
-                transition: 'background 0.2s ease',
-                '&:hover': {
-                  background: '#f5f5f5',
-                },
+                fontSize: 28,
+                fontWeight: 700,
+                color: '#333',
+                borderLeft: '4px solid #7c4dff',
+                pl: 2,
               }}
             >
-              <Typography
+              お知らせ・ニュース
+            </Typography>
+            <Button size="small" onClick={() => navigate('/news')}>
+              すべて見る
+            </Button>
+          </Box>
+
+          <Box
+            sx={{
+              background: 'white',
+              borderRadius: 1,
+              p: 3,
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+            }}
+          >
+            {topPageData.news.map((newsItem, index) => (
+              <Box
+                key={newsItem.id}
+                onClick={() => handleNewsClick(newsItem)}
                 sx={{
-                  fontSize: 14,
-                  color: '#757575',
-                  minWidth: 120,
+                  py: 2,
+                  borderBottom:
+                    index !== topPageData.news.length - 1
+                      ? '1px solid #e0e0e0'
+                      : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s ease',
+                  '&:hover': {
+                    background: '#f5f5f5',
+                  },
                 }}
               >
-                {new Date(newsItem.publishedAt).toLocaleDateString('ja-JP')}
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color: '#333',
-                }}
-              >
-                {newsItem.title}
-              </Typography>
-            </Box>
-          ))}
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    color: '#757575',
+                    minWidth: 100,
+                  }}
+                >
+                  {new Date(newsItem.publishedAt).toLocaleDateString('ja-JP')}
+                </Typography>
+                <Chip
+                  size="small"
+                  label={NEWS_CATEGORY_LABELS[(newsItem as any).category] || 'お知らせ'}
+                  sx={{ minWidth: 72 }}
+                />
+                <Typography
+                  sx={{
+                    fontSize: 16,
+                    fontWeight: 500,
+                    color: '#333',
+                    flex: 1,
+                  }}
+                >
+                  {newsItem.title}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
         </Box>
-      </Box>
+      )}
     </Box>
   );
 }

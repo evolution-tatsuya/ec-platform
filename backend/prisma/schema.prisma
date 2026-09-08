@@ -424,6 +424,8 @@ model NewsItem {
   id          String   @id @default(cuid())
   title       String
   content     String?
+  category    String   @default("other") // 種別: new_product / holiday / shipping / other
+  linkUrl     String?  @map("link_url") // 外部リンク（指定時はクリックでこのURLへ）
   publishedAt DateTime @default(now()) @map("published_at") // 公開日時
   isPublished Boolean  @default(true) @map("is_published") // 公開/非公開
   createdAt   DateTime @default(now()) @map("created_at")

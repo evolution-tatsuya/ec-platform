@@ -507,10 +507,14 @@ export interface PickupProduct {
   product: Product;
 }
 
+export type NewsCategory = 'new_product' | 'holiday' | 'shipping' | 'other';
+
 export interface NewsItem {
   id: string;
   title: string;
-  content?: string;
+  content?: string | null;
+  category: NewsCategory;
+  linkUrl?: string | null;
   publishedAt: Date;
   isPublished: boolean;
   createdAt: Date;

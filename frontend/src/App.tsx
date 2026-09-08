@@ -35,6 +35,9 @@ import AboutPage from './pages/AboutPage';
 import LegalPage from './pages/LegalPage';
 import PrivacyPage from './pages/PrivacyPage';
 import AdminAccountPage from './pages/AdminAccountPage';
+import AdminNewsPage from './pages/AdminNewsPage';
+import NewsDetailPage from './pages/NewsDetailPage';
+import NewsListPage from './pages/NewsListPage';
 import { UserRole } from './types';
 import { Header, CustomerLayout } from './components';
 import TestPage from './TestPage';
@@ -74,6 +77,7 @@ function App() {
               <Route path="inquiries" element={<AdminInquiriesPage />} />
               <Route path="settings" element={<AdminSettingsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
+              <Route path="news" element={<AdminNewsPage />} />
               <Route path="account" element={<AdminAccountPage />} />
             </Route>
 
@@ -90,6 +94,20 @@ function App() {
               path="/products/:id"
               element={
                 <CustomerLayout><ProductDetailPage /></CustomerLayout>
+              }
+            />
+
+            {/* お知らせ一覧・詳細（独自レイアウト） */}
+            <Route
+              path="/news"
+              element={
+                <CustomerLayout><NewsListPage /></CustomerLayout>
+              }
+            />
+            <Route
+              path="/news/:id"
+              element={
+                <CustomerLayout><NewsDetailPage /></CustomerLayout>
               }
             />
 
