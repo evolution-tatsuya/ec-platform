@@ -46,6 +46,14 @@ import { ja } from 'date-fns/locale';
 import { useAdminCustomers, useAdminCustomerById, useUpdateCustomerTags } from '../hooks/useCustomers';
 import type { CustomerWithStats } from '../types';
 
+// 無効な日付でもクラッシュしない安全なフォーマッタ（Invalid time value対策）
+const safeFormat = (value: unknown, fmt: string): string => {
+  if (!value) return '-';
+  const d = new Date(value as string);
+  if (isNaN(d.getTime())) return '-';
+  return format(d, fmt, { locale: ja });
+};
+
 // タグの選択肢
 const TAG_OPTIONS = ['VIP', 'リピーター', '高額購入者', '要注意'];
 
@@ -345,7 +353,7 @@ export default function AdminCustomersPage() {
                     )}
                     <Typography variant="body2">
                       <strong>登録日:</strong>{' '}
-                      {format(new Date(selectedCustomer.registeredAt), 'yyyy年M月d日', { locale: ja })}
+                      {safeFormat(selectedCustomer.registeredAt, 'yyyy年M月d日')}
                     </Typography>
                   </Stack>
                 </Box>
@@ -388,7 +396,7 @@ export default function AdminCustomersPage() {
                           </Typography>
                           <Typography variant="body2" fontWeight="bold">
                             {selectedCustomer.lastOrderDate
-                              ? format(new Date(selectedCustomer.lastOrderDate), 'yyyy/MM/dd', { locale: ja })
+                              ? safeFormat(selectedCustomer.lastOrderDate, 'yyyy/MM/dd')
                               : '未購入'}
                           </Typography>
                         </CardContent>
@@ -464,7 +472,7 @@ export default function AdminCustomersPage() {
                             </TableCell>
                             <TableCell>
                               <Typography variant="body2">
-                                {format(new Date(order.orderDate), 'yyyy/MM/dd', { locale: ja })}
+                                {safeFormat(order.orderDate, 'yyyy/MM/dd')}
                               </Typography>
                             </TableCell>
                             <TableCell align="right">

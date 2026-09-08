@@ -50,7 +50,7 @@ export async function saveProductImages(
     const isValid = await validateImageFormat(file.buffer);
     if (!isValid) {
       throw Object.assign(
-        new Error('サポートされていない画像形式です（JPEG, PNG, WebPのみ）'),
+        new Error('この画像は読み込めませんでした。JPEG・PNG・HEIC等の画像ファイルをお試しください（PDFや破損ファイルは不可）'),
         { statusCode: 400 },
       );
     }

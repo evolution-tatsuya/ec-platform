@@ -101,7 +101,8 @@ export async function getImageMetadata(imageBuffer: Buffer): Promise<{
 export async function validateImageFormat(imageBuffer: Buffer): Promise<boolean> {
   try {
     const metadata = await sharp(imageBuffer).metadata();
-    const validFormats = ['jpeg', 'jpg', 'png', 'webp'];
+    // sharpがWebPに変換可能な形式は広く受け付ける（iPhoneのHEIC等も許可）。
+    const validFormats = ['jpeg', 'jpg', 'png', 'webp', 'gif', 'heif', 'heic', 'avif', 'tiff', 'svg'];
     return validFormats.includes(metadata.format || '');
   } catch (error) {
     return false;
