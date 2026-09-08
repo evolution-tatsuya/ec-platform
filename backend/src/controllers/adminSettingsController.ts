@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { uploadFile, generateSignedUrl } from '../utils/r2Client';
-import { convertToWebP } from '../utils/imageProcessor';
+import sharp from 'sharp';
 
 const prisma = new PrismaClient();
 
@@ -123,8 +123,11 @@ export const uploadLogo = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: '画像ファイルが必要です' });
     }
 
-    // WebP変換（ロゴは幅400px程度に）
-    const webp = await convertToWebP(file.buffer, 400, 90);
+    // ロゴは縦横比を保ってWebP変換（正方形cropしない。長辺512pxに収める）
+    const webp = await sharp(file.buffer)
+      .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 90 })
+      .toBuffer();
     const imageKey = `settings/logo-${Date.now()}.webp`;
     await uploadFile(imageKey, webp, 'image/webp');
 
