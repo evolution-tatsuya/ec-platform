@@ -371,7 +371,7 @@ export default function AdminCustomersPage() {
                             累計購入金額
                           </Typography>
                           <Typography variant="h6" fontWeight="bold">
-                            ¥{selectedCustomer.totalSpent.toLocaleString()}
+                            ¥{(selectedCustomer.totalSpent ?? 0).toLocaleString()}
                           </Typography>
                         </CardContent>
                       </Card>
@@ -383,7 +383,7 @@ export default function AdminCustomersPage() {
                             購入回数
                           </Typography>
                           <Typography variant="h6" fontWeight="bold">
-                            {selectedCustomer.totalOrders}回
+                            {selectedCustomer.totalOrders ?? 0}回
                           </Typography>
                         </CardContent>
                       </Card>
@@ -409,7 +409,7 @@ export default function AdminCustomersPage() {
                             リピート率
                           </Typography>
                           <Typography variant="h6" fontWeight="bold">
-                            {(selectedCustomer.repeatRate * 100).toFixed(0)}%
+                            {((selectedCustomer.repeatRate ?? 0) * 100).toFixed(0)}%
                           </Typography>
                         </CardContent>
                       </Card>
@@ -463,7 +463,7 @@ export default function AdminCustomersPage() {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {selectedCustomer.orders.map((order, index) => (
+                        {(selectedCustomer.orders ?? []).map((order, index) => (
                           <TableRow key={index}>
                             <TableCell>
                               <Typography variant="body2" fontFamily="monospace">
@@ -476,7 +476,7 @@ export default function AdminCustomersPage() {
                               </Typography>
                             </TableCell>
                             <TableCell align="right">
-                              ¥{order.totalAmount.toLocaleString()}
+                              ¥{(order.totalAmount ?? 0).toLocaleString()}
                             </TableCell>
                             <TableCell>
                               <Chip

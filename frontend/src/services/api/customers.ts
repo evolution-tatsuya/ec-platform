@@ -96,13 +96,29 @@ export const getAdminCustomers = async (
  */
 export const getAdminCustomerById = async (id: string): Promise<CustomerDetail> => {
   try {
-    const response = await axios.get<CustomerDetail>(
+    const response = await axios.get<any>(
       `${API_BASE_URL}/api/admin/customers/${id}`,
       {
         withCredentials: true,
       }
     );
-    return response.data;
+    // レスポンスは顧客オブジェクトが直下（.customerラッパー無しの場合もある）
+    const c: any = response.data.customer ?? response.data;
+    // バックエンドのフィールド名をフロントの型へ変換（一覧と同じマッピング）
+    return {
+      ...c,
+      registeredAt: c.registeredAt ?? c.createdAt ?? new Date().toISOString(),
+      totalOrders: c.totalOrders ?? c.orderCount ?? c._count?.orders ?? 0,
+      totalSpent: c.totalSpent ?? c.totalPurchase ?? 0,
+      lastOrderDate: c.lastOrderDate ?? null,
+      repeatRate: c.repeatRate ?? 0,
+      tags: Array.isArray(c.tags) ? c.tags : typeof c.tags === 'string' ? safeParseTags(c.tags) : [],
+      orders: (c.orders ?? []).map((o: any) => ({
+        ...o,
+        orderDate: o.orderDate ?? o.createdAt ?? null,
+        totalAmount: o.totalAmount ?? 0,
+      })),
+    } as CustomerDetail;
   } catch (error: any) {
     console.error('顧客詳細取得エラー:', error);
     throw new Error(error.response?.data?.message || '顧客詳細の取得に失敗しました');
