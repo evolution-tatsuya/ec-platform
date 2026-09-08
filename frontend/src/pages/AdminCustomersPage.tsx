@@ -36,6 +36,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  Snackbar,
 } from '@mui/material';
 import Grid from '@mui/material/GridLegacy';
 import { DataGrid } from '@mui/x-data-grid';
@@ -84,6 +85,7 @@ export default function AdminCustomersPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
   const [editTags, setEditTags] = useState<string[]>([]);
+  const [snackbar, setSnackbar] = useState('');
 
   // APIから顧客一覧取得
   const {
@@ -202,9 +204,11 @@ export default function AdminCustomersPage() {
         id: selectedCustomerId,
         data: { tags: editTags },
       });
+      setSnackbar('タグを保存しました（顧客一覧のタグ列に反映されます）');
       handleCloseDetailDialog();
     } catch (error) {
       console.error('タグ保存エラー:', error);
+      setSnackbar('タグの保存に失敗しました');
     }
   };
 
@@ -364,10 +368,10 @@ export default function AdminCustomersPage() {
                     統計情報
                   </Typography>
                   <Grid container spacing={2}>
-                    <Grid xs={6} sm={3}>
-                      <Card variant="outlined">
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined" sx={{ height: '100%' }}>
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" display="block">
                             累計購入金額
                           </Typography>
                           <Typography variant="h6" fontWeight="bold">
@@ -376,10 +380,10 @@ export default function AdminCustomersPage() {
                         </CardContent>
                       </Card>
                     </Grid>
-                    <Grid xs={6} sm={3}>
-                      <Card variant="outlined">
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined" sx={{ height: '100%' }}>
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" display="block">
                             購入回数
                           </Typography>
                           <Typography variant="h6" fontWeight="bold">
@@ -388,13 +392,13 @@ export default function AdminCustomersPage() {
                         </CardContent>
                       </Card>
                     </Grid>
-                    <Grid xs={6} sm={3}>
-                      <Card variant="outlined">
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined" sx={{ height: '100%' }}>
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" display="block">
                             最終購入日
                           </Typography>
-                          <Typography variant="body2" fontWeight="bold">
+                          <Typography variant="h6" fontWeight="bold">
                             {selectedCustomer.lastOrderDate
                               ? safeFormat(selectedCustomer.lastOrderDate, 'yyyy/MM/dd')
                               : '未購入'}
@@ -402,10 +406,10 @@ export default function AdminCustomersPage() {
                         </CardContent>
                       </Card>
                     </Grid>
-                    <Grid xs={6} sm={3}>
-                      <Card variant="outlined">
+                    <Grid item xs={6} sm={3}>
+                      <Card variant="outlined" sx={{ height: '100%' }}>
                         <CardContent>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant="caption" color="text.secondary" display="block">
                             リピート率
                           </Typography>
                           <Typography variant="h6" fontWeight="bold">
@@ -507,6 +511,14 @@ export default function AdminCustomersPage() {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <Snackbar
+          open={!!snackbar}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar('')}
+          message={snackbar}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        />
     </Container>
   );
 }
