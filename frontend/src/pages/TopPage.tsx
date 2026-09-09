@@ -83,8 +83,18 @@ export default function TopPage() {
     navigate(`/products/${productId}`);
   };
 
-  const handleCategoryClick = (linkUrl: string) => {
-    navigate(linkUrl);
+  const handleCategoryClick = (category: { linkUrl?: string; categoryType?: string }) => {
+    // linkUrlが設定されていればそれを優先。無ければcategoryTypeから各総合ページへ。
+    if (category.linkUrl) {
+      navigate(category.linkUrl);
+      return;
+    }
+    const routeMap: Record<string, string> = {
+      cars: '/cars',
+      events: '/events',
+      digital: '/digital-products',
+    };
+    navigate(routeMap[category.categoryType || ''] || '/');
   };
 
   const handleNewsClick = (newsItem: { id: string; linkUrl?: string | null }) => {
@@ -233,7 +243,7 @@ export default function TopPage() {
           {topPageData.megaCategories.map((category) => (
             <Box
               key={category.id}
-              onClick={() => handleCategoryClick(category.linkUrl)}
+              onClick={() => handleCategoryClick(category)}
               sx={{
                 position: 'relative',
                 height: 320,
