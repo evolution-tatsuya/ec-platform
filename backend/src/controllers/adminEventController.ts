@@ -41,8 +41,10 @@ export async function getEvents(req: Request, res: Response) {
     const skip = (page - 1) * limit;
 
     // フィルタ条件構築
+    // 商品登録の「イベントチケット」は productType='DIGITAL_TICKET'。
+    // 旧データの 'event' も互換で拾う。
     const where: any = {
-      productType: 'event',
+      productType: { in: ['DIGITAL_TICKET', 'event'] },
     };
 
     // 検索キーワード
@@ -253,7 +255,7 @@ export async function getEventById(req: Request, res: Response) {
       });
     }
 
-    if (event.productType !== 'event') {
+    if (!['DIGITAL_TICKET', 'event'].includes(event.productType)) {
       return res.status(400).json({
         success: false,
         message: 'この商品はイベントではありません',
@@ -345,7 +347,7 @@ export async function setEventForm(req: Request, res: Response) {
       });
     }
 
-    if (event.productType !== 'event') {
+    if (!['DIGITAL_TICKET', 'event'].includes(event.productType)) {
       return res.status(400).json({
         success: false,
         message: 'この商品はイベントではありません',
@@ -412,7 +414,7 @@ export async function getEventForm(req: Request, res: Response) {
       });
     }
 
-    if (event.productType !== 'event') {
+    if (!['DIGITAL_TICKET', 'event'].includes(event.productType)) {
       return res.status(400).json({
         success: false,
         message: 'この商品はイベントではありません',
@@ -487,7 +489,7 @@ export async function getEventParticipants(req: Request, res: Response) {
       });
     }
 
-    if (event.productType !== 'event') {
+    if (!['DIGITAL_TICKET', 'event'].includes(event.productType)) {
       return res.status(400).json({
         success: false,
         message: 'この商品はイベントではありません',
@@ -603,7 +605,7 @@ export async function exportParticipantsCSV(req: Request, res: Response) {
       });
     }
 
-    if (event.productType !== 'event') {
+    if (!['DIGITAL_TICKET', 'event'].includes(event.productType)) {
       return res.status(400).json({
         success: false,
         message: 'この商品はイベントではありません',
@@ -699,7 +701,7 @@ export async function exportParticipantsExcel(req: Request, res: Response) {
       });
     }
 
-    if (event.productType !== 'event') {
+    if (!['DIGITAL_TICKET', 'event'].includes(event.productType)) {
       return res.status(400).json({
         success: false,
         message: 'この商品はイベントではありません',
