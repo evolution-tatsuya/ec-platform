@@ -329,6 +329,22 @@ model SiteSettings {
   @@map("site_settings")
 }
 
+// ===== メールテンプレートモデル =====
+// type: order_confirm(注文/振込案内) | payment_received(入金確認) | shipped(発送連絡)
+//       delivery_notice(納期案内) | other(その他)
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique // テンプレート種別
+  name      String // 管理画面の表示名
+  subject   String // 件名（{{変数}}使用可）
+  body      String // 本文（{{変数}}使用可）
+  isActive  Boolean  @default(true) @map("is_active") // ステータス変更時に自動送信するか
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_templates")
+}
+
 // ===== ナビゲーション軸モデル =====
 
 model NavigationAxis {

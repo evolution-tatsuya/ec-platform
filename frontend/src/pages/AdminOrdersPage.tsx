@@ -38,7 +38,9 @@ import {
   Typography,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Description, Receipt, RequestQuote, Send } from '@mui/icons-material';
+import { Description, Receipt, RequestQuote, Send, Email as EmailIcon } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
+import { getEmailTemplates, sendOrderEmail, EMAIL_TYPE_LABELS, type EmailTemplate } from '../services/api/email';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -100,6 +102,32 @@ export default function AdminOrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [carrier, setCarrier] = useState<string>('');
   const [trackingNumber, setTrackingNumber] = useState<string>('');
+
+  // メール送信
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailType, setEmailType] = useState('order_confirm');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const { data: emailTemplates = [] } = useQuery<EmailTemplate[]>({
+    queryKey: ['adminEmailTemplates'],
+    queryFn: getEmailTemplates,
+    staleTime: 60_000,
+  });
+
+  const handleSendEmail = async () => {
+    if (!selectedOrder) return;
+    setSendingEmail(true);
+    try {
+      await sendOrderEmail(selectedOrder.id, { type: emailType, subject: emailSubject, body: emailBody });
+      setEmailDialogOpen(false);
+      alert('メールを送信しました');
+    } catch (e: any) {
+      alert(e?.response?.data?.message || 'メール送信に失敗しました');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   // フィルターパラメータを構築
   const filterParams = useMemo<AdminOrderFilterParams | undefined>(() => {
@@ -538,7 +566,76 @@ export default function AdminOrdersPage() {
             )}
           </DialogContent>
           <DialogActions>
+            <Button
+              startIcon={<EmailIcon />}
+              onClick={() => {
+                const tpl = emailTemplates.find((t) => t.type === emailType) || emailTemplates[0];
+                if (tpl) {
+                  setEmailType(tpl.type);
+                  setEmailSubject(tpl.subject);
+                  setEmailBody(tpl.body);
+                }
+                setEmailDialogOpen(true);
+              }}
+            >
+              メール送信
+            </Button>
             <Button onClick={handleCloseDetailDialog}>閉じる</Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* メール送信ダイアログ */}
+        <Dialog open={emailDialogOpen} onClose={() => setEmailDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>メール送信</DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} mt={1}>
+              <Typography variant="body2" color="text.secondary">
+                宛先: {selectedOrder?.customerEmail || '(メールアドレスなし)'}
+              </Typography>
+              <FormControl fullWidth>
+                <InputLabel>テンプレート</InputLabel>
+                <Select
+                  label="テンプレート"
+                  value={emailType}
+                  onChange={(e) => {
+                    const type = e.target.value;
+                    setEmailType(type);
+                    const tpl = emailTemplates.find((t) => t.type === type);
+                    if (tpl) {
+                      setEmailSubject(tpl.subject);
+                      setEmailBody(tpl.body);
+                    }
+                  }}
+                >
+                  {emailTemplates.map((t) => (
+                    <MenuItem key={t.id} value={t.type}>
+                      {EMAIL_TYPE_LABELS[t.type] || t.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <TextField
+                label="件名"
+                fullWidth
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+              />
+              <TextField
+                label="本文"
+                fullWidth
+                multiline
+                rows={10}
+                value={emailBody}
+                onChange={(e) => setEmailBody(e.target.value)}
+                helperText="{{customerName}} {{orderNumber}} {{totalAmount}} {{bankInfo}} が使えます"
+              />
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEmailDialogOpen(false)}>キャンセル</Button>
+            <Button variant="contained" onClick={handleSendEmail} disabled={sendingEmail}>
+              {sendingEmail ? '送信中...' : '送信する'}
+            </Button>
           </DialogActions>
         </Dialog>
 

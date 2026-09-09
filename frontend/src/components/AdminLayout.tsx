@@ -31,6 +31,7 @@ import {
   Navigation as NavigationIcon,
   Campaign as NewsIcon,
   Web as TopPageIcon,
+  Email as EmailIcon,
   AccountCircle,
   Logout,
   ManageAccounts,
@@ -55,6 +56,7 @@ const navItems: NavItem[] = [
   { text: '問い合わせ管理', icon: <ContactMail />, path: '/admin/inquiries' },
   { text: 'お知らせ管理', icon: <NewsIcon />, path: '/admin/news' },
   { text: 'トップページ編集', icon: <TopPageIcon />, path: '/admin/top-page' },
+  { text: 'メール設定', icon: <EmailIcon />, path: '/admin/email' },
   { text: 'システム設定', icon: <Settings />, path: '/admin/settings' },
   { text: 'ナビゲーション軸', icon: <NavigationIcon />, path: '/admin/navigation-axes' },
 ];

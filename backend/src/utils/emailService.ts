@@ -232,3 +232,30 @@ export async function sendPasswordResetEmail(data: {
     `,
   });
 }
+
+/**
+ * テンプレートの{{変数}}を値で置換
+ */
+export function renderTemplate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => vars[key] ?? '');
+}
+
+/**
+ * 汎用メール送信（件名・本文を指定）。本文の改行は<br>に変換。
+ */
+export async function sendGenericEmail(data: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<void> {
+  const htmlBody = data.body.replace(/\n/g, '<br>');
+  await resend.emails.send({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: data.subject,
+    html: `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
+<body style="font-family: sans-serif; line-height: 1.7; color: #333;">
+<div style="max-width: 600px; margin: 0 auto; padding: 24px;">${htmlBody}</div>
+</body></html>`,
+  });
+}
