@@ -478,10 +478,12 @@ export default function AdminOrdersPage() {
                       <strong>注文番号:</strong> {selectedOrder.orderNumber}
                     </Typography>
                     <Typography variant="body2">
-                      <strong>氏名:</strong> {selectedOrder.customerName}
+                      <strong>氏名:</strong>{' '}
+                      {selectedOrder.customerName || selectedOrder.user?.name || '-'}
                     </Typography>
                     <Typography variant="body2">
-                      <strong>メール:</strong> {selectedOrder.customerEmail}
+                      <strong>メール:</strong>{' '}
+                      {selectedOrder.customerEmail || selectedOrder.user?.email || '-'}
                     </Typography>
                     <Typography variant="body2">
                       <strong>電話番号:</strong> {selectedOrder.customerPhone}
@@ -641,7 +643,10 @@ export default function AdminOrdersPage() {
           <DialogContent dividers>
             <Stack spacing={2} mt={1}>
               <Typography variant="body2" color="text.secondary">
-                宛先: {selectedOrder?.customerEmail || '(メールアドレスなし)'}
+                宛先:{' '}
+                {selectedOrder?.customerEmail ||
+                  selectedOrder?.user?.email ||
+                  '(メールアドレスなし)'}
               </Typography>
               <FormControl fullWidth>
                 <InputLabel>テンプレート</InputLabel>
@@ -684,7 +689,14 @@ export default function AdminOrdersPage() {
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setEmailDialogOpen(false)}>キャンセル</Button>
-            <Button variant="contained" onClick={handleSendEmail} disabled={sendingEmail}>
+            <Button
+              variant="contained"
+              onClick={handleSendEmail}
+              disabled={
+                sendingEmail ||
+                !(selectedOrder?.customerEmail || selectedOrder?.user?.email)
+              }
+            >
               {sendingEmail ? '送信中...' : '送信する'}
             </Button>
           </DialogActions>
@@ -702,7 +714,8 @@ export default function AdminOrdersPage() {
                   <strong>注文番号:</strong> {selectedOrder.orderNumber}
                 </Typography>
                 <Typography variant="body2">
-                  <strong>顧客名:</strong> {selectedOrder.customerName}
+                  <strong>顧客名:</strong>{' '}
+                  {selectedOrder.customerName || selectedOrder.user?.name || '-'}
                 </Typography>
 
                 <FormControl fullWidth>

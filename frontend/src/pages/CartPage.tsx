@@ -138,8 +138,11 @@ export default function CartPage() {
             {errorMessage}
           </Alert>
           {isAuthError && (
-            <Button variant="contained" onClick={() => navigate('/auth/login')}>
-              ログインページへ
+            <Button
+              variant="contained"
+              onClick={() => navigate(`/auth/login?redirect=${encodeURIComponent('/cart')}`)}
+            >
+              ログイン / 新規登録
             </Button>
           )}
         </Box>

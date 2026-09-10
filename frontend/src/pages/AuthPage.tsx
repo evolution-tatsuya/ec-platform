@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -49,9 +49,13 @@ function TabPanel(props: TabPanelProps) {
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, register } = useAuth();
 
-  const [tabValue, setTabValue] = useState(0);
+  // ログイン/登録成功後の遷移先（カート等から戻す用）。未指定ならトップ。
+  const redirectTo = searchParams.get('redirect') || '/';
+  // ?tab=register で新規登録タブを初期表示
+  const [tabValue, setTabValue] = useState(searchParams.get('tab') === 'register' ? 1 : 0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
@@ -90,7 +94,7 @@ const AuthPage = () => {
 
     try {
       await login(loginEmail, loginPassword);
-      navigate('/');
+      navigate(redirectTo);
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'ログインに失敗しました');
     } finally {
@@ -122,7 +126,7 @@ const AuthPage = () => {
 
     try {
       await register(registerEmail, registerPassword, registerName);
-      navigate('/');
+      navigate(redirectTo);
     } catch (error) {
       setRegisterError(error instanceof Error ? error.message : '登録に失敗しました');
     } finally {

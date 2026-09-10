@@ -347,6 +347,10 @@ export interface Order {
 export interface CreateOrderRequest {
   paymentMethod: 'bank_transfer' | 'credit_card' | 'paypay';
   shippingAddress: string;
+  customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
+  shippingPostalCode?: string;
 }
 
 export interface CreateOrderResponse {

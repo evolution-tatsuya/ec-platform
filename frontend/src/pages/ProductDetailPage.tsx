@@ -59,10 +59,14 @@ export default function ProductDetailPage() {
     onError: (error: any) => {
       const errorMessage = error instanceof Error ? error.message : '不明なエラー';
 
-      // 認証エラーの場合はログインページへ
+      // 認証エラーの場合はログイン/新規登録へ誘導し、完了後この商品ページへ戻す
       if (errorMessage.includes('ログイン')) {
-        alert('カートに追加するにはログインが必要です');
-        navigate('/auth/login');
+        const goRegister = window.confirm(
+          'カートに入れるにはログインが必要です。\n' +
+            '［OK］新規登録　／　［キャンセル］ログイン'
+        );
+        const redirect = encodeURIComponent(`/products/${id}`);
+        navigate(`/auth/login?redirect=${redirect}${goRegister ? '&tab=register' : ''}`);
       } else {
         alert(errorMessage || 'カートへの追加に失敗しました');
       }

@@ -157,15 +157,18 @@ export async function createOrder(req: Request, res: Response) {
       }
 
       // 5. 注文を作成（customerName, customerEmail, customerPhoneをリクエストから取得）
+      // リクエストに指定が無い場合はログイン会員の登録情報で補完する
       const { customerName, customerEmail, customerPhone, shippingPostalCode } = req.body;
+
+      const user = await tx.user.findUnique({ where: { id: userId } });
 
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
           userId,
-          customerName: customerName || '',
-          customerEmail: customerEmail || '',
-          customerPhone: customerPhone || '',
+          customerName: customerName || user?.name || '',
+          customerEmail: customerEmail || user?.email || '',
+          customerPhone: customerPhone || user?.defaultPhone || '',
           status: paymentMethod === 'bank_transfer' ? 'pending' : 'paid',
           paymentMethod,
           totalAmount,

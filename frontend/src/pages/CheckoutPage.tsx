@@ -97,16 +97,45 @@ export default function CheckoutPage() {
   const [building, setBuilding] = useState('');
   const [phone, setPhone] = useState('');
 
+  // 会員登録情報（引き継ぎチェックON時にフォームへ流し込む元データ）
+  const [memberInfo, setMemberInfo] = useState<{
+    name: string;
+    postalCode: string;
+    address: string;
+    phone: string;
+  } | null>(null);
+  // 会員のメールアドレス（注文レコードの宛先として送信）
+  const [memberEmail, setMemberEmail] = useState('');
+
+  // 会員情報をフォームへ反映するヘルパー
+  const applyMemberInfo = (info: {
+    name: string;
+    postalCode: string;
+    address: string;
+    phone: string;
+  }) => {
+    setName(info.name);
+    setPostalCode(info.postalCode);
+    setAddress(info.address);
+    setPhone(info.phone);
+  };
+
   // ログイン中ユーザーの登録情報を配送先の初期値として読み込む
   useEffect(() => {
     let active = true;
     getMe()
       .then((me) => {
         if (!active) return;
-        setName(me.name ?? '');
-        setPostalCode(me.defaultPostalCode ?? '');
-        setAddress(me.defaultAddress ?? '');
-        setPhone(me.defaultPhone ?? '');
+        const info = {
+          name: me.name ?? '',
+          postalCode: me.defaultPostalCode ?? '',
+          address: me.defaultAddress ?? '',
+          phone: me.defaultPhone ?? '',
+        };
+        setMemberInfo(info);
+        setMemberEmail(me.email ?? '');
+        // 引き継ぎONの初期状態なので会員情報をフォームへ反映
+        applyMemberInfo(info);
       })
       .catch(() => {
         // 未ログイン等は無視（フォームは空のまま）
@@ -115,6 +144,15 @@ export default function CheckoutPage() {
       active = false;
     };
   }, []);
+
+  // 「会員登録情報を使用する」チェックの切り替え
+  const handleToggleUseDefaultAddress = (checked: boolean) => {
+    setUseDefaultAddress(checked);
+    // ONにしたら会員情報を再度フォームへ流し込む（手入力を上書きして常に最新の登録情報に戻す）
+    if (checked && memberInfo) {
+      applyMemberInfo(memberInfo);
+    }
+  };
 
   const [weekendDelivery, setWeekendDelivery] = useState(false);
   const [deliveryDate, setDeliveryDate] = useState<Dayjs | null>(null);
@@ -147,7 +185,7 @@ export default function CheckoutPage() {
       const errorMessage = error instanceof Error ? error.message : '不明なエラー';
       if (errorMessage.includes('ログイン')) {
         alert('注文するにはログインが必要です');
-        navigate('/auth/login');
+        navigate(`/auth/login?redirect=${encodeURIComponent('/checkout')}`);
       } else {
         alert(errorMessage || '注文の作成に失敗しました');
       }
@@ -186,6 +224,10 @@ ${notes ? `【備考】${notes}` : ''}
       await createOrderMutation.mutateAsync({
         paymentMethod: paymentMethod as any,
         shippingAddress,
+        customerName: name,
+        customerEmail: memberEmail,
+        customerPhone: phone,
+        shippingPostalCode: postalCode,
       });
     } catch (error) {
       // エラーはonErrorで処理済み
@@ -233,7 +275,10 @@ ${notes ? `【備考】${notes}` : ''}
             {errorMessage}
           </Alert>
           {isAuthError && (
-            <Button variant="contained" onClick={() => navigate('/auth/login')}>
+            <Button
+              variant="contained"
+              onClick={() => navigate(`/auth/login?redirect=${encodeURIComponent('/checkout')}`)}
+            >
               ログインページへ
             </Button>
           )}
@@ -322,12 +367,18 @@ ${notes ? `【備考】${notes}` : ''}
               control={
                 <Checkbox
                   checked={useDefaultAddress}
-                  onChange={(e) => setUseDefaultAddress(e.target.checked)}
+                  onChange={(e) => handleToggleUseDefaultAddress(e.target.checked)}
                 />
               }
-              label="登録済みの住所を使用する"
-              sx={{ mb: 2 }}
+              label="会員登録情報を配送先に引き継ぐ"
+              sx={{ mb: useDefaultAddress && memberInfo && !memberInfo.address ? 0.5 : 2 }}
             />
+
+            {useDefaultAddress && memberInfo && !memberInfo.address && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                会員登録に住所が未設定です。チェックを外して配送先を入力するか、マイページで住所を登録してください。
+              </Alert>
+            )}
 
             <TextField
               label="お名前"

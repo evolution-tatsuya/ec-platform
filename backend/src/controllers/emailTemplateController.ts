@@ -129,9 +129,16 @@ export const sendOrderEmail = async (req: Request, res: Response, next: NextFunc
     if (!orderId) return next(createError('注文IDが必要です', 400));
     const { type, subject: overrideSubject, body: overrideBody } = req.body;
 
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { user: true },
+    });
     if (!order) return next(createError('注文が見つかりません', 404));
-    if (!order.customerEmail) return next(createError('この注文にはメールアドレスがありません', 400));
+
+    // 顧客情報は注文レコード優先、無ければ会員(user)の登録情報で補完
+    const recipientEmail = order.customerEmail || order.user?.email || '';
+    const recipientName = order.customerName || order.user?.name || 'お客様';
+    if (!recipientEmail) return next(createError('この注文にはメールアドレスがありません', 400));
 
     // テンプレート取得
     let subject = overrideSubject;
@@ -159,14 +166,14 @@ export const sendOrderEmail = async (req: Request, res: Response, next: NextFunc
 
     // 変数置換
     const vars: Record<string, string> = {
-      customerName: order.customerName || 'お客様',
+      customerName: recipientName,
       orderNumber: order.orderNumber || '',
       totalAmount: (order.totalAmount ?? 0).toLocaleString(),
       bankInfo,
     };
 
     await sendGenericEmail({
-      to: order.customerEmail,
+      to: recipientEmail,
       subject: renderTemplate(subject, vars),
       body: renderTemplate(body, vars),
     });
