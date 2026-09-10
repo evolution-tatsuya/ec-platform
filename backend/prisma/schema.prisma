@@ -345,6 +345,18 @@ model EmailTemplate {
   @@map("email_templates")
 }
 
+// ===== 書類テンプレートモデル（pdfme） =====
+// type: invoice(納品書) | receipt(領収書) | quote(見積書)
+model DocumentTemplate {
+  id        String   @id @default(cuid())
+  type      String   @unique
+  template  String   // pdfmeテンプレートJSON（文字列）
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("document_templates")
+}
+
 // ===== ナビゲーション軸モデル =====
 
 model NavigationAxis {
