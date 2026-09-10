@@ -37,6 +37,7 @@ import {
   useUpdateImageOptimization,
 } from '../hooks/useSettings';
 import { uploadLogo, deleteLogo } from '../services/api/settings';
+import DocumentTemplateEditor from '../components/DocumentTemplateEditor';
 
 // 銀行口座種別
 const accountTypeOptions = [
@@ -830,32 +831,12 @@ const AdminSettingsPage = () => {
                 </Card>
             </Box>
 
-            {/* pdfme Designer プレースホルダー */}
+            {/* pdfme Designer（本格デザインエディタ） */}
             <Card sx={{ mb: 3 }}>
-              <CardContent sx={{ minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.50' }}>
-                <Description sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
-                <Typography variant="h6" align="center" color="text.secondary" gutterBottom>
-                  pdfme Designer UI
-                </Typography>
-                <Typography variant="body2" align="center" color="text.secondary">
-                  {selectedDocument === 'invoice'
-                    ? '納品書テンプレート編集画面（未実装）'
-                    : selectedDocument === 'receipt'
-                      ? '領収書テンプレート編集画面（未実装）'
-                      : '見積書テンプレート編集画面（未実装）'}
-                </Typography>
-                <Typography variant="caption" align="center" color="text.secondary" display="block" mt={2}>
-                  実装時にpdfme/uiのDesignerコンポーネントを配置します
-                </Typography>
+              <CardContent>
+                <DocumentTemplateEditor docType={selectedDocument} />
               </CardContent>
             </Card>
-
-            {/* 保存ボタン */}
-            <Box display="flex" justifyContent="flex-end">
-              <Button variant="contained" size="large" startIcon={<Save />} onClick={handleSave}>
-                テンプレートを保存
-              </Button>
-            </Box>
           </Box>
         )}
     </Box>
