@@ -79,6 +79,7 @@ export default function ProductDetailPage() {
         id: productData.product.id,
         name: productData.product.name,
         price: productData.product.price,
+        salePrice: productData.product.salePrice ?? undefined,
         description: productData.product.description || '',
         productType: productData.product.productType as ProductType,
         categoryType: (productData.product.category?.categoryType || 'cars') as CategoryType,
@@ -196,6 +197,16 @@ export default function ProductDetailPage() {
   };
 
   const stockStatus = getStockStatus();
+
+  // サブスク商品かどうか（DB値は小文字 'subscription'）と課金周期ラベル
+  const rawProductType = String(
+    (productData?.product as { productType?: string } | undefined)?.productType ?? ''
+  ).toLowerCase();
+  const isSubscriptionProduct = rawProductType === 'subscription';
+  const rawBillingType =
+    (productData?.product as { billingType?: string } | undefined)?.billingType ?? 'monthly';
+  const subscriptionBillingLabel =
+    rawBillingType === 'yearly' ? '年額' : rawBillingType === 'onetime' ? '買い切り' : '月額';
 
   // ローディング状態
   if (isLoading) {
@@ -435,25 +446,46 @@ export default function ProductDetailPage() {
             )}
           </Box>
 
-          {/* 在庫状況 */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* 在庫状況（サブスク商品は在庫概念がないため非表示） */}
+          {!isSubscriptionProduct && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 12,
+                  height: 12,
+                  borderRadius: '50%',
+                  backgroundColor:
+                    stockStatus.color === 'success'
+                      ? 'success.main'
+                      : stockStatus.color === 'warning'
+                      ? 'warning.main'
+                      : 'error.main',
+                }}
+              />
+              <Typography variant="body1" fontWeight={500}>
+                {stockStatus.text}
+              </Typography>
+            </Box>
+          )}
+
+          {/* サブスク商品の案内（周期・ライセンスキー） */}
+          {isSubscriptionProduct && (
             <Box
               sx={{
-                width: 12,
-                height: 12,
-                borderRadius: '50%',
-                backgroundColor:
-                  stockStatus.color === 'success'
-                    ? 'success.main'
-                    : stockStatus.color === 'warning'
-                    ? 'warning.main'
-                    : 'error.main',
+                padding: 2,
+                backgroundColor: '#ede7f6',
+                borderLeft: '4px solid #7c4dff',
+                borderRadius: 0.5,
               }}
-            />
-            <Typography variant="body1" fontWeight={500}>
-              {stockStatus.text}
-            </Typography>
-          </Box>
+            >
+              <Typography variant="body2" fontWeight={600} gutterBottom>
+                {subscriptionBillingLabel}のサブスクリプション
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                ご購入後、運営者よりライセンスキーをメールでお届けします。届いたキーをアプリに入力してご利用ください。
+              </Typography>
+            </Box>
+          )}
 
           {/* 商品説明 */}
           <Typography
@@ -476,8 +508,8 @@ export default function ProductDetailPage() {
             ))}
           </Box>
 
-          {/* 配送オプション */}
-          {product?.shippingSettings && (
+          {/* 配送オプション（サブスク商品は配送しないため非表示） */}
+          {!isSubscriptionProduct && product?.shippingSettings && (
             <Box
               sx={{
                 padding: 2,
