@@ -38,6 +38,7 @@ import AdminAccountPage from './pages/AdminAccountPage';
 import AdminNewsPage from './pages/AdminNewsPage';
 import AdminTopPagePage from './pages/AdminTopPagePage';
 import AdminEmailPage from './pages/AdminEmailPage';
+import AdminSubscriptionsPage from './pages/AdminSubscriptionsPage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import NewsListPage from './pages/NewsListPage';
 import { UserRole } from './types';
@@ -74,6 +75,7 @@ function App() {
               <Route path="products" element={<AdminProductsPage />} />
               <Route path="navigation-axes" element={<AdminNavigationAxesPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
               <Route path="tickets" element={<AdminTicketsPage />} />
               <Route path="customers" element={<AdminCustomersPage />} />
               <Route path="inquiries" element={<AdminInquiriesPage />} />

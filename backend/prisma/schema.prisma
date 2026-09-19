@@ -37,6 +37,7 @@ model User {
   inquiries           Inquiry[]
   repliedInquiries    Inquiry[] @relation("InquiryReplies")
   favorites           Favorite[]
+  subscriptions       Subscription[]
 
   @@index([email])
   @@map("users")
@@ -88,9 +89,13 @@ model Product {
   slug                 String   @unique
   description          String?
   price                Int // 整数（円単位）
+  salePrice            Int?     @map("sale_price") // セール価格（整数・円単位、nullの場合は通常価格）
   categoryId           String?
   isActive             Boolean  @default(true)
-  productType          String // 'physical' | 'digital' | 'event' | 'external'
+  productType          String // 'physical' | 'digital' | 'event' | 'external' | 'subscription'
+  // サブスク商品の課金周期（productType='subscription'の場合）: 'monthly' | 'yearly' | 'onetime'
+  // 月額/年額は継続課金（手動請求）、onetimeは買い切り。nullは非サブスク商品。
+  billingType          String?  @map("billing_type")
   externalUrl          String?  @map("external_url") // 外部申し込みURL（productType='external'の場合）
   eventAttributes      String?  @map("event_attributes") // イベントのカスタムフォーム定義（JSON文字列、productType='event'の場合）
   preparationDays      Int      @default(3) @map("preparation_days") // 配送準備日数（デフォルト3日）
@@ -109,6 +114,7 @@ model Product {
   digitalTickets   DigitalTicket[]
   digitalDownloads DigitalDownload[]
   favorites        Favorite[]
+  subscriptions    Subscription[]
 
   @@index([slug])
   @@index([categoryId])
@@ -216,6 +222,7 @@ model Order {
   items            OrderItem[]
   digitalTickets   DigitalTicket[]
   digitalDownloads DigitalDownload[]
+  subscriptions    Subscription[]
 
   @@index([userId])
   @@index([orderNumber])
@@ -242,6 +249,43 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+// ===== サブスク契約モデル =====
+// 在庫管理アプリ等のサブスク商品を購入した際の「契約」を表す。
+// ライセンスキーの生成・検証は在庫アプリ側が担当。EC側はキー受け渡し状況と契約状態のみ管理。
+// 【案A: 手動運用】決済は銀行振込。毎月/毎年の請求・入金確認は運営者が手動で行う。
+// 将来【案B: Stripe自動化】では stripeSubscriptionId 等を足して継続課金を自動化する。
+model Subscription {
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  productId           String    @map("product_id")
+  orderId             String?   @map("order_id") // 契約を発生させた注文（買い切り含む）
+  // 契約状態: 'active'(有効) | 'suspended'(一時停止) | 'cancelled'(解約済み)
+  status              String    @default("active")
+  // 課金周期: 'monthly' | 'yearly' | 'onetime'(買い切り)
+  billingType         String    @map("billing_type")
+  amount              Int // 契約時の金額（円・スナップショット）
+  startedAt           DateTime  @default(now()) @map("started_at") // 契約開始日
+  // 次回請求予定日（手動請求の目安。onetime=買い切りはnull）
+  nextBillingDate     DateTime? @map("next_billing_date")
+  cancelledAt         DateTime? @map("cancelled_at") // 解約日時
+  // ライセンスキーを購入者へ受け渡し済みか（運営者が発行・送付後にtrueにする運用）
+  licenseKeyDelivered Boolean   @default(false) @map("license_key_delivered")
+  note                String? // 運営者メモ（在庫アプリ側のアカウント情報など任意）
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // リレーション
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+  order   Order?  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([productId])
+  @@index([status])
+  @@index([nextBillingDate])
+  @@map("subscriptions")
 }
 
 // ===== デジタルチケットモデル =====

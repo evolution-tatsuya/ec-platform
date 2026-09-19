@@ -29,6 +29,9 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
       return next(createError('商品が見つかりません', 404));
     }
 
+    // サブスク商品は在庫の概念がないため在庫チェックをスキップ
+    const isSubscription = product.productType === 'subscription';
+
     // 在庫チェック（イミュータブルデータモデル）
     const inventorySum = await prisma.inventoryLog.aggregate({
       where: { productId },
@@ -36,7 +39,7 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
     });
     const currentStock = inventorySum._sum?.quantity || 0;
 
-    if (currentStock < quantity) {
+    if (!isSubscription && currentStock < quantity) {
       return next(createError('在庫が不足しています', 400));
     }
 
@@ -66,8 +69,8 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
       // 既存アイテムの数量を更新
       const newQuantity = existingItem.quantity + quantity;
 
-      // 更新後の在庫チェック
-      if (currentStock < newQuantity) {
+      // 更新後の在庫チェック（サブスクはスキップ）
+      if (!isSubscription && currentStock < newQuantity) {
         return next(createError('在庫が不足しています', 400));
       }
 
@@ -221,14 +224,14 @@ export const updateCartItem = async (req: Request, res: Response, next: NextFunc
       return next(createError('このカートアイテムにアクセスする権限がありません', 403));
     }
 
-    // 在庫チェック
+    // 在庫チェック（サブスク商品は在庫の概念がないためスキップ）
     const inventorySum = await prisma.inventoryLog.aggregate({
       where: { productId: cartItem.productId },
       _sum: { quantity: true },
     });
     const currentStock = inventorySum._sum?.quantity || 0;
 
-    if (currentStock < quantity) {
+    if (cartItem.product.productType !== 'subscription' && currentStock < quantity) {
       return next(createError('在庫が不足しています', 400));
     }
 

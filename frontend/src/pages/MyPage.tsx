@@ -27,12 +27,35 @@ import {
   CheckCircle,
   QrCode2,
   Close,
+  Autorenew,
 } from '@mui/icons-material';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import QRCode from 'qrcode';
 import axios from 'axios';
 import { orderAPI } from '../lib/api';
 import { getMe, updateProfile, updatePassword } from '../services/api/users';
+import {
+  getMySubscriptions,
+  cancelMySubscription,
+} from '../services/api/subscriptions';
+import type { Subscription } from '../types';
+
+// 課金周期の日本語ラベル
+const BILLING_LABEL: Record<string, string> = {
+  monthly: '月額',
+  yearly: '年額',
+  onetime: '買い切り',
+};
+
+// 契約状態のバッジ
+const SUBSCRIPTION_STATUS: Record<
+  string,
+  { label: string; color: 'success' | 'warning' | 'error' | 'default' }
+> = {
+  active: { label: '利用中', color: 'success' },
+  suspended: { label: '一時停止', color: 'warning' },
+  cancelled: { label: '解約済み', color: 'error' },
+};
 
 // タブパネルコンポーネント
 interface TabPanelProps {
@@ -98,6 +121,42 @@ const MyPage = () => {
   });
 
   const orders = ordersData?.orders || [];
+
+  const queryClient = useQueryClient();
+
+  // サブスク契約データを取得
+  const {
+    data: subscriptions = [],
+    isLoading: isSubscriptionsLoading,
+    error: subscriptionsError,
+  } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: getMySubscriptions,
+    retry: 1,
+  });
+
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  // 契約の解約
+  const handleCancelSubscription = async (sub: Subscription) => {
+    const ok = window.confirm(
+      `「${sub.product?.name ?? 'この契約'}」を解約しますか？\n\n解約後もデータは削除されず、再契約すればまたご利用いただけます。`
+    );
+    if (!ok) return;
+
+    setCancellingId(sub.id);
+    try {
+      await cancelMySubscription(sub.id);
+      await queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
+    } catch (e) {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data?.message ?? '解約に失敗しました')
+        : '解約に失敗しました';
+      window.alert(msg);
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   // QRコード生成
   // ログイン中ユーザーの実データをフォームに読み込む
@@ -312,6 +371,15 @@ const MyPage = () => {
                   </Badge>
                 }
               />
+              <Tab
+                icon={<Autorenew />}
+                iconPosition="start"
+                label={
+                  <Badge badgeContent={subscriptions.length} color="primary">
+                    契約管理
+                  </Badge>
+                }
+              />
               <Tab icon={<Settings />} iconPosition="start" label="アカウント設定" />
             </Tabs>
           </Box>
@@ -414,8 +482,111 @@ const MyPage = () => {
             ))}
           </TabPanel>
 
-          {/* タブ2: アカウント設定 */}
+          {/* タブ2: 契約管理（サブスク） */}
           <TabPanel value={tabValue} index={1}>
+            {isSubscriptionsLoading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                <CircularProgress />
+              </Box>
+            )}
+
+            {subscriptionsError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                契約情報の取得に失敗しました。再度お試しください。
+              </Alert>
+            )}
+
+            {!isSubscriptionsLoading && !subscriptionsError && subscriptions.length === 0 && (
+              <Alert severity="info">
+                現在ご契約中のサブスク・サービスはありません。
+              </Alert>
+            )}
+
+            {!isSubscriptionsLoading &&
+              !subscriptionsError &&
+              subscriptions.map((sub) => {
+                const statusConf = SUBSCRIPTION_STATUS[sub.status] || {
+                  label: sub.status,
+                  color: 'default' as const,
+                };
+                const canCancel =
+                  sub.status === 'active' && sub.billingType !== 'onetime';
+                return (
+                  <Card
+                    key={sub.id}
+                    variant="outlined"
+                    sx={{ mb: 2, '&:hover': { borderColor: '#667eea', boxShadow: 2 } }}
+                  >
+                    <CardContent>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          mb: 2,
+                        }}
+                      >
+                        <Box>
+                          <Typography variant="h6" fontWeight={700}>
+                            {sub.product?.name ?? '（商品情報なし）'}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {BILLING_LABEL[sub.billingType] ?? sub.billingType} ・ ¥
+                            {sub.amount.toLocaleString()}
+                          </Typography>
+                        </Box>
+                        <Chip label={statusConf.label} color={statusConf.color} size="small" />
+                      </Box>
+
+                      <Divider sx={{ my: 1.5 }} />
+
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          契約開始: {formatDate(sub.startedAt as unknown as string)}
+                        </Typography>
+                        {sub.nextBillingDate && sub.status === 'active' && (
+                          <Typography variant="body2" color="text.secondary">
+                            次回更新: {formatDate(sub.nextBillingDate as unknown as string)}
+                          </Typography>
+                        )}
+                        {sub.cancelledAt && (
+                          <Typography variant="body2" color="error">
+                            解約日: {formatDate(sub.cancelledAt as unknown as string)}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      {/* ライセンスキー案内 */}
+                      <Alert
+                        severity={sub.licenseKeyDelivered ? 'success' : 'info'}
+                        sx={{ mt: 1.5 }}
+                      >
+                        {sub.licenseKeyDelivered
+                          ? 'ライセンスキーは送付済みです。届いたキーをアプリに入力してご利用ください。'
+                          : 'ご入金確認後、運営者よりライセンスキーをメールでお届けします。'}
+                      </Alert>
+
+                      {canCancel && (
+                        <Box sx={{ mt: 2, textAlign: 'right' }}>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            disabled={cancellingId === sub.id}
+                            onClick={() => handleCancelSubscription(sub)}
+                          >
+                            {cancellingId === sub.id ? '解約処理中...' : '解約する'}
+                          </Button>
+                        </Box>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+          </TabPanel>
+
+          {/* タブ3: アカウント設定 */}
+          <TabPanel value={tabValue} index={2}>
             {/* 基本情報 */}
             <Box sx={{ mb: 4 }}>
               <Typography variant="h6" fontWeight={700} gutterBottom sx={{ pb: 1, borderBottom: 2, borderColor: 'divider' }}>

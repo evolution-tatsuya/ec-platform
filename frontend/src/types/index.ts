@@ -39,7 +39,14 @@ export enum ProductType {
   DIGITAL = 'DIGITAL',
   DIGITAL_TICKET = 'DIGITAL_TICKET',
   EXTERNAL_LINK = 'EXTERNAL_LINK',
+  SUBSCRIPTION = 'SUBSCRIPTION',
 }
+
+// サブスク商品の課金周期。DB/APIでは小文字文字列 'monthly' | 'yearly' | 'onetime' で扱う。
+export type BillingType = 'monthly' | 'yearly' | 'onetime';
+
+// サブスク契約の状態。DB/APIでは 'active' | 'suspended' | 'cancelled'。
+export type SubscriptionStatus = 'active' | 'suspended' | 'cancelled';
 
 export enum CategoryType {
   CARS = 'cars',
@@ -65,6 +72,7 @@ export interface Product {
   name: string;
   slug?: string;
   price: number;
+  salePrice?: number | null;
   description?: string;
   productType: ProductType;
   categoryType: CategoryType;
@@ -76,6 +84,7 @@ export interface Product {
   allowWeekendDelivery?: boolean;
   isActive?: boolean;
   currentStock?: number;
+  billingType?: BillingType | null; // サブスク商品の課金周期（productType=SUBSCRIPTIONの場合）
   createdAt: Date;
   updatedAt: Date;
   attributes: ProductAttribute[];
@@ -282,6 +291,33 @@ export interface ShipOrderRequest {
 // ========================================
 // Digital Ticket
 // ========================================
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  productId: string;
+  orderId?: string | null;
+  status: SubscriptionStatus;
+  billingType: BillingType;
+  amount: number;
+  startedAt: Date;
+  nextBillingDate?: Date | null;
+  cancelledAt?: Date | null;
+  licenseKeyDelivered: boolean;
+  note?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  product?: {
+    id: string;
+    name: string;
+    slug?: string;
+  };
+  user?: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+}
 
 export interface DigitalTicket {
   id: string;
@@ -957,6 +993,14 @@ export const API_PATHS = {
   ADMIN_NAVIGATION_AXES_BY_CATEGORY: (category: string) => `/api/admin/navigation-axes/${category}`,
   ADMIN_NAVIGATION_AXIS_BY_ID: (id: string) => `/api/admin/navigation-axes/${id}`,
   ADMIN_NAVIGATION_AXIS_ORDER: (id: string) => `/api/admin/navigation-axes/${id}/order`,
+
+  // サブスク契約（顧客）
+  SUBSCRIPTIONS: '/api/subscriptions',
+  SUBSCRIPTION_CANCEL: (id: string) => `/api/subscriptions/${id}/cancel`,
+
+  // サブスク契約（管理者）
+  ADMIN_SUBSCRIPTIONS: '/api/admin/subscriptions',
+  ADMIN_SUBSCRIPTION_BY_ID: (id: string) => `/api/admin/subscriptions/${id}`,
 } as const;
 
 // すべての型は個別にエクスポート済み

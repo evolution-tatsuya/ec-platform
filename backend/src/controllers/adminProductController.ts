@@ -198,9 +198,11 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       slug: requestSlug,
       description,
       price,
+      salePrice,
       categoryId: requestCategoryId,
       categoryType,
       productType,
+      billingType,
       preparationDays = 3,
       allowWeekendDelivery = true,
       initialStock = 0,
@@ -261,6 +263,19 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return next(createError('価格は0以上である必要があります', 400));
     }
 
+    // セール価格のバリデーション（指定時のみ）
+    const hasSalePrice =
+      salePrice !== undefined && salePrice !== null && salePrice !== '';
+    const parsedSalePrice = hasSalePrice ? parseInt(salePrice, 10) : null;
+    if (hasSalePrice) {
+      if (parsedSalePrice === null || Number.isNaN(parsedSalePrice) || parsedSalePrice < 0) {
+        return next(createError('セール価格は0以上である必要があります', 400));
+      }
+      if (parsedSalePrice >= parseInt(price, 10)) {
+        return next(createError('セール価格は通常価格より低く設定してください', 400));
+      }
+    }
+
     // スラッグ重複チェック
     const existingProduct = await prisma.product.findUnique({
       where: { slug },
@@ -290,8 +305,11 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
           slug,
           description,
           price: parseInt(price, 10),
+          salePrice: parsedSalePrice,
           categoryId,
           productType,
+          // サブスク商品のみ課金周期を保存（それ以外はnull）
+          billingType: productType === 'subscription' ? billingType || 'monthly' : null,
           preparationDays: parseInt(preparationDays, 10),
           allowWeekendDelivery: parsedAllowWeekendDelivery,
           isActive: true,
@@ -402,9 +420,11 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       slug,
       description,
       price,
+      salePrice,
       categoryId,
       categoryType,
       productType,
+      billingType,
       externalUrl,
       preparationDays,
       allowWeekendDelivery,
@@ -518,6 +538,24 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
     // multipart/form-dataの場合、全て文字列として送信されるので変換
     const parsedPrice = price !== undefined ? parseInt(price, 10) : undefined;
+    // セール価格: undefined=変更なし / 空文字・null=解除(null) / 値=設定
+    let parsedSalePrice: number | null | undefined;
+    if (salePrice === undefined) {
+      parsedSalePrice = undefined;
+    } else if (salePrice === null || salePrice === '') {
+      parsedSalePrice = null;
+    } else {
+      const n = parseInt(salePrice, 10);
+      if (Number.isNaN(n) || n < 0) {
+        return next(createError('セール価格は0以上である必要があります', 400));
+      }
+      // 比較対象は更新後の価格（未変更なら既存価格）
+      const effectivePrice = parsedPrice !== undefined ? parsedPrice : existingProduct.price;
+      if (n >= effectivePrice) {
+        return next(createError('セール価格は通常価格より低く設定してください', 400));
+      }
+      parsedSalePrice = n;
+    }
     const parsedPreparationDays = preparationDays !== undefined ? parseInt(preparationDays, 10) : undefined;
     const parsedAllowWeekendDelivery = typeof allowWeekendDelivery === 'string'
       ? allowWeekendDelivery === 'true'
@@ -538,8 +576,13 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         ...(slug && { slug }),
         ...(description !== undefined && { description }),
         ...(parsedPrice !== undefined && { price: parsedPrice }),
+        ...(parsedSalePrice !== undefined && { salePrice: parsedSalePrice }),
         ...(resolvedCategoryId && { categoryId: resolvedCategoryId }),
         ...(productType && { productType }),
+        // サブスク商品なら課金周期を保存、それ以外に切り替えたらnullクリア
+        ...(productType && {
+          billingType: productType === 'subscription' ? billingType || 'monthly' : null,
+        }),
         ...(externalUrl !== undefined && { externalUrl }),
         ...(parsedPreparationDays !== undefined && { preparationDays: parsedPreparationDays }),
         ...(parsedAllowWeekendDelivery !== undefined && { allowWeekendDelivery: parsedAllowWeekendDelivery }),

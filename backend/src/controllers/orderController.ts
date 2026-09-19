@@ -25,7 +25,10 @@ import {
   generateShippingLabelPDF,
   generateQuotePDF,
 } from '../utils/pdfGenerator';
-import { sendShippingNotificationEmail } from '../utils/emailService';
+import {
+  sendShippingNotificationEmail,
+  sendCancellationNotificationEmail,
+} from '../utils/emailService';
 
 const prisma = new PrismaClient();
 
@@ -40,6 +43,23 @@ function generateOrderNumber(): string {
   const day = String(now.getDate()).padStart(2, '0');
   const random = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
   return `ORD-${year}${month}${day}-${random}`;
+}
+
+/**
+ * サブスク契約の次回請求予定日を算出（手動請求の目安）
+ * monthly: 1ヶ月後 / yearly: 1年後 / onetime(買い切り): null
+ */
+function calcNextBillingDate(billingType: string): Date | null {
+  if (billingType === 'onetime') return null;
+  const next = new Date();
+  if (billingType === 'monthly') {
+    next.setMonth(next.getMonth() + 1);
+  } else if (billingType === 'yearly') {
+    next.setFullYear(next.getFullYear() + 1);
+  } else {
+    return null;
+  }
+  return next;
 }
 
 /**
@@ -113,8 +133,11 @@ export async function createOrder(req: Request, res: Response) {
         throw new Error('カートが空です');
       }
 
-      // 2. 在庫チェック
+      // 2. 在庫チェック（サブスク商品は在庫の概念がないためスキップ）
       for (const item of cart.items) {
+        if (item.product.productType === 'subscription') {
+          continue;
+        }
         const stockQuantity = await getStockQuantity(item.productId, tx);
 
         if (stockQuantity < item.quantity) {
@@ -177,7 +200,7 @@ export async function createOrder(req: Request, res: Response) {
         },
       });
 
-      // 6. 注文アイテムを作成 & 在庫を減算
+      // 6. 注文アイテムを作成 & 在庫を減算 & サブスク契約を作成
       for (const item of cart.items) {
         // 注文アイテム作成
         await tx.orderItem.create({
@@ -189,15 +212,37 @@ export async function createOrder(req: Request, res: Response) {
           },
         });
 
-        // 在庫減算ログを作成
-        await tx.inventoryLog.create({
-          data: {
-            productId: item.productId,
-            quantity: -item.quantity,
-            type: 'sale',
-            note: `注文番号: ${orderNumber}`,
-          },
-        });
+        if (item.product.productType === 'subscription') {
+          // サブスク商品: 在庫減算はせず、契約(Subscription)を作成する。
+          // billingTypeに応じて次回請求予定日を設定（onetime=買い切りはnull）。
+          const billingType = item.product.billingType || 'onetime';
+          const nextBillingDate = calcNextBillingDate(billingType);
+
+          // 数量分だけ契約を作成（通常は1件だが複数購入にも対応）
+          for (let i = 0; i < item.quantity; i++) {
+            await tx.subscription.create({
+              data: {
+                userId,
+                productId: item.productId,
+                orderId: newOrder.id,
+                status: 'active',
+                billingType,
+                amount: item.product.price,
+                nextBillingDate,
+              },
+            });
+          }
+        } else {
+          // 物販/デジタル等: 在庫減算ログを作成
+          await tx.inventoryLog.create({
+            data: {
+              productId: item.productId,
+              quantity: -item.quantity,
+              type: 'sale',
+              note: `注文番号: ${orderNumber}`,
+            },
+          });
+        }
       }
 
       // 7. カートをクリア
@@ -913,8 +958,20 @@ export async function cancelOrder(req: Request, res: Response) {
       });
     });
 
-    // TODO: キャンセル通知メールを送信（Resend SDK使用）
-    // await sendCancellationNotificationEmail(updatedOrder);
+    // キャンセル通知メールを送信（Resend SDK使用）
+    // メール送信失敗時もキャンセル処理は成功として扱う
+    if (updatedOrder.customerEmail) {
+      try {
+        await sendCancellationNotificationEmail({
+          to: updatedOrder.customerEmail,
+          customerName: updatedOrder.customerName,
+          orderNumber: updatedOrder.orderNumber,
+          cancelReason: updatedOrder.cancelReason ?? undefined,
+        });
+      } catch (emailError) {
+        console.error('キャンセル通知メール送信エラー:', emailError);
+      }
+    }
 
     return res.json({
       success: true,
