@@ -547,7 +547,8 @@ export default function ProductDetailPage() {
               borderColor: 'divider',
             }}
           >
-            {/* 数量選択 */}
+            {/* 数量選択（サブスク商品は1点固定のため非表示） */}
+            {!isSubscriptionProduct && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Typography variant="body1" fontWeight={500}>
                 数量:
@@ -592,6 +593,7 @@ export default function ProductDetailPage() {
                 </IconButton>
               </Box>
             </Box>
+            )}
 
             {/* カートに追加ボタン */}
             <Button
