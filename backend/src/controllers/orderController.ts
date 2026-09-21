@@ -96,20 +96,27 @@ export async function createOrder(req: Request, res: Response) {
 
     const userId = req.session.userId;
     const {
-      paymentMethod,
+      paymentMethod: rawPaymentMethod,
       shippingAddress,
     }: {
-      paymentMethod: 'bank_transfer' | 'credit_card' | 'paypay';
+      paymentMethod: string;
       shippingAddress: string;
     } = req.body;
 
     // バリデーション
-    if (!paymentMethod) {
+    if (!rawPaymentMethod) {
       return res.status(400).json({
         success: false,
         message: '決済方法を選択してください',
       });
     }
+
+    // 決済手段を小文字に正規化（フロントのenumが大文字BANK_TRANSFER等で来ても
+    // bank_transfer/credit_card/paypay の判定・割引・入金前発行の防止が正しく効くように）
+    const paymentMethod = String(rawPaymentMethod).toLowerCase() as
+      | 'bank_transfer'
+      | 'credit_card'
+      | 'paypay';
 
     if (!shippingAddress) {
       return res.status(400).json({

@@ -235,8 +235,11 @@ ${notes ? `【備考】${notes}` : ''}
     `.trim();
 
     try {
+      // バックエンド/DBは小文字の決済手段（bank_transfer/credit_card/paypay）で判定するため正規化。
+      // フロントのPaymentMethod enumは大文字（BANK_TRANSFER等）なので変換して送る。
+      const paymentMethodValue = String(paymentMethod).toLowerCase();
       await createOrderMutation.mutateAsync({
-        paymentMethod: paymentMethod as any,
+        paymentMethod: paymentMethodValue as any,
         shippingAddress,
         customerName: name,
         customerEmail: memberEmail,
