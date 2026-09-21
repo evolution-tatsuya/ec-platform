@@ -296,6 +296,10 @@ export interface Subscription {
   nextBillingDate?: Date | null;
   cancelledAt?: Date | null;
   licenseKeyDelivered: boolean;
+  licenseKey?: string | null;
+  activationUrl?: string | null;
+  tenantSlug?: string | null;
+  provisionedAt?: Date | null;
   note?: string | null;
   createdAt: Date;
   updatedAt: Date;

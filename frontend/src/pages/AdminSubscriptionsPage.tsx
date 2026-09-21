@@ -228,11 +228,23 @@ const AdminSubscriptionsPage = () => {
                     <TableCell>{safeFormat(sub.nextBillingDate, 'yyyy/MM/dd')}</TableCell>
                     <TableCell>{safeFormat(sub.cancelledAt, 'yyyy/MM/dd')}</TableCell>
                     <TableCell>
-                      {sub.licenseKeyDelivered ? (
-                        <Chip label="送付済" color="success" size="small" />
-                      ) : (
-                        <Chip label="未送付" color="default" size="small" />
-                      )}
+                      <Stack spacing={0.5} alignItems="flex-start">
+                        {sub.licenseKeyDelivered ? (
+                          <Chip label="送付済" color="success" size="small" />
+                        ) : sub.licenseKey ? (
+                          <Chip label="発行済・未送付" color="warning" size="small" />
+                        ) : (
+                          <Chip label="未発行" color="default" size="small" />
+                        )}
+                        {sub.licenseKey && (
+                          <Typography
+                            variant="caption"
+                            sx={{ fontFamily: 'monospace', color: 'text.secondary' }}
+                          >
+                            {sub.licenseKey}
+                          </Typography>
+                        )}
+                      </Stack>
                     </TableCell>
                     <TableCell align="center">
                       <Button
@@ -259,6 +271,39 @@ const AdminSubscriptionsPage = () => {
             <Typography variant="body2" color="text.secondary">
               {editTarget?.product?.name} ／ {editTarget?.user?.email}
             </Typography>
+
+            {/* 発行済みライセンス情報（在庫アプリ発行API連携の結果） */}
+            {editTarget?.licenseKey && (
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 1,
+                  bgcolor: 'action.hover',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                }}
+              >
+                <Typography variant="caption" color="text.secondary" display="block">
+                  ライセンスキー（発行済み）
+                </Typography>
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
+                  {editTarget.licenseKey}
+                </Typography>
+                {editTarget.activationUrl && (
+                  <>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      有効化URL
+                    </Typography>
+                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                      <a href={editTarget.activationUrl} target="_blank" rel="noreferrer">
+                        {editTarget.activationUrl}
+                      </a>
+                    </Typography>
+                  </>
+                )}
+              </Box>
+            )}
+
             <FormControl fullWidth>
               <InputLabel>状態</InputLabel>
               <Select

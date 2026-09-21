@@ -45,6 +45,27 @@ const DEFAULT_TEMPLATES: { type: string; name: string; subject: string; body: st
 今しばらくお待ちくださいませ。`,
   },
   {
+    type: 'license_delivery',
+    name: 'ライセンスキー送付',
+    subject: '【ライセンスキーのお届け】{{productName}}（注文番号 {{orderNumber}}）',
+    body: `{{customerName}} 様
+
+この度は「{{productName}}」をご購入いただき誠にありがとうございます。
+ご利用に必要なライセンスキーと有効化URLをお届けいたします。
+
+■ ライセンスキー
+{{licenseKey}}
+
+■ 有効化URL
+{{activationUrl}}
+
+上記URLにアクセスし、ライセンスキーを入力してアカウントを有効化してください。
+有効化後、すぐにご利用いただけます。
+
+ご不明な点がございましたら、お気軽にお問い合わせください。
+今後ともよろしくお願いいたします。`,
+  },
+  {
     type: 'shipped',
     name: '発送連絡',
     subject: '【発送完了】商品を発送いたしました（注文番号 {{orderNumber}}）',

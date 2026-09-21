@@ -270,8 +270,13 @@ model Subscription {
   // 次回請求予定日（手動請求の目安。onetime=買い切りはnull）
   nextBillingDate     DateTime? @map("next_billing_date")
   cancelledAt         DateTime? @map("cancelled_at") // 解約日時
-  // ライセンスキーを購入者へ受け渡し済みか（運営者が発行・送付後にtrueにする運用）
+  // ライセンスキーを購入者へ受け渡し済みか（メール送信成功時にtrue）
   licenseKeyDelivered Boolean   @default(false) @map("license_key_delivered")
+  // 在庫アプリ発行API(provision)から受け取る値（P2連携）
+  licenseKey          String?   @map("license_key") // ライセンスキー
+  activationUrl       String?   @map("activation_url") // 有効化URL（顧客がアプリを有効化）
+  tenantSlug          String?   @map("tenant_slug") // 在庫アプリ側テナント識別子
+  provisionedAt       DateTime? @map("provisioned_at") // 発行API呼び出し成功日時
   note                String? // 運営者メモ（在庫アプリ側のアカウント情報など任意）
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")

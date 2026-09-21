@@ -31,6 +31,7 @@ import {
   sendGenericEmail,
   renderTemplate,
 } from '../utils/emailService';
+import { provisionTenant } from '../services/inventoryProvisionService';
 
 const prisma = new PrismaClient();
 
@@ -273,6 +274,17 @@ export async function createOrder(req: Request, res: Response) {
         },
       });
     });
+
+    // 在庫アプリの発行API連携（P2）: カード即決済など注文が最初からpaidの場合、
+    // active なサブスク契約についてテナント発行→キー保存→キー送付メール。
+    // 銀行振込(pending)の場合はここでは発行せず、入金確認(confirmPayment)時に発行される。
+    if (order && order.status === 'paid') {
+      try {
+        await provisionAndDeliverForOrder(order.id);
+      } catch (provisionError) {
+        console.error('発行連携エラー:', provisionError);
+      }
+    }
 
     return res.status(201).json({
       success: true,
@@ -808,6 +820,116 @@ async function sendPaymentReceivedEmail(order: {
 }
 
 /**
+ * ライセンスキー送付メールを送信（license_deliveryテンプレート）。失敗しても呼び出し側は継続。
+ */
+async function sendLicenseDeliveryEmail(data: {
+  customerEmail: string;
+  customerName: string;
+  orderNumber: string;
+  productName: string;
+  licenseKey: string;
+  activationUrl: string;
+}): Promise<boolean> {
+  if (!data.customerEmail) return false;
+
+  const tpl = await prisma.emailTemplate.findUnique({
+    where: { type: 'license_delivery' },
+  });
+  if (!tpl || !tpl.isActive) return false;
+
+  const vars: Record<string, string> = {
+    customerName: data.customerName || 'お客様',
+    orderNumber: data.orderNumber || '',
+    productName: data.productName || '',
+    licenseKey: data.licenseKey || '',
+    activationUrl: data.activationUrl || '',
+  };
+
+  await sendGenericEmail({
+    to: data.customerEmail,
+    subject: renderTemplate(tpl.subject, vars),
+    body: renderTemplate(tpl.body, vars),
+  });
+  return true;
+}
+
+/**
+ * 注文に紐づく active なサブスク契約について、在庫アプリの発行APIを呼び、
+ * ライセンスキーを保存してキー送付メールを送る（P2連携の中核）。
+ * DBトランザクション外で呼ぶこと（外部API・メールを含めない）。
+ * 冪等キー=注文IDなので複数回呼ばれても在庫側で二重発行されない。
+ */
+async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      subscriptions: { include: { product: true } },
+    },
+  });
+  if (!order) return;
+
+  // active な契約のみ発行対象（pending_payment は入金前なので発行しない）
+  const targets = order.subscriptions.filter((s) => s.status === 'active');
+  if (targets.length === 0) return;
+
+  for (const sub of targets) {
+    // 既に発行・送付済みならスキップ（冪等・二重送信防止）
+    if (sub.licenseKeyDelivered && sub.licenseKey) continue;
+
+    // 1. 発行API呼び出し（billingTypeをそのまま渡す）
+    const result = await provisionTenant({
+      orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
+      email: order.customerEmail,
+      plan: sub.product?.name,
+      billingType: sub.billingType,
+    });
+
+    if (!result.success) {
+      // 失敗はnoteに記録（運営者が管理画面から手動リカバリ可能）
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: {
+          note: `[自動発行失敗 ${new Date().toISOString()}] ${result.error ?? ''}`.slice(0, 500),
+        },
+      });
+      continue;
+    }
+
+    // 2. 発行結果をSubscriptionに保存
+    await prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        licenseKey: result.licenseKey ?? null,
+        activationUrl: result.activationUrl ?? null,
+        tenantSlug: result.slug ?? null,
+        provisionedAt: new Date(),
+      },
+    });
+
+    // 3. キー送付メール（成功したら licenseKeyDelivered=true）
+    try {
+      const delivered = await sendLicenseDeliveryEmail({
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        orderNumber: order.orderNumber,
+        productName: sub.product?.name ?? '',
+        licenseKey: result.licenseKey ?? '',
+        activationUrl: result.activationUrl ?? '',
+      });
+      if (delivered) {
+        await prisma.subscription.update({
+          where: { id: sub.id },
+          data: { licenseKeyDelivered: true },
+        });
+      }
+    } catch (mailErr) {
+      console.error('[provision] キー送付メール失敗:', mailErr);
+      // メール失敗でもキーは保存済み。運営者が管理画面から手動送付できる。
+    }
+  }
+}
+
+/**
  * PUT /api/admin/orders/:id/confirm-payment
  * 入金確認処理（管理者専用）: 注文を pending → paid にする。
  * 銀行振込の入金確認に使う。紐づくサブスク契約(pending_payment)を active に昇格し、
@@ -865,6 +987,14 @@ export async function confirmPayment(req: Request, res: Response) {
       });
     } catch (emailError) {
       console.error('入金確認メール送信エラー:', emailError);
+    }
+
+    // 在庫アプリの発行API連携（P2）: paid確定後、activeなサブスク契約について
+    // テナント発行→ライセンスキー保存→キー送付メール。失敗しても入金確認自体は成功扱い。
+    try {
+      await provisionAndDeliverForOrder(id!);
+    } catch (provisionError) {
+      console.error('発行連携エラー:', provisionError);
     }
 
     return res.json({
