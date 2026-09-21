@@ -273,6 +273,10 @@ export async function createOrder(req: Request, res: Response) {
           },
         },
       });
+    }, {
+      // 本番Neon(pooler経由)のレイテンシでデフォルト5秒を超えるため余裕を持たせる。
+      maxWait: 10000, // 接続待ちの最大時間
+      timeout: 20000, // トランザクション実行の最大時間
     });
 
     // 在庫アプリの発行API連携（P2）: カード即決済など注文が最初からpaidの場合、
@@ -975,6 +979,9 @@ export async function confirmPayment(req: Request, res: Response) {
       });
 
       return updated;
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
     });
 
     // 入金確認メールを自動送信（失敗しても入金確認は成功扱い）
@@ -1211,6 +1218,9 @@ export async function cancelOrder(req: Request, res: Response) {
           },
         },
       });
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
     });
 
     // キャンセル通知メールを送信（Resend SDK使用）
