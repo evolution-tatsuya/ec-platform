@@ -18,8 +18,9 @@ export enum ProductType {
 // サブスク商品の課金周期。DB/APIでは小文字文字列 'monthly' | 'yearly' | 'onetime' で扱う。
 export type BillingType = 'monthly' | 'yearly' | 'onetime';
 
-// サブスク契約の状態。DB/APIでは 'active' | 'suspended' | 'cancelled'。
-export type SubscriptionStatus = 'active' | 'suspended' | 'cancelled';
+// サブスク契約の状態。DB/APIでは文字列。
+// pending_payment=入金待ち（銀行振込で注文がpendingの間）、active=利用中、suspended=一時停止、cancelled=解約済み。
+export type SubscriptionStatus = 'pending_payment' | 'active' | 'suspended' | 'cancelled';
 
 export enum CategoryType {
   CARS = 'cars',

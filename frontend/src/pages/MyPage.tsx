@@ -52,6 +52,7 @@ const SUBSCRIPTION_STATUS: Record<
   string,
   { label: string; color: 'success' | 'warning' | 'error' | 'default' }
 > = {
+  pending_payment: { label: '入金待ち', color: 'default' },
   active: { label: '利用中', color: 'success' },
   suspended: { label: '一時停止', color: 'warning' },
   cancelled: { label: '解約済み', color: 'error' },

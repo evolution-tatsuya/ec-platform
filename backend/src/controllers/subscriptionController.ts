@@ -202,7 +202,7 @@ export async function adminUpdateSubscription(req: Request, res: Response) {
       });
     }
 
-    const validStatuses = ['active', 'suspended', 'cancelled'];
+    const validStatuses = ['pending_payment', 'active', 'suspended', 'cancelled'];
     if (status !== undefined && !validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,

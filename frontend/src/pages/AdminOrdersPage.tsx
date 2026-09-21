@@ -49,6 +49,7 @@ import { format } from 'date-fns';
 import {
   useAdminOrders,
   useShipOrder,
+  useConfirmPayment,
   useGenerateInvoice,
   useGenerateReceipt,
   useGenerateQuote,
@@ -176,6 +177,7 @@ export default function AdminOrdersPage() {
 
   // API統合: Mutation
   const shipOrderMutation = useShipOrder();
+  const confirmPaymentMutation = useConfirmPayment();
   const generateInvoiceMutation = useGenerateInvoice();
   const generateReceiptMutation = useGenerateReceipt();
   const generateQuoteMutation = useGenerateQuote();
@@ -257,6 +259,17 @@ export default function AdminOrdersPage() {
           >
             詳細
           </Button>
+          {params.row.status === 'pending' && (
+            <Button
+              size="small"
+              variant="contained"
+              color="success"
+              disabled={confirmPaymentMutation.isPending}
+              onClick={() => handleConfirmPayment(params.row)}
+            >
+              入金確認
+            </Button>
+          )}
           {['paid', 'preparing', 'PREPARING'].includes(params.row.status) && (
             <Button
               size="small"
@@ -293,6 +306,19 @@ export default function AdminOrdersPage() {
     setSelectedOrder(null);
     setCarrier('');
     setTrackingNumber('');
+  };
+
+  const handleConfirmPayment = async (order: Order) => {
+    const ok = window.confirm(
+      `注文 ${order.orderNumber} の入金を確認済みにしますか？\n\n入金確認メールが自動送信され、サブスク契約は「利用中」になります。`
+    );
+    if (!ok) return;
+    try {
+      await confirmPaymentMutation.mutateAsync({ id: order.id });
+    } catch (err) {
+      console.error('入金確認エラー:', err);
+      window.alert('入金確認に失敗しました');
+    }
   };
 
   const handleShip = async () => {

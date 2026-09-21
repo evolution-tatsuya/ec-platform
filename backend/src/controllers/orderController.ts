@@ -28,6 +28,8 @@ import {
 import {
   sendShippingNotificationEmail,
   sendCancellationNotificationEmail,
+  sendGenericEmail,
+  renderTemplate,
 } from '../utils/emailService';
 
 const prisma = new PrismaClient();
@@ -218,14 +220,19 @@ export async function createOrder(req: Request, res: Response) {
           const billingType = item.product.billingType || 'onetime';
           const nextBillingDate = calcNextBillingDate(billingType);
 
-          // 数量分だけ契約を作成（通常は1件だが複数購入にも対応）
+          // 入金前発行の防止: 注文が入金済み(paid)で作られる場合のみ active。
+          // 銀行振込(pending)は入金待ち(pending_payment)で作り、入金確認時に active へ昇格する。
+          const subscriptionStatus =
+            newOrder.status === 'paid' ? 'active' : 'pending_payment';
+
+          // 数量分だけ契約を作成（サブスクは数量1固定だが安全のためループ）
           for (let i = 0; i < item.quantity; i++) {
             await tx.subscription.create({
               data: {
                 userId,
                 productId: item.productId,
                 orderId: newOrder.id,
-                status: 'active',
+                status: subscriptionStatus,
                 billingType,
                 amount: item.product.price,
                 nextBillingDate,
@@ -752,6 +759,124 @@ export async function adminGetOrderById(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       message: error.message || '注文詳細の取得に失敗しました',
+    });
+  }
+}
+
+/**
+ * 入金確認メールを送信（payment_receivedテンプレート）。失敗しても呼び出し側の処理は継続。
+ * emailTemplateController.sendOrderEmail と同じテンプレ→変数置換→送信のロジック。
+ */
+async function sendPaymentReceivedEmail(order: {
+  customerEmail: string;
+  customerName: string;
+  orderNumber: string;
+  totalAmount: number;
+}): Promise<void> {
+  if (!order.customerEmail) return;
+
+  const tpl = await prisma.emailTemplate.findUnique({
+    where: { type: 'payment_received' },
+  });
+  if (!tpl || !tpl.isActive) return; // テンプレ未設定/無効なら送らない
+
+  const settings = await prisma.siteSettings.findFirst();
+  const bankInfo = settings
+    ? [
+        settings.bankName && `銀行名: ${settings.bankName}`,
+        settings.bankBranch && `支店名: ${settings.bankBranch}`,
+        settings.bankAccountType && `口座種別: ${settings.bankAccountType}`,
+        settings.bankAccountNumber && `口座番号: ${settings.bankAccountNumber}`,
+        settings.bankAccountHolder && `口座名義: ${settings.bankAccountHolder}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
+  const vars: Record<string, string> = {
+    customerName: order.customerName || 'お客様',
+    orderNumber: order.orderNumber || '',
+    totalAmount: (order.totalAmount ?? 0).toLocaleString(),
+    bankInfo,
+  };
+
+  await sendGenericEmail({
+    to: order.customerEmail,
+    subject: renderTemplate(tpl.subject, vars),
+    body: renderTemplate(tpl.body, vars),
+  });
+}
+
+/**
+ * PUT /api/admin/orders/:id/confirm-payment
+ * 入金確認処理（管理者専用）: 注文を pending → paid にする。
+ * 銀行振込の入金確認に使う。紐づくサブスク契約(pending_payment)を active に昇格し、
+ * 入金確認メールを自動送信する。
+ */
+export async function confirmPayment(req: Request, res: Response) {
+  try {
+    const id = getStringParam(req.params.id);
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      return res.status(404).json({ success: false, message: '注文が見つかりません' });
+    }
+
+    if (order.status === 'cancelled') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'キャンセル済みの注文は入金確認できません' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `この注文は入金確認できません（現在のステータス: ${order.status}）`,
+      });
+    }
+
+    // トランザクション: 注文をpaidに更新 + 紐づくサブスク契約をactiveへ昇格
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id },
+        data: { status: 'paid' },
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+          items: { include: { product: { include: { category: true } } } },
+        },
+      });
+
+      // 入金待ちのサブスク契約を利用中へ昇格
+      // （将来のP2ではここが在庫アプリの発行API(provision)を叩くフックポイントになる）
+      await tx.subscription.updateMany({
+        where: { orderId: id, status: 'pending_payment' },
+        data: { status: 'active' },
+      });
+
+      return updated;
+    });
+
+    // 入金確認メールを自動送信（失敗しても入金確認は成功扱い）
+    try {
+      await sendPaymentReceivedEmail({
+        customerEmail: updatedOrder.customerEmail,
+        customerName: updatedOrder.customerName,
+        orderNumber: updatedOrder.orderNumber,
+        totalAmount: updatedOrder.totalAmount,
+      });
+    } catch (emailError) {
+      console.error('入金確認メール送信エラー:', emailError);
+    }
+
+    return res.json({
+      success: true,
+      message: '入金を確認しました',
+      order: updatedOrder,
+    });
+  } catch (error: any) {
+    console.error('入金確認エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || '入金確認に失敗しました',
     });
   }
 }

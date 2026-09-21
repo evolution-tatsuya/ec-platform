@@ -60,6 +60,7 @@ const STATUS_LABEL: Record<
   string,
   { label: string; color: 'success' | 'warning' | 'error' | 'default' }
 > = {
+  pending_payment: { label: '入金待ち', color: 'default' },
   active: { label: '利用中', color: 'success' },
   suspended: { label: '一時停止', color: 'warning' },
   cancelled: { label: '解約済み', color: 'error' },
@@ -155,6 +156,7 @@ const AdminSubscriptionsPage = () => {
             onChange={(e) => setStatusFilter(e.target.value as SubscriptionStatus | 'all')}
           >
             <MenuItem value="all">すべて</MenuItem>
+            <MenuItem value="pending_payment">入金待ち</MenuItem>
             <MenuItem value="active">利用中</MenuItem>
             <MenuItem value="suspended">一時停止</MenuItem>
             <MenuItem value="cancelled">解約済み</MenuItem>
@@ -264,6 +266,7 @@ const AdminSubscriptionsPage = () => {
                 label="状態"
                 onChange={(e) => setEditStatus(e.target.value as SubscriptionStatus)}
               >
+                <MenuItem value="pending_payment">入金待ち</MenuItem>
                 <MenuItem value="active">利用中</MenuItem>
                 <MenuItem value="suspended">一時停止</MenuItem>
                 <MenuItem value="cancelled">解約済み</MenuItem>
