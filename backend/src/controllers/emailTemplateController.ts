@@ -103,14 +103,24 @@ const DEFAULT_TEMPLATES: { type: string; name: string; subject: string; body: st
   },
 ];
 
-/** テンプレート一覧取得（無ければデフォルト作成） */
+/**
+ * 不足しているデフォルトテンプレートを補充する（既存は上書きしない）。
+ * 新しいテンプレ種別（例: license_delivery）を後から追加しても、既存DBに自動投入される。
+ */
+export async function ensureDefaultTemplates(): Promise<void> {
+  const existing = await prisma.emailTemplate.findMany({ select: { type: true } });
+  const existingTypes = new Set(existing.map((t) => t.type));
+  const missing = DEFAULT_TEMPLATES.filter((t) => !existingTypes.has(t.type));
+  if (missing.length > 0) {
+    await prisma.emailTemplate.createMany({ data: missing });
+  }
+}
+
+/** テンプレート一覧取得（不足デフォルトを補充） */
 export const getEmailTemplates = async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    let templates = await prisma.emailTemplate.findMany({ orderBy: { createdAt: 'asc' } });
-    if (templates.length === 0) {
-      await prisma.emailTemplate.createMany({ data: DEFAULT_TEMPLATES });
-      templates = await prisma.emailTemplate.findMany({ orderBy: { createdAt: 'asc' } });
-    }
+    await ensureDefaultTemplates();
+    const templates = await prisma.emailTemplate.findMany({ orderBy: { createdAt: 'asc' } });
     return res.json({ success: true, templates });
   } catch (error) {
     return next(error);

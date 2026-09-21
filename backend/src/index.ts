@@ -35,6 +35,7 @@ import adminNewsRoutes from './routes/adminNewsRoutes';
 import adminTopPageRoutes from './routes/adminTopPageRoutes';
 import adminEmailRoutes from './routes/adminEmailRoutes';
 import subscriptionRoutes, { adminSubscriptionRouter } from './routes/subscriptionRoutes';
+import { ensureDefaultTemplates } from './controllers/emailTemplateController';
 
 const app = express();
 
@@ -190,6 +191,11 @@ Backend URL: ${config.backendUrl}
 Frontend URL: ${config.frontendUrl}
 =================================
   `);
+
+  // 不足しているデフォルトメールテンプレートを補充（license_delivery 等の新種別を保証）
+  ensureDefaultTemplates().catch((e) =>
+    console.error('メールテンプレート初期化エラー:', e)
+  );
 });
 
 // ===== グレースフルシャットダウン =====
