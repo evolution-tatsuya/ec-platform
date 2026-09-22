@@ -28,6 +28,7 @@ import {
   AdminEventsPage,
 } from './pages';
 import ProductDetailPage from './pages/ProductDetailPage';
+import PricingPage from './pages/PricingPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
@@ -114,6 +115,14 @@ function App() {
               path="/news/:id"
               element={
                 <CustomerLayout><NewsDetailPage /></CustomerLayout>
+              }
+            />
+
+            {/* 料金プランページ（サブスク・デジタル販売） */}
+            <Route
+              path="/pricing"
+              element={
+                <CustomerLayout><PricingPage /></CustomerLayout>
               }
             />
 

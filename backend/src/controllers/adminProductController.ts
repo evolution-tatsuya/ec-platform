@@ -17,6 +17,50 @@ const getStringParam = (param: string | string[] | undefined): string | undefine
   return param;
 };
 
+// サブスクプランの上限を整数に変換。空文字/未指定/'null' は null（＝無制限）扱い。
+const parseLimitInt = (v: unknown): number | null => {
+  if (v === undefined || v === null || v === '' || v === 'null') return null;
+  const n = parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+// 機能リストを JSON文字列（配列）に正規化して保存。配列/JSON文字列/改行区切り文字列に対応。
+const normalizeFeatures = (v: unknown): string | null => {
+  if (v === undefined || v === null || v === '') return null;
+  if (Array.isArray(v)) return JSON.stringify(v.filter((x) => typeof x === 'string' && x.trim()));
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed.filter((x) => typeof x === 'string' && x.trim()));
+    } catch {
+      // JSONでなければ改行区切りとして扱う
+      return JSON.stringify(v.split('\n').map((s) => s.trim()).filter(Boolean));
+    }
+  }
+  return null;
+};
+
+// multipart経由の真偽値（'true'/'false'/boolean）をbooleanに変換。
+const parseBool = (v: unknown): boolean => {
+  if (typeof v === 'boolean') return v;
+  return v === 'true' || v === '1';
+};
+
+// DB保存の planFeatures（JSON文字列）を配列に戻す（フロントは配列で扱う）。
+const parsePlanFeatures = (v: unknown): string[] | null => {
+  if (v === null || v === undefined || v === '') return null;
+  if (Array.isArray(v)) return v as string[];
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 // DBカテゴリーのslug → フロントのcategoryType(enum: cars/events/digital) に逆変換する。
 // フロントの編集フォームはenum値を期待するため、slug(car-parts等)のまま返すと選択肢に一致せず空になる。
 const slugToCategoryType = (slug?: string | null): string | undefined => {
@@ -141,6 +185,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
           images: productImages.map((img) => img.detailUrl), // 互換: images: string[]
           productImages, // 管理UI用の詳細（並べ替え・削除に使用）
           tags: parsedTags,
+          planFeatures: parsePlanFeatures(product.planFeatures), // JSON文字列→配列
           categoryType: slugToCategoryType(product.category?.slug), // enum値に変換して返す
           currentStock: inventorySum._sum?.quantity || 0,
         };
@@ -203,6 +248,14 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       categoryType,
       productType,
       billingType,
+      // サブスクプランの上限・料金ページ表示（管理画面で編集可能）
+      maxParts,
+      maxImageMB,
+      maxUsers,
+      planFeatures,
+      unitLabel,
+      planTagline,
+      isPopular,
       preparationDays = 3,
       allowWeekendDelivery = true,
       initialStock = 0,
@@ -310,6 +363,14 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
           productType,
           // サブスク商品のみ課金周期を保存（それ以外はnull）
           billingType: productType === 'subscription' ? billingType || 'monthly' : null,
+          // サブスクプランの上限・料金ページ表示（サブスク以外はnull/デフォルト）
+          maxParts: productType === 'subscription' ? parseLimitInt(maxParts) : null,
+          maxImageMB: productType === 'subscription' ? parseLimitInt(maxImageMB) : null,
+          maxUsers: productType === 'subscription' ? parseLimitInt(maxUsers) : null,
+          planFeatures: productType === 'subscription' ? normalizeFeatures(planFeatures) : null,
+          unitLabel: productType === 'subscription' ? (unitLabel || null) : null,
+          planTagline: productType === 'subscription' ? (planTagline || null) : null,
+          isPopular: productType === 'subscription' ? parseBool(isPopular) : false,
           preparationDays: parseInt(preparationDays, 10),
           allowWeekendDelivery: parsedAllowWeekendDelivery,
           isActive: true,
@@ -394,6 +455,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
         productImages,
         categoryType: slugToCategoryType(product.category?.slug), // enum値に変換（編集フォームの必須項目）
         tags: parsedTags,
+        planFeatures: parsePlanFeatures(product.planFeatures), // JSON文字列→配列
         currentStock: inventorySum._sum?.quantity || 0,
       },
     });
@@ -425,6 +487,14 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       categoryType,
       productType,
       billingType,
+      // サブスクプランの上限・料金ページ表示
+      maxParts,
+      maxImageMB,
+      maxUsers,
+      planFeatures,
+      unitLabel,
+      planTagline,
+      isPopular,
       externalUrl,
       preparationDays,
       allowWeekendDelivery,
@@ -583,6 +653,14 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         ...(productType && {
           billingType: productType === 'subscription' ? billingType || 'monthly' : null,
         }),
+        // サブスクプランの上限・料金ページ表示（送られてきたフィールドのみ更新）
+        ...(maxParts !== undefined && { maxParts: parseLimitInt(maxParts) }),
+        ...(maxImageMB !== undefined && { maxImageMB: parseLimitInt(maxImageMB) }),
+        ...(maxUsers !== undefined && { maxUsers: parseLimitInt(maxUsers) }),
+        ...(planFeatures !== undefined && { planFeatures: normalizeFeatures(planFeatures) }),
+        ...(unitLabel !== undefined && { unitLabel: unitLabel || null }),
+        ...(planTagline !== undefined && { planTagline: planTagline || null }),
+        ...(isPopular !== undefined && { isPopular: parseBool(isPopular) }),
         ...(externalUrl !== undefined && { externalUrl }),
         ...(parsedPreparationDays !== undefined && { preparationDays: parsedPreparationDays }),
         ...(parsedAllowWeekendDelivery !== undefined && { allowWeekendDelivery: parsedAllowWeekendDelivery }),
@@ -612,6 +690,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         images: productImages.map((img) => img.detailUrl),
         productImages,
         tags: parsedResponseTags,
+        planFeatures: parsePlanFeatures(updatedProduct.planFeatures), // JSON文字列→配列
         currentStock: inventorySum._sum?.quantity || 0,
       },
       message: '商品を更新しました',

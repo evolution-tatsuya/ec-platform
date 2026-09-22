@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   AppBar,
+  Button,
   Toolbar,
   Typography,
   IconButton,
@@ -186,6 +187,17 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             </Typography>
           )}
         </Box>
+
+        {/* 料金プランへの導線（デスクトップ） */}
+        {!isMobile && (
+          <Button
+            color="inherit"
+            onClick={() => navigate('/pricing')}
+            sx={{ ml: 2, fontWeight: 700, whiteSpace: 'nowrap' }}
+          >
+            料金プラン
+          </Button>
+        )}
 
         {/* 検索バー（モバイル非表示） */}
         {!isMobile && (

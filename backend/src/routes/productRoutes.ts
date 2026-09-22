@@ -11,6 +11,10 @@ const router = Router();
 // Note: /search を先に定義しないと /:id にマッチしてしまう
 router.get('/search', optionalAuth, productController.searchProducts);
 
+// GET /api/products/subscription-plans - サブスクプラン一覧（料金ページ用）
+// Note: /:id より前に定義すること
+router.get('/subscription-plans', productController.getSubscriptionPlans);
+
 // GET /api/products - 商品一覧取得
 router.get('/', optionalAuth, productController.getProducts);
 

@@ -86,6 +86,15 @@ export interface Product {
   isActive?: boolean;
   currentStock?: number;
   billingType?: BillingType | null; // サブスク商品の課金周期（productType=SUBSCRIPTIONの場合）
+  // サブスクプランの上限（null=無制限）。EC=マスター、在庫=適用。
+  maxParts?: number | null;
+  maxImageMB?: number | null;
+  maxUsers?: number | null;
+  // 料金ページ表示（管理画面で編集可能）
+  planFeatures?: string[] | null; // 機能リスト（自由に追加・削除・編集）
+  unitLabel?: string | null; // 上限の単位ラベル（デフォルト「パーツ」）
+  planTagline?: string | null; // プランの短い説明（1行）
+  isPopular?: boolean; // 「いちばん人気」バッジ
   createdAt: Date;
   updatedAt: Date;
   attributes: ProductAttribute[];

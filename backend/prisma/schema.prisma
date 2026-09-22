@@ -96,6 +96,15 @@ model Product {
   // サブスク商品の課金周期（productType='subscription'の場合）: 'monthly' | 'yearly' | 'onetime'
   // 月額/年額は継続課金（手動請求）、onetimeは買い切り。nullは非サブスク商品。
   billingType          String?  @map("billing_type")
+  // サブスクプランの上限（EC=マスター、在庫=適用）。null=無制限。非サブスク商品はnull。
+  maxParts             Int?     @map("max_parts") // 登録数上限（単位はunitLabel）
+  maxImageMB           Int?     @map("max_image_mb") // 画像容量上限（MB）
+  maxUsers             Int?     @map("max_users") // 閲覧人数上限
+  // 料金ページ表示（すべて管理画面から編集可能）
+  planFeatures         String?  @map("plan_features") // 機能リスト（JSON配列文字列）
+  unitLabel            String?  @map("unit_label") // 上限の単位ラベル（デフォルト「パーツ」。将来「商品」等に変更可）
+  planTagline          String?  @map("plan_tagline") // プランの短い説明（1行）
+  isPopular            Boolean  @default(false) @map("is_popular") // 「いちばん人気」バッジ
   externalUrl          String?  @map("external_url") // 外部申し込みURL（productType='external'の場合）
   eventAttributes      String?  @map("event_attributes") // イベントのカスタムフォーム定義（JSON文字列、productType='event'の場合）
   preparationDays      Int      @default(3) @map("preparation_days") // 配送準備日数（デフォルト3日）
