@@ -24,6 +24,15 @@ export interface ProvisionRequest {
   email: string; // 顧客メール（必須）
   plan?: string; // プラン識別子（任意・ラベル用）
   billingType?: string; // monthly | yearly | onetime
+  productId?: string; // ECのプラン商品ID（在庫側でecProductIdとして記録）
+  limits?: PlanLimits; // プランの上限（3項目必ず送る運用。null=無制限）
+}
+
+// プランの上限（EC=マスター、在庫=適用）。null=無制限。
+export interface PlanLimits {
+  maxParts: number | null;
+  maxImageMB: number | null;
+  maxUsers: number | null;
 }
 
 export interface ProvisionResult {
@@ -65,6 +74,8 @@ export async function provisionTenant(
         email: req.email,
         plan: req.plan,
         billingType: req.billingType,
+        productId: req.productId,
+        limits: req.limits,
       },
       {
         headers: {
@@ -102,6 +113,69 @@ export async function provisionTenant(
         ? '発行APIタイムアウト'
         : error?.message || '発行API呼び出しに失敗しました';
     console.error('[provision] 発行API例外:', errMsg);
+    return { success: false, error: errMsg };
+  }
+}
+
+export interface ChangePlanRequest {
+  orderId: string; // 契約を特定する注文ID（必須）
+  productId?: string; // 変更後のプラン商品ID
+  limits: PlanLimits; // 新しい上限（渡した項目だけ更新される）
+}
+
+export interface ChangePlanResult {
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * 在庫アプリのプラン変更API（既存テナントの上限更新）を呼ぶ。
+ * 上限（limits）を変えたとき、契約中の各顧客について呼び出す（方法A・EC側でループ）。
+ * 例外は投げず結果オブジェクトを返す。
+ */
+export async function changePlan(
+  req: ChangePlanRequest
+): Promise<ChangePlanResult> {
+  const apiKey = process.env.INVENTORY_API_KEY;
+  if (!apiKey) {
+    console.error('[plan-change] INVENTORY_API_KEY 未設定のためスキップ');
+    return { success: false, error: 'INVENTORY_API_KEY 未設定' };
+  }
+  if (!req.orderId) {
+    return { success: false, error: 'orderId は必須です' };
+  }
+
+  try {
+    const response = await axios.post(
+      `${INVENTORY_API_BASE_URL}/api/integration/plan-change`,
+      {
+        orderId: req.orderId,
+        productId: req.productId,
+        limits: req.limits,
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-integration-key': apiKey,
+        },
+        timeout: PROVISION_TIMEOUT_MS,
+        validateStatus: () => true,
+      }
+    );
+
+    if (response.status === 200 || response.status === 201) {
+      return { success: true };
+    }
+    const data = response.data || {};
+    const errMsg = data.error || data.message || `プラン変更APIエラー (HTTP ${response.status})`;
+    console.error('[plan-change] 失敗:', response.status, errMsg);
+    return { success: false, error: errMsg };
+  } catch (error: any) {
+    const errMsg =
+      error?.code === 'ECONNABORTED'
+        ? 'プラン変更APIタイムアウト'
+        : error?.message || 'プラン変更API呼び出しに失敗しました';
+    console.error('[plan-change] 例外:', errMsg);
     return { success: false, error: errMsg };
   }
 }

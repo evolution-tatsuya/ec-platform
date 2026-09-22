@@ -10,6 +10,7 @@ import {
   buildProductImageList,
   buildProductImageUrls,
 } from '../utils/productImageService';
+import { changePlan } from '../services/inventoryProvisionService';
 
 // ヘルパー関数: string | string[] を string に変換
 const getStringParam = (param: string | string[] | undefined): string | undefined => {
@@ -672,6 +673,42 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         images: true,
       },
     });
+
+    // サブスク商品の上限が変わったら、契約中の既存顧客の在庫上限に自動反映（方法A: EC側でループ）。
+    // 名前・価格・機能リスト等の変更は在庫反映不要（上限3項目が変わった時だけ実行）。
+    const limitsChanged =
+      updatedProduct.productType === 'subscription' &&
+      (existingProduct.maxParts !== updatedProduct.maxParts ||
+        existingProduct.maxImageMB !== updatedProduct.maxImageMB ||
+        existingProduct.maxUsers !== updatedProduct.maxUsers);
+    if (limitsChanged) {
+      try {
+        // この商品を契約中(active)の全契約に、新しい上限を反映
+        const activeSubs = await prisma.subscription.findMany({
+          where: { productId: id, status: 'active' },
+          include: { order: { select: { orderNumber: true } } },
+        });
+        const newLimits = {
+          maxParts: updatedProduct.maxParts,
+          maxImageMB: updatedProduct.maxImageMB,
+          maxUsers: updatedProduct.maxUsers,
+        };
+        for (const sub of activeSubs) {
+          const orderNumber = sub.order?.orderNumber;
+          if (!orderNumber) continue;
+          const r = await changePlan({ orderId: orderNumber, productId: id, limits: newLimits });
+          if (!r.success) {
+            console.error(`[plan-change] 契約 ${sub.id} の上限反映失敗:`, r.error);
+          }
+        }
+        if (activeSubs.length > 0) {
+          console.log(`[plan-change] ${activeSubs.length}件の契約に上限を反映しました`);
+        }
+      } catch (e) {
+        console.error('[plan-change] 上限反映処理でエラー:', e);
+        // 反映失敗でも商品更新自体は成功として続行（運営者が再実行できる）
+      }
+    }
 
     // 在庫数を計算
     const inventorySum = await prisma.inventoryLog.aggregate({

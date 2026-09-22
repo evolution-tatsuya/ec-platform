@@ -887,12 +887,19 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
     // 既に発行・送付済みならスキップ（冪等・二重送信防止）
     if (sub.licenseKeyDelivered && sub.licenseKey) continue;
 
-    // 1. 発行API呼び出し（billingTypeをそのまま渡す）
+    // 1. 発行API呼び出し（billingType＋プランの上限を渡す）
     const result = await provisionTenant({
       orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
       email: order.customerEmail,
       plan: sub.product?.name,
       billingType: sub.billingType,
+      productId: sub.productId,
+      // プランの上限（3項目必ず送る。null=無制限）
+      limits: {
+        maxParts: sub.product?.maxParts ?? null,
+        maxImageMB: sub.product?.maxImageMB ?? null,
+        maxUsers: sub.product?.maxUsers ?? null,
+      },
     });
 
     if (!result.success) {
