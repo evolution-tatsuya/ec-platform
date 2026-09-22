@@ -286,6 +286,9 @@ model Subscription {
   activationUrl       String?   @map("activation_url") // 有効化URL（顧客がアプリを有効化）
   tenantSlug          String?   @map("tenant_slug") // 在庫アプリ側テナント識別子
   provisionedAt       DateTime? @map("provisioned_at") // 発行API呼び出し成功日時
+  // 解約後の再購入で「旧データを引き継ぐ」場合の引き継ぎ元注文番号（Order.orderNumber）。
+  // これがある契約は provision(新規)ではなく reactivate(旧テナント付け替え)で発行する。
+  inheritFromOrderId  String?   @map("inherit_from_order_id")
   note                String? // 運営者メモ（在庫アプリ側のアカウント情報など任意）
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")

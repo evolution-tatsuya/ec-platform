@@ -6,13 +6,108 @@
  * - 管理者: 全契約一覧取得・契約情報更新（状態/キー受け渡し/メモ）
  *
  * 【案A: 手動運用】決済は銀行振込。ライセンスキーの生成・検証は在庫アプリ側が担当。
- * 解約されても在庫アプリ側はデータを消さず、運営者が目視で手動suspendする運用（要件a）。
+ * 解約/一時停止されると、在庫アプリ側のアカウントを自動でsuspend（ログイン停止・データ保持）する（要件b）。
+ * 再開はunsuspend。冪等・失敗時は安全にスキップしてnoteに記録（provision/plan-changeと同じ防御）。
  */
 
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import {
+  suspendTenant,
+  unsuspendTenant,
+} from '../services/inventoryProvisionService';
 
 const prisma = new PrismaClient();
+
+/**
+ * 契約から在庫アプリのアカウントをsuspendする（解約・一時停止時）。
+ * 在庫側は provision時と同じ orderNumber でテナントを特定するため、
+ * Subscription.orderId(=Order.id) ではなく Order.orderNumber を送る必要がある。
+ * 失敗しても契約更新は止めず、noteに理由を追記して運営者が手動対応できるようにする。
+ */
+async function suspendInventoryForSubscription(
+  subscriptionId: string,
+  reason: 'cancelled' | 'suspended'
+): Promise<void> {
+  try {
+    const sub = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: { order: { select: { orderNumber: true } } },
+    });
+    // 買い切りは対象外。注文番号が無い契約もスキップ（在庫テナント無し）。
+    if (!sub || sub.billingType === 'onetime') return;
+    const orderNumber = sub.order?.orderNumber;
+    if (!orderNumber) {
+      console.error(
+        `[suspend] 契約 ${subscriptionId} に注文番号が無いためスキップ`
+      );
+      return;
+    }
+
+    const result = await suspendTenant({ orderId: orderNumber, reason });
+    if (!result.success) {
+      await appendSubscriptionNote(
+        subscriptionId,
+        `⚠️在庫suspend失敗(${reason}): ${result.error} — 手動でsuspendしてください`
+      );
+    }
+  } catch (error: any) {
+    console.error('[suspend] 在庫suspend連携で例外:', error?.message || error);
+  }
+}
+
+/**
+ * 契約の在庫アプリのアカウントをunsuspend（再開）する。
+ * 停止中の「同じ契約」をactiveに戻したとき（同一orderId）に呼ぶ。
+ */
+async function unsuspendInventoryForSubscription(
+  subscriptionId: string
+): Promise<void> {
+  try {
+    const sub = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      include: { order: { select: { orderNumber: true } } },
+    });
+    if (!sub || sub.billingType === 'onetime') return;
+    const orderNumber = sub.order?.orderNumber;
+    if (!orderNumber) {
+      console.error(
+        `[unsuspend] 契約 ${subscriptionId} に注文番号が無いためスキップ`
+      );
+      return;
+    }
+
+    const result = await unsuspendTenant(orderNumber);
+    if (!result.success) {
+      await appendSubscriptionNote(
+        subscriptionId,
+        `⚠️在庫unsuspend失敗: ${result.error} — 手動で再開してください`
+      );
+    }
+  } catch (error: any) {
+    console.error('[unsuspend] 在庫unsuspend連携で例外:', error?.message || error);
+  }
+}
+
+/** 契約のnoteに1行追記する（既存noteは保持）。 */
+async function appendSubscriptionNote(
+  subscriptionId: string,
+  line: string
+): Promise<void> {
+  try {
+    const sub = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+      select: { note: true },
+    });
+    const prev = sub?.note ? `${sub.note}\n` : '';
+    await prisma.subscription.update({
+      where: { id: subscriptionId },
+      data: { note: `${prev}${line}` },
+    });
+  } catch (error: any) {
+    console.error('[note] 契約noteの追記に失敗:', error?.message || error);
+  }
+}
 
 const getStringParam = (value: string | string[] | undefined): string | undefined => {
   if (Array.isArray(value)) return value[0];
@@ -110,6 +205,9 @@ export async function cancelMySubscription(req: Request, res: Response) {
         },
       },
     });
+
+    // 在庫アプリのアカウントを自動suspend（要件b）。失敗しても解約は成立させる。
+    await suspendInventoryForSubscription(id, 'cancelled');
 
     return res.json({
       success: true,
@@ -233,6 +331,23 @@ export async function adminUpdateSubscription(req: Request, res: Response) {
       },
     });
 
+    // status遷移に応じて在庫アプリを自動suspend/unsuspend（要件b）。
+    // 有効状態(active/pending_payment) ⇄ 停止状態(suspended/cancelled) が変わった時だけ連携。
+    if (status !== undefined && status !== existing.status) {
+      const wasActive = ['active', 'pending_payment'].includes(existing.status);
+      const isActive = ['active', 'pending_payment'].includes(status);
+      if (wasActive && !isActive) {
+        // active → suspended/cancelled: 停止
+        await suspendInventoryForSubscription(
+          id,
+          status === 'cancelled' ? 'cancelled' : 'suspended'
+        );
+      } else if (!wasActive && isActive) {
+        // suspended/cancelled → active: 再開（同一契約なのでunsuspend）
+        await unsuspendInventoryForSubscription(id);
+      }
+    }
+
     return res.json({
       success: true,
       message: '契約情報を更新しました',
@@ -243,6 +358,65 @@ export async function adminUpdateSubscription(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       message: error.message || 'サブスク契約の更新に失敗しました',
+    });
+  }
+}
+
+// 引き継ぎ推奨のしきい値: 解約から180日以内なら旧データ引き継ぎを推奨。
+const REACTIVATION_INHERIT_DAYS = 180;
+
+/**
+ * GET /api/subscriptions/reactivation-info?productId=xxx
+ * 同一ユーザー×同一商品に「解約済み契約」があるか、あれば解約からの経過日数と
+ * 推奨モード（inherit/new）を返す。再購入時のチェックアウトで選択UIの初期値に使う。
+ */
+export async function getReactivationInfo(req: Request, res: Response) {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, message: 'ログインが必要です' });
+    }
+    const productId = getStringParam(req.query.productId as string | undefined);
+    if (!productId) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'productId は必須です' });
+    }
+
+    // 最新の解約済み契約を1件（買い切りは対象外＝在庫テナントに引き継ぐデータが無い）
+    const prev = await prisma.subscription.findFirst({
+      where: {
+        userId: req.session.userId,
+        productId,
+        status: 'cancelled',
+        billingType: { not: 'onetime' },
+      },
+      orderBy: { cancelledAt: 'desc' },
+      include: { order: { select: { orderNumber: true } } },
+    });
+
+    // 引き継ぎ元テナントが無い（注文番号なし）なら引き継ぎ不可
+    if (!prev || !prev.order?.orderNumber || !prev.cancelledAt) {
+      return res.json({ success: true, canInherit: false });
+    }
+
+    const elapsedMs = Date.now() - new Date(prev.cancelledAt).getTime();
+    const daysSinceCancel = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+    const recommendedMode: 'inherit' | 'new' =
+      daysSinceCancel <= REACTIVATION_INHERIT_DAYS ? 'inherit' : 'new';
+
+    return res.json({
+      success: true,
+      canInherit: true,
+      daysSinceCancel,
+      recommendedMode,
+      thresholdDays: REACTIVATION_INHERIT_DAYS,
+      prevOrderNumber: prev.order.orderNumber,
+    });
+  } catch (error: any) {
+    console.error('再購入情報取得エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || '再購入情報の取得に失敗しました',
     });
   }
 }

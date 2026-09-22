@@ -309,6 +309,7 @@ export interface Subscription {
   activationUrl?: string | null;
   tenantSlug?: string | null;
   provisionedAt?: Date | null;
+  inheritFromOrderId?: string | null;
   note?: string | null;
   createdAt: Date;
   updatedAt: Date;

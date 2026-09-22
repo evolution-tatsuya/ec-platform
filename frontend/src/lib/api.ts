@@ -353,6 +353,8 @@ export interface CreateOrderRequest {
   customerEmail?: string;
   customerPhone?: string;
   shippingPostalCode?: string;
+  // 再購入時の商品別「引き継ぐ/新規」選択。inheritなら旧データを在庫アプリで復活させる。
+  subscriptionInheritance?: { productId: string; mode: 'inherit' | 'new' }[];
 }
 
 export interface CreateOrderResponse {

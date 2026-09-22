@@ -21,6 +21,7 @@ import {
   CircularProgress,
   Alert,
 } from '@mui/material';
+import { Autorenew } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -28,6 +29,8 @@ import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/ja';
 import { cartAPI, orderAPI, settingsAPI } from '../lib/api';
 import { getMe } from '../services/api/users';
+import { getReactivationInfo } from '../services/api/subscriptions';
+import type { ReactivationInfo } from '../services/api/subscriptions';
 import { PaymentMethod } from '../types';
 
 // dayjsのロケールを日本語に設定
@@ -164,8 +167,67 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   // カートにサブスク商品（productType='subscription'）が含まれるか
-  const hasSubscriptionItem = (data?.cart?.items || []).some(
+  const subscriptionItems = (data?.cart?.items || []).filter(
     (item: any) => item.product?.productType === 'subscription'
+  );
+  const hasSubscriptionItem = subscriptionItems.length > 0;
+
+  // カート内サブスク商品ごとに「引き継ぎ可能な解約済み契約」があるか取得。
+  // 買い切り以外・解約済み契約がある商品だけ、チェックアウトで引き継ぎ選択を出す。
+  const subscriptionProductIds = Array.from(
+    new Set(
+      subscriptionItems
+        .map((item: any) => item.product?.id)
+        .filter((id: any): id is string => !!id)
+    )
+  );
+
+  const { data: reactivationInfos } = useQuery({
+    queryKey: ['reactivation-info', subscriptionProductIds],
+    enabled: subscriptionProductIds.length > 0,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        subscriptionProductIds.map(async (pid) => {
+          try {
+            const info = await getReactivationInfo(pid);
+            return [pid, info] as [string, ReactivationInfo];
+          } catch {
+            return [pid, { success: true, canInherit: false }] as [
+              string,
+              ReactivationInfo,
+            ];
+          }
+        })
+      );
+      return Object.fromEntries(entries) as Record<string, ReactivationInfo>;
+    },
+  });
+
+  // 引き継ぎ可能な商品の選択（productId → 'inherit' | 'new'）。
+  // 初期値は在庫側推奨（解約から180日以内=inherit）。ユーザーが変更可。
+  const [inheritanceChoice, setInheritanceChoice] = useState<
+    Record<string, 'inherit' | 'new'>
+  >({});
+
+  // 引き継ぎ情報が届いたら、未選択の商品に推奨値をプリセット
+  useEffect(() => {
+    if (!reactivationInfos) return;
+    setInheritanceChoice((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const [pid, info] of Object.entries(reactivationInfos)) {
+        if (info.canInherit && next[pid] === undefined) {
+          next[pid] = info.recommendedMode ?? 'inherit';
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [reactivationInfos]);
+
+  // 引き継ぎ選択を出すべき商品（canInheritなもの）
+  const inheritableItems = subscriptionItems.filter(
+    (item: any) => reactivationInfos?.[item.product?.id]?.canInherit
   );
 
   // 注文作成Mutation
@@ -238,6 +300,11 @@ ${notes ? `【備考】${notes}` : ''}
       // バックエンド/DBは小文字の決済手段（bank_transfer/credit_card/paypay）で判定するため正規化。
       // フロントのPaymentMethod enumは大文字（BANK_TRANSFER等）なので変換して送る。
       const paymentMethodValue = String(paymentMethod).toLowerCase();
+      // 引き継ぎ可能な商品について、選んだモード（inherit/new）を注文に添える。
+      const subscriptionInheritance = inheritableItems.map((item: any) => ({
+        productId: item.product.id,
+        mode: inheritanceChoice[item.product.id] ?? 'inherit',
+      }));
       await createOrderMutation.mutateAsync({
         paymentMethod: paymentMethodValue as any,
         shippingAddress,
@@ -245,6 +312,9 @@ ${notes ? `【備考】${notes}` : ''}
         customerEmail: memberEmail,
         customerPhone: phone,
         shippingPostalCode: postalCode,
+        ...(subscriptionInheritance.length > 0
+          ? { subscriptionInheritance }
+          : {}),
       });
     } catch (error) {
       // エラーはonErrorで処理済み
@@ -533,6 +603,82 @@ ${notes ? `【備考】${notes}` : ''}
               >
                 <strong style={{ color: '#7c4dff' }}>配送について:</strong> 準備期間は2営業日です。土日祝日を除く2日後から配達日を指定できます。
               </Box>
+            </Box>
+          )}
+
+          {/* 再購入: 以前のデータを引き継ぐか選択（引き継ぎ可能な商品のみ表示） */}
+          {inheritableItems.length > 0 && (
+            <Box
+              sx={{
+                backgroundColor: 'white',
+                borderRadius: 1,
+                padding: 3,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                border: '1px solid #ede7f6',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Autorenew sx={{ color: '#7c4dff' }} />
+                <Typography variant="h6" fontWeight={600}>
+                  以前のデータの引き継ぎ
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                過去にご解約された契約があります。以前のデータを引き継いで再開するか、新しく始めるかをお選びください。
+              </Typography>
+
+              {inheritableItems.map((item: any) => {
+                const pid = item.product.id;
+                const info = reactivationInfos?.[pid];
+                const choice = inheritanceChoice[pid] ?? 'inherit';
+                return (
+                  <Box
+                    key={pid}
+                    sx={{
+                      mb: 2,
+                      p: 2,
+                      borderRadius: 1,
+                      backgroundColor: '#faf8ff',
+                    }}
+                  >
+                    <Typography fontWeight={600} sx={{ mb: 0.5 }}>
+                      {item.product.name}
+                    </Typography>
+                    {typeof info?.daysSinceCancel === 'number' && (
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ display: 'block', mb: 1 }}
+                      >
+                        解約から約{info.daysSinceCancel}日経過
+                        {info.recommendedMode === 'inherit'
+                          ? '（引き継ぎがおすすめです）'
+                          : `（${info.thresholdDays ?? 180}日を超えているため新規がおすすめです）`}
+                      </Typography>
+                    )}
+                    <RadioGroup
+                      value={choice}
+                      onChange={(e) =>
+                        setInheritanceChoice((prev) => ({
+                          ...prev,
+                          [pid]: e.target.value as 'inherit' | 'new',
+                        }))
+                      }
+                    >
+                      <FormControlLabel
+                        value="inherit"
+                        control={<Radio sx={{ '&.Mui-checked': { color: '#7c4dff' } }} />}
+                        label="以前のデータを引き継いで再開する"
+                      />
+                      <FormControlLabel
+                        value="new"
+                        control={<Radio sx={{ '&.Mui-checked': { color: '#7c4dff' } }} />}
+                        label="新しく始める（以前のデータは使わない）"
+                      />
+                    </RadioGroup>
+                  </Box>
+                );
+              })}
             </Box>
           )}
 

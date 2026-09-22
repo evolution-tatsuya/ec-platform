@@ -29,10 +29,11 @@ import {
   Close,
   Autorenew,
 } from '@mui/icons-material';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import axios from 'axios';
-import { orderAPI } from '../lib/api';
+import { orderAPI, cartAPI } from '../lib/api';
 import { getMe, updateProfile, updatePassword } from '../services/api/users';
 import {
   getMySubscriptions,
@@ -124,6 +125,21 @@ const MyPage = () => {
   const orders = ordersData?.orders || [];
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  // 解約済み契約の再購入: 同じ商品をカートに入れてチェックアウトへ。
+  // 「引き継ぐ/新規」の選択はチェックアウト画面で行う。
+  const repurchaseMutation = useMutation({
+    mutationFn: (productId: string) =>
+      cartAPI.addToCart({ productId, quantity: 1 }),
+    onSuccess: () => navigate('/cart'),
+    onError: (e) => {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data?.message ?? 'カートへの追加に失敗しました')
+        : 'カートへの追加に失敗しました';
+      window.alert(msg);
+    },
+  });
 
   // サブスク契約データを取得
   const {
@@ -512,6 +528,11 @@ const MyPage = () => {
                 };
                 const canCancel =
                   sub.status === 'active' && sub.billingType !== 'onetime';
+                // 解約済みの月額/年額契約は再購入できる（買い切りは対象外）
+                const canRepurchase =
+                  sub.status === 'cancelled' &&
+                  sub.billingType !== 'onetime' &&
+                  !!sub.product?.id;
                 return (
                   <Card
                     key={sub.id}
@@ -577,6 +598,29 @@ const MyPage = () => {
                             onClick={() => handleCancelSubscription(sub)}
                           >
                             {cancellingId === sub.id ? '解約処理中...' : '解約する'}
+                          </Button>
+                        </Box>
+                      )}
+
+                      {canRepurchase && (
+                        <Box sx={{ mt: 2, textAlign: 'right' }}>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            startIcon={<Autorenew />}
+                            disabled={repurchaseMutation.isPending}
+                            onClick={() =>
+                              sub.product?.id &&
+                              repurchaseMutation.mutate(sub.product.id)
+                            }
+                            sx={{
+                              background:
+                                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            }}
+                          >
+                            {repurchaseMutation.isPending
+                              ? '処理中...'
+                              : '再購入する'}
                           </Button>
                         </Box>
                       )}

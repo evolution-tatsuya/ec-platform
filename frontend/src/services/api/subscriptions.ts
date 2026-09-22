@@ -41,6 +41,30 @@ export const cancelMySubscription = async (
   return res.data.subscription;
 };
 
+/** 再購入時の引き継ぎ可否・推奨モード */
+export interface ReactivationInfo {
+  success: boolean;
+  canInherit: boolean; // 引き継げる解約済み契約があるか
+  daysSinceCancel?: number; // 解約からの経過日数
+  recommendedMode?: 'inherit' | 'new'; // 推奨（180日以内=inherit）
+  thresholdDays?: number; // 推奨のしきい値（日）
+  prevOrderNumber?: string; // 引き継ぎ元の注文番号
+}
+
+/**
+ * 同一商品に解約済み契約があるか＋引き継ぎ推奨を取得（顧客）。
+ * チェックアウトで「以前のデータを引き継ぐ/新しく始める」の初期値に使う。
+ */
+export const getReactivationInfo = async (
+  productId: string
+): Promise<ReactivationInfo> => {
+  const res = await axios.get<ReactivationInfo>(
+    `${API_BASE_URL}/api/subscriptions/reactivation-info`,
+    { params: { productId }, withCredentials: true }
+  );
+  return res.data;
+};
+
 /** 全サブスク契約一覧取得（管理者） */
 export const adminGetSubscriptions = async (params?: {
   status?: SubscriptionStatus | 'all';

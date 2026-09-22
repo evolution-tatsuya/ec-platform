@@ -31,7 +31,10 @@ import {
   sendGenericEmail,
   renderTemplate,
 } from '../utils/emailService';
-import { provisionTenant } from '../services/inventoryProvisionService';
+import {
+  provisionTenant,
+  reactivateTenant,
+} from '../services/inventoryProvisionService';
 
 const prisma = new PrismaClient();
 
@@ -98,10 +101,21 @@ export async function createOrder(req: Request, res: Response) {
     const {
       paymentMethod: rawPaymentMethod,
       shippingAddress,
+      subscriptionInheritance,
     }: {
       paymentMethod: string;
       shippingAddress: string;
+      // 再購入時の商品別「引き継ぐ/新規」選択。mode='inherit'の商品は
+      // 旧cancelled契約の注文番号を inheritFromOrderId に記録し、発行時にreactivateする。
+      subscriptionInheritance?: { productId: string; mode: 'inherit' | 'new' }[];
     } = req.body;
+
+    // 引き継ぎ希望の商品IDセット（'inherit'のみ）。未指定は新規扱い。
+    const inheritProductIds = new Set(
+      (subscriptionInheritance || [])
+        .filter((s) => s && s.mode === 'inherit' && s.productId)
+        .map((s) => s.productId)
+    );
 
     // バリデーション
     if (!rawPaymentMethod) {
@@ -233,6 +247,18 @@ export async function createOrder(req: Request, res: Response) {
           const subscriptionStatus =
             newOrder.status === 'paid' ? 'active' : 'pending_payment';
 
+          // 再購入で「引き継ぐ」選択時: 同一ユーザー×同一商品の解約済み契約(最新)を探し、
+          // その注文番号を引き継ぎ元として記録する。発行時にreactivate(旧テナント付替)する。
+          let inheritFromOrderId: string | null = null;
+          if (inheritProductIds.has(item.productId)) {
+            const prevCancelled = await tx.subscription.findFirst({
+              where: { userId, productId: item.productId, status: 'cancelled' },
+              orderBy: { cancelledAt: 'desc' },
+              include: { order: { select: { orderNumber: true } } },
+            });
+            inheritFromOrderId = prevCancelled?.order?.orderNumber || null;
+          }
+
           // 数量分だけ契約を作成（サブスクは数量1固定だが安全のためループ）
           for (let i = 0; i < item.quantity; i++) {
             await tx.subscription.create({
@@ -244,6 +270,7 @@ export async function createOrder(req: Request, res: Response) {
                 billingType,
                 amount: item.product.price,
                 nextBillingDate,
+                inheritFromOrderId,
               },
             });
           }
@@ -887,20 +914,42 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
     // 既に発行・送付済みならスキップ（冪等・二重送信防止）
     if (sub.licenseKeyDelivered && sub.licenseKey) continue;
 
-    // 1. 発行API呼び出し（billingType＋プランの上限を渡す）
-    const result = await provisionTenant({
-      orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
-      email: order.customerEmail,
-      plan: sub.product?.name,
-      billingType: sub.billingType,
-      productId: sub.productId,
-      // プランの上限（3項目必ず送る。null=無制限）
-      limits: {
-        maxParts: sub.product?.maxParts ?? null,
-        maxImageMB: sub.product?.maxImageMB ?? null,
-        maxUsers: sub.product?.maxUsers ?? null,
-      },
-    });
+    // プランの上限（3項目必ず送る。null=無制限）
+    const limits = {
+      maxParts: sub.product?.maxParts ?? null,
+      maxImageMB: sub.product?.maxImageMB ?? null,
+      maxUsers: sub.product?.maxUsers ?? null,
+    };
+
+    // 1. 発行API呼び出し。
+    //    引き継ぎ元(inheritFromOrderId)がある再購入は reactivate で旧テナントを新注文へ付け替え、
+    //    無ければ provision で新規テナント発行。どちらも結果の形（key/url/slug）は共通。
+    let result: {
+      success: boolean;
+      licenseKey?: string;
+      activationUrl?: string;
+      slug?: string;
+      error?: string;
+    };
+    if (sub.inheritFromOrderId) {
+      result = await reactivateTenant({
+        prevOrderId: sub.inheritFromOrderId,
+        newOrderId: order.orderNumber,
+        plan: sub.product?.name,
+        billingType: sub.billingType,
+        productId: sub.productId,
+        limits,
+      });
+    } else {
+      result = await provisionTenant({
+        orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
+        email: order.customerEmail,
+        plan: sub.product?.name,
+        billingType: sub.billingType,
+        productId: sub.productId,
+        limits,
+      });
+    }
 
     if (!result.success) {
       // 失敗はnoteに記録（運営者が管理画面から手動リカバリ可能）
