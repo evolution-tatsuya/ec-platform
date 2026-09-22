@@ -27,6 +27,7 @@ import {
   Settings as SettingsIcon,
   ViewQuilt as NavigationIcon,
   Campaign as NewsIcon,
+  Autorenew as SubscriptionIcon,
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -98,6 +99,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: '注文管理',
       path: '/admin/orders',
       icon: <OrdersIcon />,
+    },
+    {
+      label: 'サブスク契約',
+      path: '/admin/subscriptions',
+      icon: <SubscriptionIcon />,
     },
     {
       label: 'チケット管理',

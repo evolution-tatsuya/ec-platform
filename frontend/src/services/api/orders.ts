@@ -99,6 +99,27 @@ export const shipOrder = async (
 };
 
 /**
+ * 入金確認処理（管理者）: 注文を pending → paid にする
+ * @API_INTEGRATION
+ */
+export const confirmPayment = async (id: string): Promise<Order> => {
+  try {
+    const response = await axios.put(
+      `${API_BASE_URL}/api/admin/orders/${id}/confirm-payment`,
+      {},
+      {
+        withCredentials: true,
+      }
+    );
+
+    return response.data.order;
+  } catch (error) {
+    console.error('入金確認エラー:', error);
+    throw error;
+  }
+};
+
+/**
  * 納品書生成・ダウンロード（管理者）
  * pdfmeを使用してPDF形式で生成
  * @API_INTEGRATION

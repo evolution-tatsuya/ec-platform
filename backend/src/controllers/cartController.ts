@@ -29,6 +29,9 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
       return next(createError('商品が見つかりません', 404));
     }
 
+    // サブスク商品は在庫の概念がないため在庫チェックをスキップ
+    const isSubscription = product.productType === 'subscription';
+
     // 在庫チェック（イミュータブルデータモデル）
     const inventorySum = await prisma.inventoryLog.aggregate({
       where: { productId },
@@ -36,7 +39,7 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
     });
     const currentStock = inventorySum._sum?.quantity || 0;
 
-    if (currentStock < quantity) {
+    if (!isSubscription && currentStock < quantity) {
       return next(createError('在庫が不足しています', 400));
     }
 
@@ -51,6 +54,40 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
       });
     }
 
+    // 排他カート: サブスク商品と物販商品は同一カートに共存できない。
+    // (決済・配送・契約管理の性質が異なり、将来のStripeサブスク決済とも両立しないため)
+    const otherItems = await prisma.cartItem.findMany({
+      where: { cartId: cart.id, productId: { not: productId } },
+      include: { product: { select: { productType: true } } },
+    });
+    const cartHasSubscription = otherItems.some(
+      (it) => it.product.productType === 'subscription'
+    );
+    const cartHasNonSubscription = otherItems.some(
+      (it) => it.product.productType !== 'subscription'
+    );
+    if (isSubscription && cartHasNonSubscription) {
+      return next(
+        createError(
+          'サブスク商品は単独でご購入ください。カート内の他の商品と一緒には購入できません。',
+          400
+        )
+      );
+    }
+    if (!isSubscription && cartHasSubscription) {
+      return next(
+        createError(
+          'カートにサブスク商品が入っています。サブスク商品は単独購入のため、他の商品と一緒には追加できません。',
+          400
+        )
+      );
+    }
+
+    // サブスク商品は数量1固定（同一契約を複数個購入する概念がないため）
+    if (isSubscription && quantity > 1) {
+      return next(createError('サブスク商品は1点のみご購入いただけます。', 400));
+    }
+
     // カートアイテムの追加または数量更新
     const existingItem = await prisma.cartItem.findUnique({
       where: {
@@ -63,11 +100,11 @@ export const addToCart = async (req: Request, res: Response, next: NextFunction)
 
     let cartItem;
     if (existingItem) {
-      // 既存アイテムの数量を更新
-      const newQuantity = existingItem.quantity + quantity;
+      // サブスク商品は数量1固定。既にカートにあれば1のまま（重複追加で増やさない）。
+      const newQuantity = isSubscription ? 1 : existingItem.quantity + quantity;
 
-      // 更新後の在庫チェック
-      if (currentStock < newQuantity) {
+      // 更新後の在庫チェック（サブスクはスキップ）
+      if (!isSubscription && currentStock < newQuantity) {
         return next(createError('在庫が不足しています', 400));
       }
 
@@ -221,14 +258,19 @@ export const updateCartItem = async (req: Request, res: Response, next: NextFunc
       return next(createError('このカートアイテムにアクセスする権限がありません', 403));
     }
 
-    // 在庫チェック
+    // サブスク商品は数量1固定
+    if (cartItem.product.productType === 'subscription' && quantity > 1) {
+      return next(createError('サブスク商品は1点のみご購入いただけます。', 400));
+    }
+
+    // 在庫チェック（サブスク商品は在庫の概念がないためスキップ）
     const inventorySum = await prisma.inventoryLog.aggregate({
       where: { productId: cartItem.productId },
       _sum: { quantity: true },
     });
     const currentStock = inventorySum._sum?.quantity || 0;
 
-    if (currentStock < quantity) {
+    if (cartItem.product.productType !== 'subscription' && currentStock < quantity) {
       return next(createError('在庫が不足しています', 400));
     }
 

@@ -25,7 +25,13 @@ import {
   generateShippingLabelPDF,
   generateQuotePDF,
 } from '../utils/pdfGenerator';
-import { sendShippingNotificationEmail } from '../utils/emailService';
+import {
+  sendShippingNotificationEmail,
+  sendCancellationNotificationEmail,
+  sendGenericEmail,
+  renderTemplate,
+} from '../utils/emailService';
+import { provisionTenant } from '../services/inventoryProvisionService';
 
 const prisma = new PrismaClient();
 
@@ -40,6 +46,23 @@ function generateOrderNumber(): string {
   const day = String(now.getDate()).padStart(2, '0');
   const random = String(Math.floor(Math.random() * 100000)).padStart(5, '0');
   return `ORD-${year}${month}${day}-${random}`;
+}
+
+/**
+ * サブスク契約の次回請求予定日を算出（手動請求の目安）
+ * monthly: 1ヶ月後 / yearly: 1年後 / onetime(買い切り): null
+ */
+function calcNextBillingDate(billingType: string): Date | null {
+  if (billingType === 'onetime') return null;
+  const next = new Date();
+  if (billingType === 'monthly') {
+    next.setMonth(next.getMonth() + 1);
+  } else if (billingType === 'yearly') {
+    next.setFullYear(next.getFullYear() + 1);
+  } else {
+    return null;
+  }
+  return next;
 }
 
 /**
@@ -73,20 +96,27 @@ export async function createOrder(req: Request, res: Response) {
 
     const userId = req.session.userId;
     const {
-      paymentMethod,
+      paymentMethod: rawPaymentMethod,
       shippingAddress,
     }: {
-      paymentMethod: 'bank_transfer' | 'credit_card' | 'paypay';
+      paymentMethod: string;
       shippingAddress: string;
     } = req.body;
 
     // バリデーション
-    if (!paymentMethod) {
+    if (!rawPaymentMethod) {
       return res.status(400).json({
         success: false,
         message: '決済方法を選択してください',
       });
     }
+
+    // 決済手段を小文字に正規化（フロントのenumが大文字BANK_TRANSFER等で来ても
+    // bank_transfer/credit_card/paypay の判定・割引・入金前発行の防止が正しく効くように）
+    const paymentMethod = String(rawPaymentMethod).toLowerCase() as
+      | 'bank_transfer'
+      | 'credit_card'
+      | 'paypay';
 
     if (!shippingAddress) {
       return res.status(400).json({
@@ -113,8 +143,11 @@ export async function createOrder(req: Request, res: Response) {
         throw new Error('カートが空です');
       }
 
-      // 2. 在庫チェック
+      // 2. 在庫チェック（サブスク商品は在庫の概念がないためスキップ）
       for (const item of cart.items) {
+        if (item.product.productType === 'subscription') {
+          continue;
+        }
         const stockQuantity = await getStockQuantity(item.productId, tx);
 
         if (stockQuantity < item.quantity) {
@@ -177,7 +210,7 @@ export async function createOrder(req: Request, res: Response) {
         },
       });
 
-      // 6. 注文アイテムを作成 & 在庫を減算
+      // 6. 注文アイテムを作成 & 在庫を減算 & サブスク契約を作成
       for (const item of cart.items) {
         // 注文アイテム作成
         await tx.orderItem.create({
@@ -189,15 +222,42 @@ export async function createOrder(req: Request, res: Response) {
           },
         });
 
-        // 在庫減算ログを作成
-        await tx.inventoryLog.create({
-          data: {
-            productId: item.productId,
-            quantity: -item.quantity,
-            type: 'sale',
-            note: `注文番号: ${orderNumber}`,
-          },
-        });
+        if (item.product.productType === 'subscription') {
+          // サブスク商品: 在庫減算はせず、契約(Subscription)を作成する。
+          // billingTypeに応じて次回請求予定日を設定（onetime=買い切りはnull）。
+          const billingType = item.product.billingType || 'onetime';
+          const nextBillingDate = calcNextBillingDate(billingType);
+
+          // 入金前発行の防止: 注文が入金済み(paid)で作られる場合のみ active。
+          // 銀行振込(pending)は入金待ち(pending_payment)で作り、入金確認時に active へ昇格する。
+          const subscriptionStatus =
+            newOrder.status === 'paid' ? 'active' : 'pending_payment';
+
+          // 数量分だけ契約を作成（サブスクは数量1固定だが安全のためループ）
+          for (let i = 0; i < item.quantity; i++) {
+            await tx.subscription.create({
+              data: {
+                userId,
+                productId: item.productId,
+                orderId: newOrder.id,
+                status: subscriptionStatus,
+                billingType,
+                amount: item.product.price,
+                nextBillingDate,
+              },
+            });
+          }
+        } else {
+          // 物販/デジタル等: 在庫減算ログを作成
+          await tx.inventoryLog.create({
+            data: {
+              productId: item.productId,
+              quantity: -item.quantity,
+              type: 'sale',
+              note: `注文番号: ${orderNumber}`,
+            },
+          });
+        }
       }
 
       // 7. カートをクリア
@@ -220,7 +280,22 @@ export async function createOrder(req: Request, res: Response) {
           },
         },
       });
+    }, {
+      // 本番Neon(pooler経由)のレイテンシでデフォルト5秒を超えるため余裕を持たせる。
+      maxWait: 10000, // 接続待ちの最大時間
+      timeout: 20000, // トランザクション実行の最大時間
     });
+
+    // 在庫アプリの発行API連携（P2）: カード即決済など注文が最初からpaidの場合、
+    // active なサブスク契約についてテナント発行→キー保存→キー送付メール。
+    // 銀行振込(pending)の場合はここでは発行せず、入金確認(confirmPayment)時に発行される。
+    if (order && order.status === 'paid') {
+      try {
+        await provisionAndDeliverForOrder(order.id);
+      } catch (provisionError) {
+        console.error('発行連携エラー:', provisionError);
+      }
+    }
 
     return res.status(201).json({
       success: true,
@@ -712,6 +787,252 @@ export async function adminGetOrderById(req: Request, res: Response) {
 }
 
 /**
+ * 入金確認メールを送信（payment_receivedテンプレート）。失敗しても呼び出し側の処理は継続。
+ * emailTemplateController.sendOrderEmail と同じテンプレ→変数置換→送信のロジック。
+ */
+async function sendPaymentReceivedEmail(order: {
+  customerEmail: string;
+  customerName: string;
+  orderNumber: string;
+  totalAmount: number;
+}): Promise<void> {
+  if (!order.customerEmail) return;
+
+  const tpl = await prisma.emailTemplate.findUnique({
+    where: { type: 'payment_received' },
+  });
+  if (!tpl || !tpl.isActive) return; // テンプレ未設定/無効なら送らない
+
+  const settings = await prisma.siteSettings.findFirst();
+  const bankInfo = settings
+    ? [
+        settings.bankName && `銀行名: ${settings.bankName}`,
+        settings.bankBranch && `支店名: ${settings.bankBranch}`,
+        settings.bankAccountType && `口座種別: ${settings.bankAccountType}`,
+        settings.bankAccountNumber && `口座番号: ${settings.bankAccountNumber}`,
+        settings.bankAccountHolder && `口座名義: ${settings.bankAccountHolder}`,
+      ]
+        .filter(Boolean)
+        .join('\n')
+    : '';
+
+  const vars: Record<string, string> = {
+    customerName: order.customerName || 'お客様',
+    orderNumber: order.orderNumber || '',
+    totalAmount: (order.totalAmount ?? 0).toLocaleString(),
+    bankInfo,
+  };
+
+  await sendGenericEmail({
+    to: order.customerEmail,
+    subject: renderTemplate(tpl.subject, vars),
+    body: renderTemplate(tpl.body, vars),
+  });
+}
+
+/**
+ * ライセンスキー送付メールを送信（license_deliveryテンプレート）。失敗しても呼び出し側は継続。
+ */
+async function sendLicenseDeliveryEmail(data: {
+  customerEmail: string;
+  customerName: string;
+  orderNumber: string;
+  productName: string;
+  licenseKey: string;
+  activationUrl: string;
+}): Promise<boolean> {
+  if (!data.customerEmail) return false;
+
+  const tpl = await prisma.emailTemplate.findUnique({
+    where: { type: 'license_delivery' },
+  });
+  if (!tpl || !tpl.isActive) return false;
+
+  const vars: Record<string, string> = {
+    customerName: data.customerName || 'お客様',
+    orderNumber: data.orderNumber || '',
+    productName: data.productName || '',
+    licenseKey: data.licenseKey || '',
+    activationUrl: data.activationUrl || '',
+  };
+
+  await sendGenericEmail({
+    to: data.customerEmail,
+    subject: renderTemplate(tpl.subject, vars),
+    body: renderTemplate(tpl.body, vars),
+  });
+  return true;
+}
+
+/**
+ * 注文に紐づく active なサブスク契約について、在庫アプリの発行APIを呼び、
+ * ライセンスキーを保存してキー送付メールを送る（P2連携の中核）。
+ * DBトランザクション外で呼ぶこと（外部API・メールを含めない）。
+ * 冪等キー=注文IDなので複数回呼ばれても在庫側で二重発行されない。
+ */
+async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      subscriptions: { include: { product: true } },
+    },
+  });
+  if (!order) return;
+
+  // active な契約のみ発行対象（pending_payment は入金前なので発行しない）
+  const targets = order.subscriptions.filter((s) => s.status === 'active');
+  if (targets.length === 0) return;
+
+  for (const sub of targets) {
+    // 既に発行・送付済みならスキップ（冪等・二重送信防止）
+    if (sub.licenseKeyDelivered && sub.licenseKey) continue;
+
+    // 1. 発行API呼び出し（billingType＋プランの上限を渡す）
+    const result = await provisionTenant({
+      orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
+      email: order.customerEmail,
+      plan: sub.product?.name,
+      billingType: sub.billingType,
+      productId: sub.productId,
+      // プランの上限（3項目必ず送る。null=無制限）
+      limits: {
+        maxParts: sub.product?.maxParts ?? null,
+        maxImageMB: sub.product?.maxImageMB ?? null,
+        maxUsers: sub.product?.maxUsers ?? null,
+      },
+    });
+
+    if (!result.success) {
+      // 失敗はnoteに記録（運営者が管理画面から手動リカバリ可能）
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: {
+          note: `[自動発行失敗 ${new Date().toISOString()}] ${result.error ?? ''}`.slice(0, 500),
+        },
+      });
+      continue;
+    }
+
+    // 2. 発行結果をSubscriptionに保存
+    await prisma.subscription.update({
+      where: { id: sub.id },
+      data: {
+        licenseKey: result.licenseKey ?? null,
+        activationUrl: result.activationUrl ?? null,
+        tenantSlug: result.slug ?? null,
+        provisionedAt: new Date(),
+      },
+    });
+
+    // 3. キー送付メール（成功したら licenseKeyDelivered=true）
+    try {
+      const delivered = await sendLicenseDeliveryEmail({
+        customerEmail: order.customerEmail,
+        customerName: order.customerName,
+        orderNumber: order.orderNumber,
+        productName: sub.product?.name ?? '',
+        licenseKey: result.licenseKey ?? '',
+        activationUrl: result.activationUrl ?? '',
+      });
+      if (delivered) {
+        await prisma.subscription.update({
+          where: { id: sub.id },
+          data: { licenseKeyDelivered: true },
+        });
+      }
+    } catch (mailErr) {
+      console.error('[provision] キー送付メール失敗:', mailErr);
+      // メール失敗でもキーは保存済み。運営者が管理画面から手動送付できる。
+    }
+  }
+}
+
+/**
+ * PUT /api/admin/orders/:id/confirm-payment
+ * 入金確認処理（管理者専用）: 注文を pending → paid にする。
+ * 銀行振込の入金確認に使う。紐づくサブスク契約(pending_payment)を active に昇格し、
+ * 入金確認メールを自動送信する。
+ */
+export async function confirmPayment(req: Request, res: Response) {
+  try {
+    const id = getStringParam(req.params.id);
+
+    const order = await prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      return res.status(404).json({ success: false, message: '注文が見つかりません' });
+    }
+
+    if (order.status === 'cancelled') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'キャンセル済みの注文は入金確認できません' });
+    }
+    if (order.status !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: `この注文は入金確認できません（現在のステータス: ${order.status}）`,
+      });
+    }
+
+    // トランザクション: 注文をpaidに更新 + 紐づくサブスク契約をactiveへ昇格
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id },
+        data: { status: 'paid' },
+        include: {
+          user: { select: { id: true, email: true, name: true } },
+          items: { include: { product: { include: { category: true } } } },
+        },
+      });
+
+      // 入金待ちのサブスク契約を利用中へ昇格
+      // （将来のP2ではここが在庫アプリの発行API(provision)を叩くフックポイントになる）
+      await tx.subscription.updateMany({
+        where: { orderId: id, status: 'pending_payment' },
+        data: { status: 'active' },
+      });
+
+      return updated;
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
+    });
+
+    // 入金確認メールを自動送信（失敗しても入金確認は成功扱い）
+    try {
+      await sendPaymentReceivedEmail({
+        customerEmail: updatedOrder.customerEmail,
+        customerName: updatedOrder.customerName,
+        orderNumber: updatedOrder.orderNumber,
+        totalAmount: updatedOrder.totalAmount,
+      });
+    } catch (emailError) {
+      console.error('入金確認メール送信エラー:', emailError);
+    }
+
+    // 在庫アプリの発行API連携（P2）: paid確定後、activeなサブスク契約について
+    // テナント発行→ライセンスキー保存→キー送付メール。失敗しても入金確認自体は成功扱い。
+    try {
+      await provisionAndDeliverForOrder(id!);
+    } catch (provisionError) {
+      console.error('発行連携エラー:', provisionError);
+    }
+
+    return res.json({
+      success: true,
+      message: '入金を確認しました',
+      order: updatedOrder,
+    });
+  } catch (error: any) {
+    console.error('入金確認エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || '入金確認に失敗しました',
+    });
+  }
+}
+
+/**
  * PUT /api/admin/orders/:id/ship
  * 発送処理（管理者専用）
  */
@@ -911,10 +1232,25 @@ export async function cancelOrder(req: Request, res: Response) {
           },
         },
       });
+    }, {
+      maxWait: 10000,
+      timeout: 20000,
     });
 
-    // TODO: キャンセル通知メールを送信（Resend SDK使用）
-    // await sendCancellationNotificationEmail(updatedOrder);
+    // キャンセル通知メールを送信（Resend SDK使用）
+    // メール送信失敗時もキャンセル処理は成功として扱う
+    if (updatedOrder.customerEmail) {
+      try {
+        await sendCancellationNotificationEmail({
+          to: updatedOrder.customerEmail,
+          customerName: updatedOrder.customerName,
+          orderNumber: updatedOrder.orderNumber,
+          cancelReason: updatedOrder.cancelReason ?? undefined,
+        });
+      } catch (emailError) {
+        console.error('キャンセル通知メール送信エラー:', emailError);
+      }
+    }
 
     return res.json({
       success: true,

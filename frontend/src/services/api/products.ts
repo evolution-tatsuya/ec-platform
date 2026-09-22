@@ -18,8 +18,18 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8432';
 export interface CreateProductRequest {
   name: string;
   price: number;
+  salePrice?: number | null;
   description?: string;
   productType: string;
+  billingType?: string; // サブスク商品の課金周期（monthly/yearly/onetime）
+  // サブスクプランの上限・料金ページ表示
+  maxParts?: number | null;
+  maxImageMB?: number | null;
+  maxUsers?: number | null;
+  planFeatures?: string[];
+  unitLabel?: string;
+  planTagline?: string;
+  isPopular?: boolean;
   categoryType: string;
   images?: string[];
   externalUrl?: string;
@@ -36,11 +46,22 @@ export interface CreateProductRequest {
 export interface UpdateProductRequest {
   name?: string;
   price?: number;
+  salePrice?: number | null;
   description?: string;
   isActive?: boolean;
   images?: string[];
   // 残す既存画像を現在の並び順で指定（並べ替え・削除に対応）
   existingImages?: { id: string; order: number }[];
+  productType?: string;
+  billingType?: string; // サブスク商品の課金周期（monthly/yearly/onetime）
+  // サブスクプランの上限・料金ページ表示
+  maxParts?: number | null;
+  maxImageMB?: number | null;
+  maxUsers?: number | null;
+  planFeatures?: string[];
+  unitLabel?: string;
+  planTagline?: string;
+  isPopular?: boolean;
   externalUrl?: string;
   preparationDays?: number;
   allowWeekendDelivery?: boolean;
@@ -137,9 +158,21 @@ export const createAdminProduct = async (
     formData.append('name', data.name);
     formData.append('price', String(data.price));
     formData.append('productType', data.productType);
+    if (data.billingType) formData.append('billingType', data.billingType);
+    // サブスクプランの上限・料金ページ表示
+    if (data.maxParts !== undefined) formData.append('maxParts', data.maxParts === null ? '' : String(data.maxParts));
+    if (data.maxImageMB !== undefined) formData.append('maxImageMB', data.maxImageMB === null ? '' : String(data.maxImageMB));
+    if (data.maxUsers !== undefined) formData.append('maxUsers', data.maxUsers === null ? '' : String(data.maxUsers));
+    if (data.planFeatures !== undefined) formData.append('planFeatures', JSON.stringify(data.planFeatures));
+    if (data.unitLabel !== undefined) formData.append('unitLabel', data.unitLabel);
+    if (data.planTagline !== undefined) formData.append('planTagline', data.planTagline);
+    if (data.isPopular !== undefined) formData.append('isPopular', String(data.isPopular));
     formData.append('categoryType', data.categoryType);
 
     // オプション項目
+    if (data.salePrice !== undefined && data.salePrice !== null) {
+      formData.append('salePrice', String(data.salePrice));
+    }
     if (data.description) formData.append('description', data.description);
     if (data.externalUrl) formData.append('externalUrl', data.externalUrl);
     if (data.preparationDays !== undefined) formData.append('preparationDays', String(data.preparationDays));
@@ -185,8 +218,22 @@ export const updateAdminProduct = async (
     // 更新項目のみ追加
     if (data.name !== undefined) formData.append('name', data.name);
     if (data.price !== undefined) formData.append('price', String(data.price));
+    // セール価格: 数値なら設定、null/空文字なら解除（空文字で送信）
+    if (data.salePrice !== undefined) {
+      formData.append('salePrice', data.salePrice === null ? '' : String(data.salePrice));
+    }
     if (data.description !== undefined) formData.append('description', data.description);
     if (data.isActive !== undefined) formData.append('isActive', String(data.isActive));
+    if (data.productType !== undefined) formData.append('productType', data.productType);
+    if (data.billingType !== undefined) formData.append('billingType', data.billingType);
+    // サブスクプランの上限・料金ページ表示
+    if (data.maxParts !== undefined) formData.append('maxParts', data.maxParts === null ? '' : String(data.maxParts));
+    if (data.maxImageMB !== undefined) formData.append('maxImageMB', data.maxImageMB === null ? '' : String(data.maxImageMB));
+    if (data.maxUsers !== undefined) formData.append('maxUsers', data.maxUsers === null ? '' : String(data.maxUsers));
+    if (data.planFeatures !== undefined) formData.append('planFeatures', JSON.stringify(data.planFeatures));
+    if (data.unitLabel !== undefined) formData.append('unitLabel', data.unitLabel);
+    if (data.planTagline !== undefined) formData.append('planTagline', data.planTagline);
+    if (data.isPopular !== undefined) formData.append('isPopular', String(data.isPopular));
     if (data.externalUrl !== undefined) formData.append('externalUrl', data.externalUrl);
     if (data.preparationDays !== undefined) formData.append('preparationDays', String(data.preparationDays));
     if (data.allowWeekendDelivery !== undefined) formData.append('allowWeekendDelivery', String(data.allowWeekendDelivery));

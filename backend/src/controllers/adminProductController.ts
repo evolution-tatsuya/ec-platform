@@ -10,11 +10,56 @@ import {
   buildProductImageList,
   buildProductImageUrls,
 } from '../utils/productImageService';
+import { changePlan } from '../services/inventoryProvisionService';
 
 // ヘルパー関数: string | string[] を string に変換
 const getStringParam = (param: string | string[] | undefined): string | undefined => {
   if (Array.isArray(param)) return param[0];
   return param;
+};
+
+// サブスクプランの上限を整数に変換。空文字/未指定/'null' は null（＝無制限）扱い。
+const parseLimitInt = (v: unknown): number | null => {
+  if (v === undefined || v === null || v === '' || v === 'null') return null;
+  const n = parseInt(String(v), 10);
+  return Number.isFinite(n) ? n : null;
+};
+
+// 機能リストを JSON文字列（配列）に正規化して保存。配列/JSON文字列/改行区切り文字列に対応。
+const normalizeFeatures = (v: unknown): string | null => {
+  if (v === undefined || v === null || v === '') return null;
+  if (Array.isArray(v)) return JSON.stringify(v.filter((x) => typeof x === 'string' && x.trim()));
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) return JSON.stringify(parsed.filter((x) => typeof x === 'string' && x.trim()));
+    } catch {
+      // JSONでなければ改行区切りとして扱う
+      return JSON.stringify(v.split('\n').map((s) => s.trim()).filter(Boolean));
+    }
+  }
+  return null;
+};
+
+// multipart経由の真偽値（'true'/'false'/boolean）をbooleanに変換。
+const parseBool = (v: unknown): boolean => {
+  if (typeof v === 'boolean') return v;
+  return v === 'true' || v === '1';
+};
+
+// DB保存の planFeatures（JSON文字列）を配列に戻す（フロントは配列で扱う）。
+const parsePlanFeatures = (v: unknown): string[] | null => {
+  if (v === null || v === undefined || v === '') return null;
+  if (Array.isArray(v)) return v as string[];
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 };
 
 // DBカテゴリーのslug → フロントのcategoryType(enum: cars/events/digital) に逆変換する。
@@ -141,6 +186,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
           images: productImages.map((img) => img.detailUrl), // 互換: images: string[]
           productImages, // 管理UI用の詳細（並べ替え・削除に使用）
           tags: parsedTags,
+          planFeatures: parsePlanFeatures(product.planFeatures), // JSON文字列→配列
           categoryType: slugToCategoryType(product.category?.slug), // enum値に変換して返す
           currentStock: inventorySum._sum?.quantity || 0,
         };
@@ -198,9 +244,19 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       slug: requestSlug,
       description,
       price,
+      salePrice,
       categoryId: requestCategoryId,
       categoryType,
       productType,
+      billingType,
+      // サブスクプランの上限・料金ページ表示（管理画面で編集可能）
+      maxParts,
+      maxImageMB,
+      maxUsers,
+      planFeatures,
+      unitLabel,
+      planTagline,
+      isPopular,
       preparationDays = 3,
       allowWeekendDelivery = true,
       initialStock = 0,
@@ -261,6 +317,19 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return next(createError('価格は0以上である必要があります', 400));
     }
 
+    // セール価格のバリデーション（指定時のみ）
+    const hasSalePrice =
+      salePrice !== undefined && salePrice !== null && salePrice !== '';
+    const parsedSalePrice = hasSalePrice ? parseInt(salePrice, 10) : null;
+    if (hasSalePrice) {
+      if (parsedSalePrice === null || Number.isNaN(parsedSalePrice) || parsedSalePrice < 0) {
+        return next(createError('セール価格は0以上である必要があります', 400));
+      }
+      if (parsedSalePrice >= parseInt(price, 10)) {
+        return next(createError('セール価格は通常価格より低く設定してください', 400));
+      }
+    }
+
     // スラッグ重複チェック
     const existingProduct = await prisma.product.findUnique({
       where: { slug },
@@ -290,8 +359,19 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
           slug,
           description,
           price: parseInt(price, 10),
+          salePrice: parsedSalePrice,
           categoryId,
           productType,
+          // サブスク商品のみ課金周期を保存（それ以外はnull）
+          billingType: productType === 'subscription' ? billingType || 'monthly' : null,
+          // サブスクプランの上限・料金ページ表示（サブスク以外はnull/デフォルト）
+          maxParts: productType === 'subscription' ? parseLimitInt(maxParts) : null,
+          maxImageMB: productType === 'subscription' ? parseLimitInt(maxImageMB) : null,
+          maxUsers: productType === 'subscription' ? parseLimitInt(maxUsers) : null,
+          planFeatures: productType === 'subscription' ? normalizeFeatures(planFeatures) : null,
+          unitLabel: productType === 'subscription' ? (unitLabel || null) : null,
+          planTagline: productType === 'subscription' ? (planTagline || null) : null,
+          isPopular: productType === 'subscription' ? parseBool(isPopular) : false,
           preparationDays: parseInt(preparationDays, 10),
           allowWeekendDelivery: parsedAllowWeekendDelivery,
           isActive: true,
@@ -376,6 +456,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
         productImages,
         categoryType: slugToCategoryType(product.category?.slug), // enum値に変換（編集フォームの必須項目）
         tags: parsedTags,
+        planFeatures: parsePlanFeatures(product.planFeatures), // JSON文字列→配列
         currentStock: inventorySum._sum?.quantity || 0,
       },
     });
@@ -402,9 +483,19 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       slug,
       description,
       price,
+      salePrice,
       categoryId,
       categoryType,
       productType,
+      billingType,
+      // サブスクプランの上限・料金ページ表示
+      maxParts,
+      maxImageMB,
+      maxUsers,
+      planFeatures,
+      unitLabel,
+      planTagline,
+      isPopular,
       externalUrl,
       preparationDays,
       allowWeekendDelivery,
@@ -518,6 +609,24 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
 
     // multipart/form-dataの場合、全て文字列として送信されるので変換
     const parsedPrice = price !== undefined ? parseInt(price, 10) : undefined;
+    // セール価格: undefined=変更なし / 空文字・null=解除(null) / 値=設定
+    let parsedSalePrice: number | null | undefined;
+    if (salePrice === undefined) {
+      parsedSalePrice = undefined;
+    } else if (salePrice === null || salePrice === '') {
+      parsedSalePrice = null;
+    } else {
+      const n = parseInt(salePrice, 10);
+      if (Number.isNaN(n) || n < 0) {
+        return next(createError('セール価格は0以上である必要があります', 400));
+      }
+      // 比較対象は更新後の価格（未変更なら既存価格）
+      const effectivePrice = parsedPrice !== undefined ? parsedPrice : existingProduct.price;
+      if (n >= effectivePrice) {
+        return next(createError('セール価格は通常価格より低く設定してください', 400));
+      }
+      parsedSalePrice = n;
+    }
     const parsedPreparationDays = preparationDays !== undefined ? parseInt(preparationDays, 10) : undefined;
     const parsedAllowWeekendDelivery = typeof allowWeekendDelivery === 'string'
       ? allowWeekendDelivery === 'true'
@@ -538,8 +647,21 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         ...(slug && { slug }),
         ...(description !== undefined && { description }),
         ...(parsedPrice !== undefined && { price: parsedPrice }),
+        ...(parsedSalePrice !== undefined && { salePrice: parsedSalePrice }),
         ...(resolvedCategoryId && { categoryId: resolvedCategoryId }),
         ...(productType && { productType }),
+        // サブスク商品なら課金周期を保存、それ以外に切り替えたらnullクリア
+        ...(productType && {
+          billingType: productType === 'subscription' ? billingType || 'monthly' : null,
+        }),
+        // サブスクプランの上限・料金ページ表示（送られてきたフィールドのみ更新）
+        ...(maxParts !== undefined && { maxParts: parseLimitInt(maxParts) }),
+        ...(maxImageMB !== undefined && { maxImageMB: parseLimitInt(maxImageMB) }),
+        ...(maxUsers !== undefined && { maxUsers: parseLimitInt(maxUsers) }),
+        ...(planFeatures !== undefined && { planFeatures: normalizeFeatures(planFeatures) }),
+        ...(unitLabel !== undefined && { unitLabel: unitLabel || null }),
+        ...(planTagline !== undefined && { planTagline: planTagline || null }),
+        ...(isPopular !== undefined && { isPopular: parseBool(isPopular) }),
         ...(externalUrl !== undefined && { externalUrl }),
         ...(parsedPreparationDays !== undefined && { preparationDays: parsedPreparationDays }),
         ...(parsedAllowWeekendDelivery !== undefined && { allowWeekendDelivery: parsedAllowWeekendDelivery }),
@@ -551,6 +673,42 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         images: true,
       },
     });
+
+    // サブスク商品の上限が変わったら、契約中の既存顧客の在庫上限に自動反映（方法A: EC側でループ）。
+    // 名前・価格・機能リスト等の変更は在庫反映不要（上限3項目が変わった時だけ実行）。
+    const limitsChanged =
+      updatedProduct.productType === 'subscription' &&
+      (existingProduct.maxParts !== updatedProduct.maxParts ||
+        existingProduct.maxImageMB !== updatedProduct.maxImageMB ||
+        existingProduct.maxUsers !== updatedProduct.maxUsers);
+    if (limitsChanged) {
+      try {
+        // この商品を契約中(active)の全契約に、新しい上限を反映
+        const activeSubs = await prisma.subscription.findMany({
+          where: { productId: id, status: 'active' },
+          include: { order: { select: { orderNumber: true } } },
+        });
+        const newLimits = {
+          maxParts: updatedProduct.maxParts,
+          maxImageMB: updatedProduct.maxImageMB,
+          maxUsers: updatedProduct.maxUsers,
+        };
+        for (const sub of activeSubs) {
+          const orderNumber = sub.order?.orderNumber;
+          if (!orderNumber) continue;
+          const r = await changePlan({ orderId: orderNumber, productId: id, limits: newLimits });
+          if (!r.success) {
+            console.error(`[plan-change] 契約 ${sub.id} の上限反映失敗:`, r.error);
+          }
+        }
+        if (activeSubs.length > 0) {
+          console.log(`[plan-change] ${activeSubs.length}件の契約に上限を反映しました`);
+        }
+      } catch (e) {
+        console.error('[plan-change] 上限反映処理でエラー:', e);
+        // 反映失敗でも商品更新自体は成功として続行（運営者が再実行できる）
+      }
+    }
 
     // 在庫数を計算
     const inventorySum = await prisma.inventoryLog.aggregate({
@@ -569,6 +727,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         images: productImages.map((img) => img.detailUrl),
         productImages,
         tags: parsedResponseTags,
+        planFeatures: parsePlanFeatures(updatedProduct.planFeatures), // JSON文字列→配列
         currentStock: inventorySum._sum?.quantity || 0,
       },
       message: '商品を更新しました',

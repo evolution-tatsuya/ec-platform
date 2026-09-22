@@ -13,6 +13,7 @@ import {
   getAdminOrders,
   getAdminOrderById,
   shipOrder,
+  confirmPayment,
   generateInvoice,
   generateReceipt,
   generateQuote,
@@ -58,6 +59,23 @@ export const useShipOrder = () => {
       queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
       // 該当注文の詳細キャッシュを無効化
       queryClient.invalidateQueries({ queryKey: ['adminOrder', data.id] });
+    },
+  });
+};
+
+/**
+ * 入金確認フック（管理者）: pending → paid
+ */
+export const useConfirmPayment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Order, Error, { id: string }>({
+    mutationFn: ({ id }) => confirmPayment(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['adminOrder', data.id] });
+      // サブスク契約も active に昇格するので管理サブスク一覧も更新
+      queryClient.invalidateQueries({ queryKey: ['admin-subscriptions'] });
     },
   });
 };

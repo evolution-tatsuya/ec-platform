@@ -160,26 +160,40 @@ export default function CheckoutPage() {
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.BANK_TRANSFER);
   const [notes, setNotes] = useState('');
+  // 注文確定済みフラグ。カートが空になっても「カートへ戻す」リダイレクトを抑制するため。
+  const [orderPlaced, setOrderPlaced] = useState(false);
+
+  // カートにサブスク商品（productType='subscription'）が含まれるか
+  const hasSubscriptionItem = (data?.cart?.items || []).some(
+    (item: any) => item.product?.productType === 'subscription'
+  );
 
   // 注文作成Mutation
   const createOrderMutation = useMutation({
     mutationFn: orderAPI.createOrder,
     onSuccess: (response) => {
+      // 注文確定済み。カート空リダイレクトを抑制する。
+      setOrderPlaced(true);
       // カートをクリア
       queryClient.invalidateQueries({ queryKey: ['cart'] });
 
       // 注文完了メッセージ
+      const paymentNote =
+        paymentMethod === PaymentMethod.BANK_TRANSFER
+          ? '振込先情報をメールでお送りします。'
+          : '決済画面に遷移します。';
+
+      // サブスク商品を含む場合はライセンスキーの受け取り案内を追加
+      const licenseNote = hasSubscriptionItem
+        ? '\n\n【ライセンスキーについて】\nご入金確認後、運営者よりライセンスキーをメールでお届けします。届いたキーをアプリに入力してご利用ください。'
+        : '';
+
       alert(
-        `注文を受け付けました！\n\n注文番号: ${response.order.orderNumber}\n\n${
-          paymentMethod === PaymentMethod.BANK_TRANSFER
-            ? '振込先情報をメールでお送りします。'
-            : '決済画面に遷移します。'
-        }`
+        `注文を受け付けました！\n\n注文番号: ${response.order.orderNumber}\n\n${paymentNote}${licenseNote}`
       );
 
-      // TODO: 本番環境では決済画面に遷移
-      // navigate('/order-complete');
-      navigate('/');
+      // サブスク購入時はマイページの契約管理へ、それ以外はトップへ
+      navigate(hasSubscriptionItem ? '/mypage' : '/');
     },
     onError: (error: any) => {
       const errorMessage = error instanceof Error ? error.message : '不明なエラー';
@@ -221,8 +235,11 @@ ${notes ? `【備考】${notes}` : ''}
     `.trim();
 
     try {
+      // バックエンド/DBは小文字の決済手段（bank_transfer/credit_card/paypay）で判定するため正規化。
+      // フロントのPaymentMethod enumは大文字（BANK_TRANSFER等）なので変換して送る。
+      const paymentMethodValue = String(paymentMethod).toLowerCase();
       await createOrderMutation.mutateAsync({
-        paymentMethod: paymentMethod as any,
+        paymentMethod: paymentMethodValue as any,
         shippingAddress,
         customerName: name,
         customerEmail: memberEmail,
@@ -287,8 +304,8 @@ ${notes ? `【備考】${notes}` : ''}
     );
   }
 
-  // カートが空の場合
-  if (items.length === 0) {
+  // カートが空の場合（注文確定直後は onSuccess 側の遷移に任せてリダイレクトしない）
+  if (items.length === 0 && !orderPlaced) {
     navigate('/cart');
     return null;
   }

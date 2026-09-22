@@ -20,6 +20,7 @@ import {
   adminGetOrders,
   adminGetOrderById,
   shipOrder,
+  confirmPayment,
   cancelOrder,
   generateInvoice,
   generateReceipt,
@@ -59,6 +60,7 @@ adminOrderRouter.get('/', adminGetOrders);
 adminOrderRouter.get('/:id', adminGetOrderById);
 
 // PUT /api/admin/orders/:id/ship - 発送処理
+adminOrderRouter.put('/:id/confirm-payment', confirmPayment);
 adminOrderRouter.put('/:id/ship', shipOrder);
 
 // PUT /api/admin/orders/:id/cancel - キャンセル処理

@@ -11,6 +11,8 @@ import {
   DialogContent,
   DialogTitle,
   FormControl,
+  FormControlLabel,
+  Checkbox,
   IconButton,
   InputLabel,
   MenuItem,
@@ -69,9 +71,20 @@ const productSchema = z.object({
   name: z.string().min(1, '商品名は必須です').max(200, '200文字以内で入力してください'),
   price: z.number({ error: '金額を入力してください' })
     .min(0, '価格は0以上で入力してください'),
+  salePrice: z.number().min(0, 'セール価格は0以上で入力してください').optional(),
   description: z.string().optional(),
-  productType: z.enum(['PHYSICAL', 'DIGITAL', 'DIGITAL_TICKET', 'EXTERNAL_LINK']),
+  productType: z.enum(['PHYSICAL', 'DIGITAL', 'DIGITAL_TICKET', 'EXTERNAL_LINK', 'SUBSCRIPTION']),
   categoryType: z.enum(['cars', 'events', 'digital']),
+  // サブスク商品の課金周期（productType=SUBSCRIPTIONの場合のみ使用）
+  billingType: z.enum(['monthly', 'yearly', 'onetime']).optional(),
+  // サブスクプランの上限（空欄=無制限）・料金ページ表示
+  maxParts: z.number().min(0).nullish(),
+  maxImageMB: z.number().min(0).nullish(),
+  maxUsers: z.number().min(0).nullish(),
+  planFeatures: z.array(z.string()).optional(),
+  unitLabel: z.string().optional(),
+  planTagline: z.string().optional(),
+  isPopular: z.boolean().optional(),
   initialStock: z.number().min(0, '在庫数は0以上で入力してください').optional(),
   externalUrl: z.string().url('有効なURLを入力してください').optional().or(z.literal('')),
   preparationDays: z.number().min(0).optional(),
@@ -96,6 +109,14 @@ const productTypeMap: Record<ProductType, string> = {
   [ProductType.DIGITAL]: 'デジタル商品',
   [ProductType.DIGITAL_TICKET]: 'イベントチケット',
   [ProductType.EXTERNAL_LINK]: '外部申し込み',
+  [ProductType.SUBSCRIPTION]: 'サブスク',
+};
+
+// 課金周期の日本語表示
+const billingTypeMap: Record<string, string> = {
+  monthly: '月額',
+  yearly: '年額',
+  onetime: '買い切り',
 };
 
 // カテゴリータイプの日本語表示
@@ -163,11 +184,13 @@ export default function AdminProductsPage() {
     formState: { errors },
     reset,
     watch,
+    setValue,
   } = useForm<ProductFormData>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: '',
       price: undefined as any, // 空スタート。0だと先頭0が残り手打ちしづらいため
+      salePrice: undefined as any,
       description: '',
       productType: ProductType.PHYSICAL,
       categoryType: 'cars' as any,
@@ -206,11 +229,27 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     if (editingProductData && openProductDialog) {
+      // DBのproductType（'subscription'等 小文字も混在）をフォームのenum値へ正規化
+      const rawType = String(editingProductData.productType || '').toLowerCase();
+      const normalizedType =
+        rawType === 'subscription'
+          ? ProductType.SUBSCRIPTION
+          : editingProductData.productType;
       reset({
         name: editingProductData.name,
         price: editingProductData.price,
+        salePrice: editingProductData.salePrice ?? undefined,
         description: editingProductData.description || '',
-        productType: editingProductData.productType,
+        productType: normalizedType,
+        billingType: (editingProductData.billingType as any) || 'monthly',
+        // サブスクプランの上限・料金ページ表示（編集時に読み込む）
+        maxParts: editingProductData.maxParts ?? null,
+        maxImageMB: editingProductData.maxImageMB ?? null,
+        maxUsers: editingProductData.maxUsers ?? null,
+        planFeatures: editingProductData.planFeatures ?? [],
+        unitLabel: editingProductData.unitLabel || '',
+        planTagline: editingProductData.planTagline || '',
+        isPopular: editingProductData.isPopular ?? false,
         categoryType: editingProductData.categoryType,
         initialStock: 0,
         externalUrl: editingProductData.externalUrl || '',
@@ -239,11 +278,25 @@ export default function AdminProductsPage() {
   // Form submit handlers
   const onSubmitCreate = async (data: ProductFormData) => {
     try {
+      const isSubscription = data.productType === ProductType.SUBSCRIPTION;
       await createProductMutation.mutateAsync({
         name: data.name,
         price: data.price,
+        salePrice: data.salePrice,
         description: data.description,
-        productType: data.productType,
+        // サブスクはバックエンド/DBが小文字 'subscription' で判定するため正規化して送信
+        productType: (isSubscription ? 'subscription' : data.productType) as any,
+        billingType: isSubscription ? data.billingType || 'monthly' : undefined,
+        // サブスクプランの上限・料金ページ表示（サブスク時のみ送信）
+        ...(isSubscription && {
+          maxParts: data.maxParts ?? null,
+          maxImageMB: data.maxImageMB ?? null,
+          maxUsers: data.maxUsers ?? null,
+          planFeatures: data.planFeatures ?? [],
+          unitLabel: data.unitLabel || undefined,
+          planTagline: data.planTagline || undefined,
+          isPopular: data.isPopular ?? false,
+        }),
         categoryType: data.categoryType,
         initialStock: data.initialStock,
         externalUrl: data.externalUrl,
@@ -277,12 +330,28 @@ export default function AdminProductsPage() {
     if (!editingProduct) return;
 
     try {
+      const isSubscription = data.productType === ProductType.SUBSCRIPTION;
       await updateProductMutation.mutateAsync({
         id: editingProduct,
         data: {
           name: data.name,
           price: data.price,
+          // 空欄ならnullを送信してセール価格を解除
+          salePrice: data.salePrice ?? null,
           description: data.description,
+          // サブスクはDBが小文字判定のため正規化。周期も一緒に送る。
+          productType: (isSubscription ? 'subscription' : data.productType) as any,
+          billingType: isSubscription ? data.billingType || 'monthly' : undefined,
+          // サブスクプランの上限・料金ページ表示（サブスク時のみ送信）
+          ...(isSubscription && {
+            maxParts: data.maxParts ?? null,
+            maxImageMB: data.maxImageMB ?? null,
+            maxUsers: data.maxUsers ?? null,
+            planFeatures: data.planFeatures ?? [],
+            unitLabel: data.unitLabel || undefined,
+            planTagline: data.planTagline || undefined,
+            isPopular: data.isPopular ?? false,
+          }),
           externalUrl: data.externalUrl,
           preparationDays: data.preparationDays,
           allowWeekendDelivery: data.allowWeekendDelivery,
@@ -381,9 +450,23 @@ export default function AdminProductsPage() {
       field: 'productType',
       headerName: '種別',
       width: 140,
-      renderCell: (params: GridRenderCellParams) => (
-        <Chip label={productTypeMap[params.value as ProductType]} size="small" />
-      ),
+      renderCell: (params: GridRenderCellParams) => {
+        // DB値が小文字（subscription等）でも正しくラベル化する
+        const raw = String(params.value || '');
+        const key = (raw.toUpperCase() as ProductType);
+        const label = productTypeMap[key] || raw || '-';
+        const billing = params.row?.billingType as string | undefined;
+        const isSub = raw.toLowerCase() === 'subscription';
+        return (
+          <Chip
+            label={
+              isSub && billing ? `${label}（${billingTypeMap[billing] ?? billing}）` : label
+            }
+            size="small"
+            color={isSub ? 'primary' : 'default'}
+          />
+        );
+      },
     },
     {
       field: 'categoryType',
@@ -402,6 +485,13 @@ export default function AdminProductsPage() {
       headerName: '価格',
       width: 120,
       renderCell: (params: GridRenderCellParams) => `¥${params.value.toLocaleString()}`,
+    },
+    {
+      field: 'salePrice',
+      headerName: 'セール価格',
+      width: 120,
+      renderCell: (params: GridRenderCellParams) =>
+        params.value != null ? `¥${(params.value as number).toLocaleString()}` : '-',
     },
     {
       field: 'currentStock',
@@ -834,6 +924,31 @@ export default function AdminProductsPage() {
                 </Grid>
                 <Grid item xs={12} sm={6}>
                   <Controller
+                    name="salePrice"
+                    control={control}
+                    render={({ field }) => (
+                      <TextField
+                        fullWidth
+                        label="セール価格（任意）"
+                        type="text"
+                        inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
+                        error={!!errors.salePrice}
+                        helperText={errors.salePrice?.message || '未入力の場合は通常価格。通常価格より低く設定してください'}
+                        value={field.value ?? ''}
+                        onFocus={handleNumberFocus}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/[^0-9]/g, '');
+                          field.onChange(digits === '' ? undefined : Number(digits));
+                        }}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        inputRef={field.ref}
+                      />
+                    )}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Controller
                     name="initialStock"
                     control={control}
                     render={({ field }) => (
@@ -893,6 +1008,7 @@ export default function AdminProductsPage() {
                           <MenuItem value={ProductType.DIGITAL}>デジタル商品</MenuItem>
                           <MenuItem value={ProductType.DIGITAL_TICKET}>イベントチケット</MenuItem>
                           <MenuItem value={ProductType.EXTERNAL_LINK}>外部申し込み</MenuItem>
+                          <MenuItem value={ProductType.SUBSCRIPTION}>サブスク</MenuItem>
                         </Select>
                       </FormControl>
                     )}
@@ -914,6 +1030,189 @@ export default function AdminProductsPage() {
                     )}
                   />
                 </Grid>
+
+                {/* 課金周期（サブスクの場合のみ表示） */}
+                {watchProductType === ProductType.SUBSCRIPTION && (
+                  <Grid item xs={12} sm={6}>
+                    <Controller
+                      name="billingType"
+                      control={control}
+                      render={({ field }) => (
+                        <FormControl fullWidth required error={!!errors.billingType}>
+                          <InputLabel>課金周期</InputLabel>
+                          <Select
+                            {...field}
+                            value={field.value || 'monthly'}
+                            label="課金周期"
+                          >
+                            <MenuItem value="monthly">月額</MenuItem>
+                            <MenuItem value="yearly">年額</MenuItem>
+                            <MenuItem value="onetime">買い切り</MenuItem>
+                          </Select>
+                        </FormControl>
+                      )}
+                    />
+                  </Grid>
+                )}
+
+                {/* サブスクプランの上限・料金ページ表示（サブスクの場合のみ） */}
+                {watchProductType === ProductType.SUBSCRIPTION && (
+                  <>
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 1 }}>
+                        プラン上限（空欄＝無制限）
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Controller
+                        name="maxParts"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            value={field.value ?? ''}
+                            onChange={(e) =>
+                              field.onChange(e.target.value === '' ? null : Number(e.target.value))
+                            }
+                            type="number"
+                            fullWidth
+                            label={`${watch('unitLabel') || 'パーツ'}数の上限`}
+                            placeholder="空欄=無制限"
+                          />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Controller
+                        name="maxImageMB"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            value={field.value ?? ''}
+                            onChange={(e) =>
+                              field.onChange(e.target.value === '' ? null : Number(e.target.value))
+                            }
+                            type="number"
+                            fullWidth
+                            label="画像容量の上限（MB）"
+                            placeholder="空欄=無制限"
+                            helperText="例: 2GB=2048"
+                          />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <Controller
+                        name="maxUsers"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            value={field.value ?? ''}
+                            onChange={(e) =>
+                              field.onChange(e.target.value === '' ? null : Number(e.target.value))
+                            }
+                            type="number"
+                            fullWidth
+                            label="閲覧人数の上限"
+                            placeholder="空欄=無制限"
+                          />
+                        )}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={6}>
+                      <Controller
+                        name="unitLabel"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            value={field.value ?? ''}
+                            fullWidth
+                            label="単位ラベル"
+                            placeholder="パーツ"
+                            helperText="上限の単位。将来「商品」「商品・パーツ」等に変更可"
+                          />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Controller
+                        name="planTagline"
+                        control={control}
+                        render={({ field }) => (
+                          <TextField
+                            {...field}
+                            value={field.value ?? ''}
+                            fullWidth
+                            label="プランの短い説明（1行）"
+                            placeholder="例: 1〜2車種を管理する小規模向け"
+                          />
+                        )}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Controller
+                        name="isPopular"
+                        control={control}
+                        render={({ field }) => (
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={!!field.value}
+                                onChange={(e) => field.onChange(e.target.checked)}
+                              />
+                            }
+                            label="「いちばん人気」バッジを表示する"
+                          />
+                        )}
+                      />
+                    </Grid>
+
+                    {/* 機能リスト（追加・削除・編集） */}
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                        機能リスト（料金ページに表示・自由に追加/削除/編集）
+                      </Typography>
+                      {(watch('planFeatures') || []).map((feat, idx) => (
+                        <Box key={idx} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={feat}
+                            onChange={(e) => {
+                              const next = [...(watch('planFeatures') || [])];
+                              next[idx] = e.target.value;
+                              setValue('planFeatures', next);
+                            }}
+                            placeholder="例: 在庫管理・検索・展開図・PDF出力"
+                          />
+                          <Button
+                            color="error"
+                            size="small"
+                            onClick={() => {
+                              const next = (watch('planFeatures') || []).filter((_, i) => i !== idx);
+                              setValue('planFeatures', next);
+                            }}
+                          >
+                            削除
+                          </Button>
+                        </Box>
+                      ))}
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() =>
+                          setValue('planFeatures', [...(watch('planFeatures') || []), ''])
+                        }
+                      >
+                        ＋ 機能を追加
+                      </Button>
+                    </Grid>
+                  </>
+                )}
 
                 {/* 外部URL（外部申し込みの場合のみ表示） */}
                 {watchProductType === ProductType.EXTERNAL_LINK && (

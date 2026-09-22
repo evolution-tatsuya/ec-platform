@@ -89,6 +89,51 @@ export const getProducts = async (req: Request, res: Response, next: NextFunctio
 };
 
 /**
+ * サブスクプラン一覧取得（料金ページ用）
+ * GET /api/products/subscription-plans
+ * 公開中のサブスク商品を、上限・機能リスト・料金ページ表示フィールド付きで返す。
+ */
+export const getSubscriptionPlans = async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const products = await prisma.product.findMany({
+      where: { isActive: true, productType: 'subscription' },
+      orderBy: { price: 'asc' },
+    });
+
+    const plans = products.map((p) => {
+      let features: string[] = [];
+      if (p.planFeatures) {
+        try {
+          const parsed = JSON.parse(p.planFeatures);
+          if (Array.isArray(parsed)) features = parsed;
+        } catch {
+          features = [];
+        }
+      }
+      return {
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: p.price,
+        billingType: p.billingType, // monthly | yearly | onetime
+        maxParts: p.maxParts,
+        maxImageMB: p.maxImageMB,
+        maxUsers: p.maxUsers,
+        unitLabel: p.unitLabel || 'パーツ',
+        planTagline: p.planTagline || '',
+        isPopular: p.isPopular,
+        planFeatures: features,
+        description: p.description || '',
+      };
+    });
+
+    return res.json({ success: true, plans });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * 商品詳細取得
  * GET /api/products/:id
  */

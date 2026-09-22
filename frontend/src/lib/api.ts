@@ -115,8 +115,10 @@ export interface Product {
   id: string;
   name: string;
   price: number;
+  salePrice?: number | null;
   description?: string;
   productType: string;
+  billingType?: string | null; // サブスク商品の課金周期（monthly/yearly/onetime）
   categoryId: string;
   images: string[];
   externalUrl?: string;

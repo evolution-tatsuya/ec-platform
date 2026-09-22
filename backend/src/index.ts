@@ -34,6 +34,8 @@ import newsRoutes from './routes/newsRoutes';
 import adminNewsRoutes from './routes/adminNewsRoutes';
 import adminTopPageRoutes from './routes/adminTopPageRoutes';
 import adminEmailRoutes from './routes/adminEmailRoutes';
+import subscriptionRoutes, { adminSubscriptionRouter } from './routes/subscriptionRoutes';
+import { ensureDefaultTemplates } from './controllers/emailTemplateController';
 
 const app = express();
 
@@ -138,12 +140,14 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/shipping', shippingRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/top-page', topPageRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/admin/settings', adminSettingsRouter);
 app.use('/api/admin/orders', adminOrderRouter);
+app.use('/api/admin/subscriptions', adminSubscriptionRouter);
 app.use('/api/admin/products', adminProductRoutes);
 app.use('/api/admin/inventory-logs', adminInventoryRoutes);
 app.use('/api/admin', adminDashboardRoutes);
@@ -187,6 +191,11 @@ Backend URL: ${config.backendUrl}
 Frontend URL: ${config.frontendUrl}
 =================================
   `);
+
+  // 不足しているデフォルトメールテンプレートを補充（license_delivery 等の新種別を保証）
+  ensureDefaultTemplates().catch((e) =>
+    console.error('メールテンプレート初期化エラー:', e)
+  );
 });
 
 // ===== グレースフルシャットダウン =====
