@@ -27,6 +27,7 @@ export interface CreateProductRequest {
   maxImageMB?: number | null;
   maxUsers?: number | null;
   planFeatures?: string[];
+  planFeatureKeys?: string[];
   unitLabel?: string;
   planTagline?: string;
   isPopular?: boolean;
@@ -59,6 +60,7 @@ export interface UpdateProductRequest {
   maxImageMB?: number | null;
   maxUsers?: number | null;
   planFeatures?: string[];
+  planFeatureKeys?: string[];
   unitLabel?: string;
   planTagline?: string;
   isPopular?: boolean;
@@ -164,6 +166,7 @@ export const createAdminProduct = async (
     if (data.maxImageMB !== undefined) formData.append('maxImageMB', data.maxImageMB === null ? '' : String(data.maxImageMB));
     if (data.maxUsers !== undefined) formData.append('maxUsers', data.maxUsers === null ? '' : String(data.maxUsers));
     if (data.planFeatures !== undefined) formData.append('planFeatures', JSON.stringify(data.planFeatures));
+    if (data.planFeatureKeys !== undefined) formData.append('planFeatureKeys', JSON.stringify(data.planFeatureKeys));
     if (data.unitLabel !== undefined) formData.append('unitLabel', data.unitLabel);
     if (data.planTagline !== undefined) formData.append('planTagline', data.planTagline);
     if (data.isPopular !== undefined) formData.append('isPopular', String(data.isPopular));
@@ -231,6 +234,7 @@ export const updateAdminProduct = async (
     if (data.maxImageMB !== undefined) formData.append('maxImageMB', data.maxImageMB === null ? '' : String(data.maxImageMB));
     if (data.maxUsers !== undefined) formData.append('maxUsers', data.maxUsers === null ? '' : String(data.maxUsers));
     if (data.planFeatures !== undefined) formData.append('planFeatures', JSON.stringify(data.planFeatures));
+    if (data.planFeatureKeys !== undefined) formData.append('planFeatureKeys', JSON.stringify(data.planFeatureKeys));
     if (data.unitLabel !== undefined) formData.append('unitLabel', data.unitLabel);
     if (data.planTagline !== undefined) formData.append('planTagline', data.planTagline);
     if (data.isPopular !== undefined) formData.append('isPopular', String(data.isPopular));

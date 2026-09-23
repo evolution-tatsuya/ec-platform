@@ -41,6 +41,62 @@ const normalizeFeatures = (v: unknown): string | null => {
   return null;
 };
 
+// 在庫アプリの機能キー確定版（在庫側と合意した7キー）。これ以外は無効として弾く。
+const INVENTORY_FEATURE_KEYS = [
+  'stocktake',
+  'csv_import',
+  'csv_export',
+  'pdf_export',
+  'qr_code',
+  'search',
+  'part_detail',
+] as const;
+
+// 機能キー配列を正規化して保存用JSON文字列にする。7キーのみ許可・重複除去。
+// 空/未指定/全キー選択 は null（＝全機能ON。在庫側仕様に合わせる）。
+const normalizeFeatureKeys = (v: unknown): string | null => {
+  let arr: unknown[] = [];
+  if (Array.isArray(v)) arr = v;
+  else if (typeof v === 'string' && v !== '') {
+    try {
+      const parsed = JSON.parse(v);
+      if (Array.isArray(parsed)) arr = parsed;
+    } catch {
+      arr = v.split(',').map((s) => s.trim());
+    }
+  } else {
+    return null;
+  }
+  const valid = Array.from(
+    new Set(
+      arr
+        .filter((x): x is string => typeof x === 'string')
+        .filter((x) => (INVENTORY_FEATURE_KEYS as readonly string[]).includes(x))
+    )
+  );
+  // 空 or 全キー選択は「全機能ON」＝null（無駄なfeatures送信を避ける）
+  if (valid.length === 0 || valid.length === INVENTORY_FEATURE_KEYS.length) {
+    return null;
+  }
+  return JSON.stringify(valid);
+};
+
+// DB保存の planFeatureKeys（JSON文字列 or null）を「在庫に送るfeatures配列」に変換。
+// null/空 = 全機能ON（在庫にfeaturesを送らない＝undefinedを意味する null を返す）。
+const parseFeatureKeys = (v: unknown): string[] | null => {
+  if (v === null || v === undefined || v === '') return null;
+  if (Array.isArray(v)) return v.length ? (v as string[]) : null;
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) && parsed.length ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 // multipart経由の真偽値（'true'/'false'/boolean）をbooleanに変換。
 const parseBool = (v: unknown): boolean => {
   if (typeof v === 'boolean') return v;
@@ -187,6 +243,7 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
           productImages, // 管理UI用の詳細（並べ替え・削除に使用）
           tags: parsedTags,
           planFeatures: parsePlanFeatures(product.planFeatures), // JSON文字列→配列
+          planFeatureKeys: parsePlanFeatures(product.planFeatureKeys), // JSON文字列→配列
           categoryType: slugToCategoryType(product.category?.slug), // enum値に変換して返す
           currentStock: inventorySum._sum?.quantity || 0,
         };
@@ -254,6 +311,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       maxImageMB,
       maxUsers,
       planFeatures,
+      planFeatureKeys,
       unitLabel,
       planTagline,
       isPopular,
@@ -369,6 +427,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
           maxImageMB: productType === 'subscription' ? parseLimitInt(maxImageMB) : null,
           maxUsers: productType === 'subscription' ? parseLimitInt(maxUsers) : null,
           planFeatures: productType === 'subscription' ? normalizeFeatures(planFeatures) : null,
+          planFeatureKeys: productType === 'subscription' ? normalizeFeatureKeys(planFeatureKeys) : null,
           unitLabel: productType === 'subscription' ? (unitLabel || null) : null,
           planTagline: productType === 'subscription' ? (planTagline || null) : null,
           isPopular: productType === 'subscription' ? parseBool(isPopular) : false,
@@ -457,6 +516,7 @@ export const getProductById = async (req: Request, res: Response, next: NextFunc
         categoryType: slugToCategoryType(product.category?.slug), // enum値に変換（編集フォームの必須項目）
         tags: parsedTags,
         planFeatures: parsePlanFeatures(product.planFeatures), // JSON文字列→配列
+        planFeatureKeys: parsePlanFeatures(product.planFeatureKeys), // JSON文字列→配列
         currentStock: inventorySum._sum?.quantity || 0,
       },
     });
@@ -493,6 +553,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       maxImageMB,
       maxUsers,
       planFeatures,
+      planFeatureKeys,
       unitLabel,
       planTagline,
       isPopular,
@@ -659,6 +720,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         ...(maxImageMB !== undefined && { maxImageMB: parseLimitInt(maxImageMB) }),
         ...(maxUsers !== undefined && { maxUsers: parseLimitInt(maxUsers) }),
         ...(planFeatures !== undefined && { planFeatures: normalizeFeatures(planFeatures) }),
+        ...(planFeatureKeys !== undefined && { planFeatureKeys: normalizeFeatureKeys(planFeatureKeys) }),
         ...(unitLabel !== undefined && { unitLabel: unitLabel || null }),
         ...(planTagline !== undefined && { planTagline: planTagline || null }),
         ...(isPopular !== undefined && { isPopular: parseBool(isPopular) }),
@@ -674,16 +736,20 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       },
     });
 
-    // サブスク商品の上限が変わったら、契約中の既存顧客の在庫上限に自動反映（方法A: EC側でループ）。
-    // 名前・価格・機能リスト等の変更は在庫反映不要（上限3項目が変わった時だけ実行）。
+    // サブスク商品の上限または機能フラグが変わったら、契約中の既存顧客の在庫に自動反映
+    // （方法A: EC側でループ）。名前・価格・表示用機能リスト等の変更は在庫反映不要。
+    const isSubscription = updatedProduct.productType === 'subscription';
     const limitsChanged =
-      updatedProduct.productType === 'subscription' &&
+      isSubscription &&
       (existingProduct.maxParts !== updatedProduct.maxParts ||
         existingProduct.maxImageMB !== updatedProduct.maxImageMB ||
         existingProduct.maxUsers !== updatedProduct.maxUsers);
-    if (limitsChanged) {
+    const featuresChanged =
+      isSubscription &&
+      (existingProduct.planFeatureKeys ?? null) !== (updatedProduct.planFeatureKeys ?? null);
+    if (limitsChanged || featuresChanged) {
       try {
-        // この商品を契約中(active)の全契約に、新しい上限を反映
+        // この商品を契約中(active)の全契約に、新しい上限・機能を反映
         const activeSubs = await prisma.subscription.findMany({
           where: { productId: id, status: 'active' },
           include: { order: { select: { orderNumber: true } } },
@@ -693,19 +759,26 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
           maxImageMB: updatedProduct.maxImageMB,
           maxUsers: updatedProduct.maxUsers,
         };
+        // planFeatureKeys(JSON文字列 or null)→features配列。null=全機能ON（features送らない）。
+        const features = parseFeatureKeys(updatedProduct.planFeatureKeys);
         for (const sub of activeSubs) {
           const orderNumber = sub.order?.orderNumber;
           if (!orderNumber) continue;
-          const r = await changePlan({ orderId: orderNumber, productId: id, limits: newLimits });
+          const r = await changePlan({
+            orderId: orderNumber,
+            productId: id,
+            limits: newLimits,
+            ...(features ? { features } : {}),
+          });
           if (!r.success) {
-            console.error(`[plan-change] 契約 ${sub.id} の上限反映失敗:`, r.error);
+            console.error(`[plan-change] 契約 ${sub.id} の反映失敗:`, r.error);
           }
         }
         if (activeSubs.length > 0) {
-          console.log(`[plan-change] ${activeSubs.length}件の契約に上限を反映しました`);
+          console.log(`[plan-change] ${activeSubs.length}件の契約に上限/機能を反映しました`);
         }
       } catch (e) {
-        console.error('[plan-change] 上限反映処理でエラー:', e);
+        console.error('[plan-change] 反映処理でエラー:', e);
         // 反映失敗でも商品更新自体は成功として続行（運営者が再実行できる）
       }
     }
@@ -728,6 +801,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         productImages,
         tags: parsedResponseTags,
         planFeatures: parsePlanFeatures(updatedProduct.planFeatures), // JSON文字列→配列
+        planFeatureKeys: parsePlanFeatures(updatedProduct.planFeatureKeys), // JSON文字列→配列
         currentStock: inventorySum._sum?.quantity || 0,
       },
       message: '商品を更新しました',

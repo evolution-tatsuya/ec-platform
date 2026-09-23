@@ -141,7 +141,8 @@ export interface Product {
   maxImageMB?: number | null;
   maxUsers?: number | null;
   // 料金ページ表示（管理画面で編集可能）
-  planFeatures?: string[] | null; // 機能リスト（自由に追加・削除・編集）
+  planFeatures?: string[] | null; // 機能リスト（表示用テキスト・自由に追加・削除・編集）
+  planFeatureKeys?: string[] | null; // 在庫アプリに送る有効機能キー（null/空=全機能ON）
   unitLabel?: string | null; // 上限の単位ラベル（デフォルト「パーツ」）
   planTagline?: string | null; // プランの短い説明（1行）
   isPopular?: boolean; // 「いちばん人気」バッジ

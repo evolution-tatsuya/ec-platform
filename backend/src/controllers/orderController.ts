@@ -69,6 +69,24 @@ function calcNextBillingDate(billingType: string): Date | null {
 }
 
 /**
+ * 商品の planFeatureKeys（JSON文字列 or null）を「在庫に送るfeatures配列」に変換。
+ * null/空 = 全機能ON（在庫にfeaturesを送らない）。
+ */
+function parseProductFeatureKeys(v: unknown): string[] | null {
+  if (v === null || v === undefined || v === '') return null;
+  if (Array.isArray(v)) return v.length ? (v as string[]) : null;
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) && parsed.length ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * 在庫数を取得（InventoryLogの合計）
  */
 async function getStockQuantity(
@@ -921,6 +939,9 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
       maxUsers: sub.product?.maxUsers ?? null,
     };
 
+    // 有効な機能キー（planFeatureKeys: JSON文字列 or null）。null=全機能ON（送らない）。
+    const features = parseProductFeatureKeys(sub.product?.planFeatureKeys);
+
     // 1. 発行API呼び出し。
     //    引き継ぎ元(inheritFromOrderId)がある再購入は reactivate で旧テナントを新注文へ付け替え、
     //    無ければ provision で新規テナント発行。どちらも結果の形（key/url/slug）は共通。
@@ -940,6 +961,7 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
         billingType: sub.billingType,
         productId: sub.productId,
         limits,
+        ...(features ? { features } : {}),
       });
     } else {
       result = await provisionTenant({
@@ -949,6 +971,7 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
         billingType: sub.billingType,
         productId: sub.productId,
         limits,
+        ...(features ? { features } : {}),
       });
     }
 

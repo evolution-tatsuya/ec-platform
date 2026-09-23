@@ -101,7 +101,10 @@ model Product {
   maxImageMB           Int?     @map("max_image_mb") // 画像容量上限（MB）
   maxUsers             Int?     @map("max_users") // 閲覧人数上限
   // 料金ページ表示（すべて管理画面から編集可能）
-  planFeatures         String?  @map("plan_features") // 機能リスト（JSON配列文字列）
+  planFeatures         String?  @map("plan_features") // 機能リスト（JSON配列文字列・表示用テキスト）
+  // 在庫アプリに送る「有効な機能キー」のJSON配列（例 ["search","qr_code"]）。
+  // null/空=全機能ON（在庫側仕様）。表示用のplanFeaturesとは別で、実際のON/OFF制御に使う。
+  planFeatureKeys      String?  @map("plan_feature_keys")
   unitLabel            String?  @map("unit_label") // 上限の単位ラベル（デフォルト「パーツ」。将来「商品」等に変更可）
   planTagline          String?  @map("plan_tagline") // プランの短い説明（1行）
   isPopular            Boolean  @default(false) @map("is_popular") // 「いちばん人気」バッジ

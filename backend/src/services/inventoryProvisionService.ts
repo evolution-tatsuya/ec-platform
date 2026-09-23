@@ -26,6 +26,7 @@ export interface ProvisionRequest {
   billingType?: string; // monthly | yearly | onetime
   productId?: string; // ECのプラン商品ID（在庫側でecProductIdとして記録）
   limits?: PlanLimits; // プランの上限（3項目必ず送る運用。null=無制限）
+  features?: string[]; // 有効な機能キー配列。省略=全機能ON（在庫側仕様）
 }
 
 // プランの上限（EC=マスター、在庫=適用）。null=無制限。
@@ -76,6 +77,7 @@ export async function provisionTenant(
         billingType: req.billingType,
         productId: req.productId,
         limits: req.limits,
+        ...(req.features ? { features: req.features } : {}),
       },
       {
         headers: {
@@ -121,6 +123,7 @@ export interface ChangePlanRequest {
   orderId: string; // 契約を特定する注文ID（必須）
   productId?: string; // 変更後のプラン商品ID
   limits: PlanLimits; // 新しい上限（渡した項目だけ更新される）
+  features?: string[]; // 新しい有効機能キー配列。省略=変更なし/全機能ON
 }
 
 export interface ChangePlanResult {
@@ -152,6 +155,7 @@ export async function changePlan(
         orderId: req.orderId,
         productId: req.productId,
         limits: req.limits,
+        ...(req.features ? { features: req.features } : {}),
       },
       {
         headers: {
@@ -310,6 +314,7 @@ export interface ReactivateRequest {
   billingType?: string;
   productId?: string;
   limits?: PlanLimits; // 新プランの上限（プラン変更を伴う再購入に対応）
+  features?: string[]; // 有効な機能キー配列。省略=全機能ON
 }
 
 export interface ReactivateResult {
@@ -349,6 +354,7 @@ export async function reactivateTenant(
         billingType: req.billingType,
         productId: req.productId,
         limits: req.limits,
+        ...(req.features ? { features: req.features } : {}),
       },
       {
         headers: {

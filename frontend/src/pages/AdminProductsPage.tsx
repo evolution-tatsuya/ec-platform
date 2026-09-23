@@ -12,6 +12,7 @@ import {
   DialogTitle,
   FormControl,
   FormControlLabel,
+  FormGroup,
   Checkbox,
   IconButton,
   InputLabel,
@@ -66,6 +67,18 @@ import {
   bulkDeleteProducts,
 } from '../services/api/products';
 
+// 在庫アプリの機能キー（在庫側と合意した7キー）。プランごとにON/OFFを在庫へ送る。
+// 何も選ばない＝全機能ON（在庫側仕様）。
+const INVENTORY_FEATURES: { key: string; label: string }[] = [
+  { key: 'stocktake', label: '棚卸し' },
+  { key: 'csv_import', label: 'CSV一括インポート' },
+  { key: 'csv_export', label: 'CSVエクスポート' },
+  { key: 'pdf_export', label: 'PDFエクスポート' },
+  { key: 'qr_code', label: 'QRコード' },
+  { key: 'search', label: '横断検索' },
+  { key: 'part_detail', label: 'パーツ詳細（説明・制作手順・資料）' },
+];
+
 // バリデーションスキーマ
 const productSchema = z.object({
   name: z.string().min(1, '商品名は必須です').max(200, '200文字以内で入力してください'),
@@ -82,6 +95,7 @@ const productSchema = z.object({
   maxImageMB: z.number().min(0).nullish(),
   maxUsers: z.number().min(0).nullish(),
   planFeatures: z.array(z.string()).optional(),
+  planFeatureKeys: z.array(z.string()).optional(),
   unitLabel: z.string().optional(),
   planTagline: z.string().optional(),
   isPopular: z.boolean().optional(),
@@ -247,6 +261,7 @@ export default function AdminProductsPage() {
         maxImageMB: editingProductData.maxImageMB ?? null,
         maxUsers: editingProductData.maxUsers ?? null,
         planFeatures: editingProductData.planFeatures ?? [],
+        planFeatureKeys: editingProductData.planFeatureKeys ?? [],
         unitLabel: editingProductData.unitLabel || '',
         planTagline: editingProductData.planTagline || '',
         isPopular: editingProductData.isPopular ?? false,
@@ -293,6 +308,7 @@ export default function AdminProductsPage() {
           maxImageMB: data.maxImageMB ?? null,
           maxUsers: data.maxUsers ?? null,
           planFeatures: data.planFeatures ?? [],
+          planFeatureKeys: data.planFeatureKeys ?? [],
           unitLabel: data.unitLabel || undefined,
           planTagline: data.planTagline || undefined,
           isPopular: data.isPopular ?? false,
@@ -348,6 +364,7 @@ export default function AdminProductsPage() {
             maxImageMB: data.maxImageMB ?? null,
             maxUsers: data.maxUsers ?? null,
             planFeatures: data.planFeatures ?? [],
+            planFeatureKeys: data.planFeatureKeys ?? [],
             unitLabel: data.unitLabel || undefined,
             planTagline: data.planTagline || undefined,
             isPopular: data.isPopular ?? false,
@@ -1210,6 +1227,41 @@ export default function AdminProductsPage() {
                       >
                         ＋ 機能を追加
                       </Button>
+                    </Grid>
+
+                    {/* 在庫アプリの機能フラグ（実際のON/OFF制御・在庫アプリに送信） */}
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
+                        このプランで使える機能（在庫アプリに反映）
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                        チェックした機能だけが在庫アプリで使えます。何も選ばない場合は全機能ONになります。販売後の変更も契約中の顧客へ自動反映されます。
+                      </Typography>
+                      <FormGroup row>
+                        {INVENTORY_FEATURES.map((f) => {
+                          const selected = watch('planFeatureKeys') || [];
+                          const checked = selected.includes(f.key);
+                          return (
+                            <FormControlLabel
+                              key={f.key}
+                              sx={{ width: '48%', m: 0 }}
+                              control={
+                                <Checkbox
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    const cur = watch('planFeatureKeys') || [];
+                                    const next = e.target.checked
+                                      ? [...cur, f.key]
+                                      : cur.filter((k) => k !== f.key);
+                                    setValue('planFeatureKeys', next);
+                                  }}
+                                />
+                              }
+                              label={f.label}
+                            />
+                          );
+                        })}
+                      </FormGroup>
                     </Grid>
                   </>
                 )}
