@@ -8,6 +8,7 @@ import helmet from 'helmet';
 import { config } from './config';
 import { prisma } from './config/prisma';
 import { errorHandler } from './middleware/errorHandler';
+import { handleStripeWebhook } from './controllers/stripeWebhookController';
 import authRoutes from './routes/authRoutes';
 import productRoutes from './routes/productRoutes';
 import categoryRoutes from './routes/categoryRoutes';
@@ -90,6 +91,14 @@ app.use(
     },
     credentials: true,
   })
+);
+
+// ===== Stripe Webhook（案B）=====
+// 署名検証のため生bodyが必要。express.json()より前に、このパスだけraw受信する。
+app.post(
+  '/api/webhooks/stripe',
+  express.raw({ type: 'application/json' }),
+  handleStripeWebhook
 );
 
 // ===== Body Parser =====

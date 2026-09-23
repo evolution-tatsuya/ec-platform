@@ -16,6 +16,7 @@ import {
   getMySubscriptions,
   cancelMySubscription,
   getReactivationInfo,
+  createSubscriptionCheckout,
   adminGetSubscriptions,
   adminUpdateSubscription,
 } from '../controllers/subscriptionController';
@@ -28,6 +29,7 @@ router.use(requireAuth);
 router.get('/', getMySubscriptions);
 // 静的パスは :id より前に登録（/:id/cancel と衝突させない）
 router.get('/reactivation-info', getReactivationInfo);
+router.post('/checkout', createSubscriptionCheckout); // カード継続課金の開始（案B）
 router.post('/:id/cancel', cancelMySubscription);
 
 // ===== 管理者向けルーター =====

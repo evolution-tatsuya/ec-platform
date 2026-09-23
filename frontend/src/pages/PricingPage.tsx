@@ -28,6 +28,7 @@ import {
 import CheckIcon from '@mui/icons-material/Check';
 import { getSubscriptionPlans } from '../services/api/plans';
 import type { SubscriptionPlan } from '../services/api/plans';
+import { startSubscriptionCheckout } from '../services/api/subscriptions';
 import { cartAPI } from '../lib/api';
 
 // 上限値を表示用に整形（null=無制限）
@@ -54,6 +55,27 @@ export default function PricingPage() {
     },
     onError: (e: any) => {
       const msg = e?.response?.data?.message || 'カートへの追加に失敗しました';
+      if (String(msg).includes('ログイン')) {
+        alert('購入するにはログインが必要です');
+        navigate(`/auth/login?redirect=${encodeURIComponent('/pricing')}`);
+      } else {
+        alert(msg);
+      }
+    },
+  });
+
+  // カード（自動継続課金・案B）: Stripe Checkoutへリダイレクト
+  const cardCheckoutMutation = useMutation({
+    mutationFn: (productId: string) => startSubscriptionCheckout(productId),
+    onSuccess: (data) => {
+      if (data.success && data.checkoutUrl) {
+        window.location.href = data.checkoutUrl; // Stripe決済画面へ
+      } else {
+        alert(data.message || 'カード決済を開始できませんでした');
+      }
+    },
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message || 'カード決済の開始に失敗しました';
       if (String(msg).includes('ログイン')) {
         alert('購入するにはログインが必要です');
         navigate(`/auth/login?redirect=${encodeURIComponent('/pricing')}`);
@@ -210,23 +232,36 @@ export default function PricingPage() {
                 ))}
               </Box>
 
-              <Button
-                fullWidth
-                variant={p.isPopular ? 'contained' : 'outlined'}
-                onClick={() => addToCartMutation.mutate(p.id)}
-                disabled={addToCartMutation.isPending}
-                sx={{
-                  mt: 'auto',
-                  fontWeight: 800,
-                  py: 1.4,
-                  borderRadius: 2,
-                  ...(p.isPopular
-                    ? { background: 'linear-gradient(135deg,#667eea,#764ba2)', '&:hover': { filter: 'brightness(1.06)' } }
-                    : { borderColor: '#7c4dff', color: '#7c4dff' }),
-                }}
-              >
-                このプランで申し込む
-              </Button>
+              <Box sx={{ mt: 'auto', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {/* カード（自動継続課金・案B）— メイン導線 */}
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => cardCheckoutMutation.mutate(p.id)}
+                  disabled={cardCheckoutMutation.isPending || addToCartMutation.isPending}
+                  sx={{
+                    fontWeight: 800,
+                    py: 1.4,
+                    borderRadius: 2,
+                    background: 'linear-gradient(135deg,#667eea,#764ba2)',
+                    '&:hover': { filter: 'brightness(1.06)' },
+                  }}
+                >
+                  {cardCheckoutMutation.isPending
+                    ? '処理中...'
+                    : 'カードで申し込む（自動更新）'}
+                </Button>
+                {/* 銀行振込（手動・案A）— サブ導線 */}
+                <Button
+                  fullWidth
+                  variant="text"
+                  onClick={() => addToCartMutation.mutate(p.id)}
+                  disabled={cardCheckoutMutation.isPending || addToCartMutation.isPending}
+                  sx={{ fontWeight: 700, color: '#7c4dff', fontSize: 13 }}
+                >
+                  銀行振込で申し込む
+                </Button>
+              </Box>
             </Paper>
           ))}
         </Box>

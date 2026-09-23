@@ -915,7 +915,7 @@ async function sendLicenseDeliveryEmail(data: {
  * DBトランザクション外で呼ぶこと（外部API・メールを含めない）。
  * 冪等キー=注文IDなので複数回呼ばれても在庫側で二重発行されない。
  */
-async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
+export async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {

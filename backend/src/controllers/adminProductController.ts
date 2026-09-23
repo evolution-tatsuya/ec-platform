@@ -11,6 +11,7 @@ import {
   buildProductImageUrls,
 } from '../utils/productImageService';
 import { changePlan } from '../services/inventoryProvisionService';
+import { syncStripeProductPrice } from '../services/stripeService';
 
 // ヘルパー関数: string | string[] を string に変換
 const getStringParam = (param: string | string[] | undefined): string | undefined => {
@@ -460,8 +461,10 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       return newProduct;
     });
 
-    console.log('=== 商品作成成功 ===');
-    console.log('product:', product);
+    // サブスク商品ならStripe Product/Priceを同期（案B・失敗しても商品作成は成功）
+    if (product.productType === 'subscription') {
+      await syncStripeProductPrice(product.id);
+    }
 
     return res.status(201).json({
       success: true,
@@ -781,6 +784,12 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         console.error('[plan-change] 反映処理でエラー:', e);
         // 反映失敗でも商品更新自体は成功として続行（運営者が再実行できる）
       }
+    }
+
+    // サブスク商品ならStripe Product/Priceを同期（価格変更に追従・案B）。
+    // 失敗しても商品更新は成功として続行。
+    if (updatedProduct.productType === 'subscription') {
+      await syncStripeProductPrice(id);
     }
 
     // 在庫数を計算

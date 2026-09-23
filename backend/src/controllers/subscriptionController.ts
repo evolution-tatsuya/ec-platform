@@ -16,8 +16,23 @@ import {
   suspendTenant,
   unsuspendTenant,
 } from '../services/inventoryProvisionService';
+import {
+  createSubscriptionCheckoutSession,
+  syncStripeProductPrice,
+} from '../services/stripeService';
 
 const prisma = new PrismaClient();
+
+/** 注文番号を生成（ORD-YYYYMMDD-XXXXX 形式・orderControllerと同形式）。 */
+function genOrderNumber(): string {
+  const now = new Date();
+  const ymd =
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0');
+  const rand = Math.floor(10000 + Math.random() * 90000);
+  return `ORD-${ymd}-${rand}`;
+}
 
 /**
  * 契約から在庫アプリのアカウントをsuspendする（解約・一時停止時）。
@@ -420,6 +435,121 @@ export async function getReactivationInfo(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       message: error.message || '再購入情報の取得に失敗しました',
+    });
+  }
+}
+
+/**
+ * POST /api/subscriptions/checkout
+ * サブスク商品をカード（自動継続課金・案B）で申し込む。
+ * pending注文＋pending_payment契約を先に作り、Stripe Checkout Session(mode:subscription)の
+ * URLを返す。決済成功はWebhook(checkout.session.completed)で確定→provisionする。
+ * body: { productId, inheritFromOrderNumber? }
+ */
+export async function createSubscriptionCheckout(req: Request, res: Response) {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, message: 'ログインが必要です' });
+    }
+    const userId = req.session.userId;
+    const { productId } = req.body as { productId?: string };
+    if (!productId) {
+      return res.status(400).json({ success: false, message: 'productId は必須です' });
+    }
+
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product || product.productType !== 'subscription') {
+      return res.status(404).json({ success: false, message: 'サブスク商品が見つかりません' });
+    }
+    if (product.billingType !== 'monthly' && product.billingType !== 'yearly') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'このプランはカード継続課金に対応していません' });
+    }
+
+    // Stripe Price を確保（未作成なら作る）
+    if (!product.stripePriceId) {
+      await syncStripeProductPrice(product.id);
+    }
+    const fresh = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { stripePriceId: true, price: true, billingType: true, name: true },
+    });
+    if (!fresh?.stripePriceId) {
+      return res.status(503).json({
+        success: false,
+        message: 'カード決済の準備ができていません（Stripe未設定）。銀行振込をご利用ください。',
+      });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+
+    // 一意な注文番号を採番
+    let orderNumber = '';
+    for (let i = 0; i < 10; i++) {
+      const cand = genOrderNumber();
+      const dup = await prisma.order.findUnique({ where: { orderNumber: cand } });
+      if (!dup) {
+        orderNumber = cand;
+        break;
+      }
+    }
+    if (!orderNumber) {
+      return res.status(500).json({ success: false, message: '注文番号の生成に失敗しました' });
+    }
+
+    // pending注文＋pending_payment契約を作成（入金前発行の防止）。
+    const order = await prisma.order.create({
+      data: {
+        orderNumber,
+        userId,
+        customerName: user?.name || '',
+        customerEmail: user?.email || '',
+        customerPhone: user?.defaultPhone || '',
+        status: 'pending', // 決済成功のWebhookでpaidにする
+        paymentMethod: 'credit_card',
+        totalAmount: fresh.price,
+        shippingAddress: 'サブスク（カード継続課金）',
+        items: {
+          create: [{ productId, quantity: 1, price: fresh.price }],
+        },
+        subscriptions: {
+          create: [
+            {
+              userId,
+              productId,
+              status: 'pending_payment',
+              billingType: fresh.billingType,
+              amount: fresh.price,
+            },
+          ],
+        },
+      },
+    });
+
+    // Stripe Checkout Session を作成
+    const checkout = await createSubscriptionCheckoutSession({
+      userId,
+      stripePriceId: fresh.stripePriceId,
+      orderNumber,
+    });
+    if (!checkout) {
+      // セッション作成に失敗したら作った注文は残さない（掃除）
+      await prisma.subscription.deleteMany({ where: { orderId: order.id } });
+      await prisma.orderItem.deleteMany({ where: { orderId: order.id } });
+      await prisma.order.delete({ where: { id: order.id } });
+      return res.status(503).json({
+        success: false,
+        message: 'カード決済セッションの作成に失敗しました。時間をおいて再度お試しください。',
+      });
+    }
+
+    return res.json({ success: true, checkoutUrl: checkout.url, orderNumber });
+  } catch (error: any) {
+    console.error('サブスクCheckout作成エラー:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'カード決済の開始に失敗しました',
     });
   }
 }

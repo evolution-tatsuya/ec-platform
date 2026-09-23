@@ -65,6 +65,28 @@ export const getReactivationInfo = async (
   return res.data;
 };
 
+export interface SubscriptionCheckoutResponse {
+  success: boolean;
+  checkoutUrl?: string;
+  orderNumber?: string;
+  message?: string;
+}
+
+/**
+ * サブスクをカード（自動継続課金・案B）で申し込む。
+ * Stripe Checkout SessionのURLを受け取り、そのURLへリダイレクトして決済する。
+ */
+export const startSubscriptionCheckout = async (
+  productId: string
+): Promise<SubscriptionCheckoutResponse> => {
+  const res = await axios.post<SubscriptionCheckoutResponse>(
+    `${API_BASE_URL}/api/subscriptions/checkout`,
+    { productId },
+    { withCredentials: true }
+  );
+  return res.data;
+};
+
 /** 全サブスク契約一覧取得（管理者） */
 export const adminGetSubscriptions = async (params?: {
   status?: SubscriptionStatus | 'all';
