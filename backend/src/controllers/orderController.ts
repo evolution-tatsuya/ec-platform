@@ -931,9 +931,10 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
       slug?: string;
       error?: string;
     };
-    if (sub.inheritFromOrderId) {
+    const isReactivate = !!sub.inheritFromOrderId;
+    if (isReactivate) {
       result = await reactivateTenant({
-        prevOrderId: sub.inheritFromOrderId,
+        prevOrderId: sub.inheritFromOrderId!,
         newOrderId: order.orderNumber,
         plan: sub.product?.name,
         billingType: sub.billingType,
@@ -962,16 +963,40 @@ async function provisionAndDeliverForOrder(orderId: string): Promise<void> {
       continue;
     }
 
+    // 引き継ぎ(reactivate)は旧テナントの既存キーがそのまま有効で、在庫側は
+    // キー/URLを返さない。表示が空にならないよう、返らなければ旧契約から引き継ぐ。
+    let licenseKey = result.licenseKey ?? null;
+    let activationUrl = result.activationUrl ?? null;
+    if (isReactivate && (!licenseKey || !activationUrl)) {
+      const prev = await prisma.subscription.findFirst({
+        where: { order: { orderNumber: sub.inheritFromOrderId! } },
+        select: { licenseKey: true, activationUrl: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      licenseKey = licenseKey ?? prev?.licenseKey ?? null;
+      activationUrl = activationUrl ?? prev?.activationUrl ?? null;
+    }
+
     // 2. 発行結果をSubscriptionに保存
     await prisma.subscription.update({
       where: { id: sub.id },
       data: {
-        licenseKey: result.licenseKey ?? null,
-        activationUrl: result.activationUrl ?? null,
+        licenseKey,
+        activationUrl,
         tenantSlug: result.slug ?? null,
         provisionedAt: new Date(),
       },
     });
+
+    // 引き継ぎ再購入は既存キーがそのまま有効なので、キー再送メールは送らない
+    // （新しいキーを発行していないため。契約は復活済み＝delivered扱い）。
+    if (isReactivate) {
+      await prisma.subscription.update({
+        where: { id: sub.id },
+        data: { licenseKeyDelivered: true },
+      });
+      continue;
+    }
 
     // 3. キー送付メール（成功したら licenseKeyDelivered=true）
     try {
