@@ -320,6 +320,8 @@ export interface Subscription {
   tenantSlug?: string | null;
   provisionedAt?: Date | null;
   inheritFromOrderId?: string | null;
+  stripeSubscriptionId?: string | null;
+  stripeStatus?: string | null;
   note?: string | null;
   createdAt: Date;
   updatedAt: Date;

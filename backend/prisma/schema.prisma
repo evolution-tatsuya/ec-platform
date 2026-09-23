@@ -27,6 +27,8 @@ model User {
   failedLoginAttempts Int      @default(0) @map("failed_login_attempts")
   lockedUntil        DateTime? @map("locked_until") // この時刻まではログイン不可（nullなら未ロック）
   tags               String   @default("[]") // 顧客タグ配列（JSON文字列形式、例: ["VIP","リピーター"]）
+  // Stripe連携（案B: 自動継続課金）。この会員のStripe顧客ID。null=未作成。
+  stripeCustomerId   String?  @map("stripe_customer_id")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -105,6 +107,11 @@ model Product {
   // 在庫アプリに送る「有効な機能キー」のJSON配列（例 ["search","qr_code"]）。
   // null/空=全機能ON（在庫側仕様）。表示用のplanFeaturesとは別で、実際のON/OFF制御に使う。
   planFeatureKeys      String?  @map("plan_feature_keys")
+  // Stripe連携（案B: 自動継続課金）。EC商品↔Stripe Product/Price のマッピング。
+  // 商品保存時にコードからStripe Product/Priceを自動作成して埋める。null=未作成。
+  // billingType=monthly/yearlyのサブスク商品はサブスク用Price、物販はProductのみ（都度Price不要）。
+  stripeProductId      String?  @map("stripe_product_id") // Stripe Product ID
+  stripePriceId        String?  @map("stripe_price_id") // このプランの継続課金Price ID（月額or年額。billingTypeで意味が決まる）
   unitLabel            String?  @map("unit_label") // 上限の単位ラベル（デフォルト「パーツ」。将来「商品」等に変更可）
   planTagline          String?  @map("plan_tagline") // プランの短い説明（1行）
   isPopular            Boolean  @default(false) @map("is_popular") // 「いちばん人気」バッジ
@@ -292,6 +299,10 @@ model Subscription {
   // 解約後の再購入で「旧データを引き継ぐ」場合の引き継ぎ元注文番号（Order.orderNumber）。
   // これがある契約は provision(新規)ではなく reactivate(旧テナント付け替え)で発行する。
   inheritFromOrderId  String?   @map("inherit_from_order_id")
+  // Stripe連携（案B: 自動継続課金）。カード/口座振替の自動課金契約はここが埋まる。
+  // 銀行振込（案A・手動）の契約はnullのまま。
+  stripeSubscriptionId String?  @map("stripe_subscription_id") // StripeのSubscription ID
+  stripeStatus         String?  @map("stripe_status") // Stripe側の状態(active/past_due/canceled等)のスナップショット
   note                String? // 運営者メモ（在庫アプリ側のアカウント情報など任意）
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
