@@ -314,6 +314,9 @@ export async function adminUpdateSubscription(req: Request, res: Response) {
       if (status === 'cancelled') {
         data.cancelledAt = new Date();
         data.nextBillingDate = null;
+      } else if (['active', 'pending_payment'].includes(status)) {
+        // 有効状態に戻すときは解約日をクリア（解約が取り消された扱い）
+        data.cancelledAt = null;
       }
     }
     if (licenseKeyDelivered !== undefined) data.licenseKeyDelivered = licenseKeyDelivered;
