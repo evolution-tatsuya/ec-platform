@@ -88,6 +88,7 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 async function onCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
   const userId = session.metadata?.userId;
   const productId = session.metadata?.productId;
+  const inheritFromOrderId = session.metadata?.inheritFromOrderNumber || null;
   if (!userId || !productId) {
     console.error('[stripe-webhook] checkout完了だがuserId/productIdメタデータ無し');
     return;
@@ -157,6 +158,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session): Promise<vo
             amount: product.price,
             stripeSubscriptionId,
             stripeStatus: 'active',
+            inheritFromOrderId, // 引き継ぎ再購入なら旧注文番号→provisionでreactivate分岐
           },
         ],
       },

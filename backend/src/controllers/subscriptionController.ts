@@ -441,7 +441,10 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
       return res.status(401).json({ success: false, message: 'ログインが必要です' });
     }
     const userId = req.session.userId;
-    const { productId } = req.body as { productId?: string };
+    const { productId, inherit } = req.body as {
+      productId?: string;
+      inherit?: boolean; // 解約済み契約のデータを引き継いで再購入するか
+    };
     if (!productId) {
       return res.status(400).json({ success: false, message: 'productId は必須です' });
     }
@@ -471,12 +474,30 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
       });
     }
 
+    // 引き継ぎ再購入なら、同一ユーザー×同一商品の最新の解約済み契約の注文番号を引く。
+    // これをmetadataに乗せ、Webhookでの注文作成時にreactivate分岐させる。
+    let inheritFromOrderNumber: string | undefined;
+    if (inherit) {
+      const prev = await prisma.subscription.findFirst({
+        where: {
+          userId,
+          productId,
+          status: 'cancelled',
+          billingType: { not: 'onetime' },
+        },
+        orderBy: { cancelledAt: 'desc' },
+        include: { order: { select: { orderNumber: true } } },
+      });
+      inheritFromOrderNumber = prev?.order?.orderNumber || undefined;
+    }
+
     // 注文は「決済成功時（Webhook）」に作る。ここでは作らない
     // → 決済失敗・離脱で未決済のゴミ注文が残らない（入金前発行の防止も自然に維持）。
     const checkout = await createSubscriptionCheckoutSession({
       userId,
       productId,
       stripePriceId: fresh.stripePriceId,
+      inheritFromOrderNumber,
     });
     if (!checkout) {
       return res.status(503).json({

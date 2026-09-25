@@ -38,6 +38,8 @@ import { getMe, updateProfile, updatePassword } from '../services/api/users';
 import {
   getMySubscriptions,
   cancelMySubscription,
+  getReactivationInfo,
+  startSubscriptionCheckout,
 } from '../services/api/subscriptions';
 import type { Subscription } from '../types';
 
@@ -127,7 +129,7 @@ const MyPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  // 解約済み契約の再購入: 同じ商品をカートに入れてチェックアウトへ。
+  // 解約済み契約の再購入（銀行振込）: 同じ商品をカートに入れてチェックアウトへ。
   // 「引き継ぐ/新規」の選択はチェックアウト画面で行う。
   const repurchaseMutation = useMutation({
     mutationFn: (productId: string) =>
@@ -140,6 +142,39 @@ const MyPage = () => {
       window.alert(msg);
     },
   });
+
+  // 解約済み契約の再購入（カード・自動継続）: 引き継ぎ可否を確認し、Stripe Checkoutへ。
+  const [cardRepurchasingId, setCardRepurchasingId] = useState<string | null>(null);
+  const handleCardRepurchase = async (productId: string) => {
+    setCardRepurchasingId(productId);
+    try {
+      // 引き継ぎ可能な解約済み契約があるか確認
+      const info = await getReactivationInfo(productId);
+      let inherit = false;
+      if (info.canInherit) {
+        const recommend =
+          info.recommendedMode === 'inherit'
+            ? '以前のデータを引き継ぐことをおすすめします。'
+            : '解約から時間が経っているため、新しく始めることをおすすめします。';
+        inherit = window.confirm(
+          `以前のデータを引き継いで再開しますか？\n\n（解約から約${info.daysSinceCancel}日経過。${recommend}）\n\nOK＝引き継ぐ / キャンセル＝新しく始める`
+        );
+      }
+      const res = await startSubscriptionCheckout(productId, inherit);
+      if (res.success && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else {
+        window.alert(res.message || 'カード決済を開始できませんでした');
+      }
+    } catch (e) {
+      const msg = axios.isAxiosError(e)
+        ? (e.response?.data?.message ?? 'カード再購入に失敗しました')
+        : 'カード再購入に失敗しました';
+      window.alert(msg);
+    } finally {
+      setCardRepurchasingId(null);
+    }
+  };
 
   // サブスク契約データを取得
   const {
@@ -603,24 +638,52 @@ const MyPage = () => {
                       )}
 
                       {canRepurchase && (
-                        <Box sx={{ mt: 2, textAlign: 'right' }}>
+                        <Box
+                          sx={{
+                            mt: 2,
+                            display: 'flex',
+                            gap: 1,
+                            justifyContent: 'flex-end',
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          {/* カード（自動継続・案B）— メイン */}
                           <Button
                             variant="contained"
                             size="small"
                             startIcon={<Autorenew />}
-                            disabled={repurchaseMutation.isPending}
+                            disabled={
+                              cardRepurchasingId === sub.product?.id ||
+                              repurchaseMutation.isPending
+                            }
                             onClick={() =>
                               sub.product?.id &&
-                              repurchaseMutation.mutate(sub.product.id)
+                              handleCardRepurchase(sub.product.id)
                             }
                             sx={{
                               background:
                                 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             }}
                           >
-                            {repurchaseMutation.isPending
+                            {cardRepurchasingId === sub.product?.id
                               ? '処理中...'
-                              : '再購入する'}
+                              : 'カードで再購入'}
+                          </Button>
+                          {/* 銀行振込（手動・案A）— サブ */}
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            disabled={
+                              repurchaseMutation.isPending ||
+                              cardRepurchasingId === sub.product?.id
+                            }
+                            onClick={() =>
+                              sub.product?.id &&
+                              repurchaseMutation.mutate(sub.product.id)
+                            }
+                            sx={{ borderColor: '#7c4dff', color: '#7c4dff' }}
+                          >
+                            銀行振込で再購入
                           </Button>
                         </Box>
                       )}

@@ -186,6 +186,7 @@ export async function createSubscriptionCheckoutSession(params: {
   userId: string;
   productId: string;
   stripePriceId: string;
+  inheritFromOrderNumber?: string; // 引き継ぎ再購入時の引き継ぎ元注文番号
 }): Promise<CheckoutSessionResult | null> {
   const stripe = getStripe();
   if (!stripe) return null;
@@ -193,7 +194,13 @@ export async function createSubscriptionCheckoutSession(params: {
   const customerId = await getOrCreateCustomer(params.userId);
   if (!customerId) return null;
 
-  const meta = { userId: params.userId, productId: params.productId };
+  const meta: Record<string, string> = {
+    userId: params.userId,
+    productId: params.productId,
+  };
+  if (params.inheritFromOrderNumber) {
+    meta.inheritFromOrderNumber = params.inheritFromOrderNumber;
+  }
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,

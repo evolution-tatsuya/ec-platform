@@ -75,13 +75,15 @@ export interface SubscriptionCheckoutResponse {
 /**
  * サブスクをカード（自動継続課金・案B）で申し込む。
  * Stripe Checkout SessionのURLを受け取り、そのURLへリダイレクトして決済する。
+ * @param inherit 解約済み契約のデータを引き継いで再購入する場合true
  */
 export const startSubscriptionCheckout = async (
-  productId: string
+  productId: string,
+  inherit = false
 ): Promise<SubscriptionCheckoutResponse> => {
   const res = await axios.post<SubscriptionCheckoutResponse>(
     `${API_BASE_URL}/api/subscriptions/checkout`,
-    { productId },
+    { productId, inherit },
     { withCredentials: true }
   );
   return res.data;
