@@ -172,18 +172,20 @@ export interface CheckoutSessionResult {
 /**
  * サブスク（継続課金）用のStripe Checkout Sessionを作成する。
  * mode:subscription。price は商品の stripePriceId を使う。
- * metadata に orderNumber を埋め、Webhook(checkout.session.completed)で
- * 注文をpaid化＋provisionする際の突合キーにする。
+ *
+ * 注文は「決済成功時（Webhook）」に作る設計。ここでは注文を作らず、metadataに
+ * userId/productId を持たせて、Webhook側で注文＋契約を作成する。これにより
+ * 決済失敗・離脱で未決済のゴミ注文が生まれない。
  *
  * @param userId 会員ID
+ * @param productId ECのサブスク商品ID
  * @param stripePriceId 商品のStripe Price ID
- * @param orderNumber 事前に作成した注文の表示用注文番号（provisionの冪等キー）
  * @returns {url, sessionId} or null（Stripe未設定・Price未作成時）
  */
 export async function createSubscriptionCheckoutSession(params: {
   userId: string;
+  productId: string;
   stripePriceId: string;
-  orderNumber: string;
 }): Promise<CheckoutSessionResult | null> {
   const stripe = getStripe();
   if (!stripe) return null;
@@ -191,18 +193,16 @@ export async function createSubscriptionCheckoutSession(params: {
   const customerId = await getOrCreateCustomer(params.userId);
   if (!customerId) return null;
 
+  const meta = { userId: params.userId, productId: params.productId };
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
     line_items: [{ price: params.stripePriceId, quantity: 1 }],
-    // 決済成功/キャンセルの戻り先。orderNumberを success 側に付ける。
-    success_url: `${config.frontendUrl}/mypage?subscribed=1&order=${params.orderNumber}`,
+    success_url: `${config.frontendUrl}/mypage?subscribed=1`,
     cancel_url: `${config.frontendUrl}/pricing?canceled=1`,
-    // Webhook・後続処理で注文を特定する
-    metadata: { orderNumber: params.orderNumber },
-    subscription_data: {
-      metadata: { orderNumber: params.orderNumber },
-    },
+    // Webhook(checkout.session.completed)で注文＋契約を作る際の材料。
+    metadata: meta,
+    subscription_data: { metadata: meta },
   });
 
   if (!session.url) return null;

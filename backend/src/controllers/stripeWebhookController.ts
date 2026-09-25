@@ -21,6 +21,17 @@ import Stripe from 'stripe';
 
 const prisma = new PrismaClient();
 
+/** 注文番号を生成（ORD-YYYYMMDD-XXXXX 形式）。 */
+function genOrderNumber(): string {
+  const now = new Date();
+  const ymd =
+    now.getFullYear().toString() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0');
+  const rand = Math.floor(10000 + Math.random() * 90000);
+  return `ORD-${ymd}-${rand}`;
+}
+
 export async function handleStripeWebhook(req: Request, res: Response) {
   const stripe = getStripe();
   if (!stripe) {
@@ -75,46 +86,84 @@ export async function handleStripeWebhook(req: Request, res: Response) {
 
 /** 初回決済成功: 注文をpaid化し契約をactiveにしてprovisionする。 */
 async function onCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
-  const orderNumber = session.metadata?.orderNumber;
-  if (!orderNumber) {
-    console.error('[stripe-webhook] checkout完了だがorderNumberメタデータ無し');
+  const userId = session.metadata?.userId;
+  const productId = session.metadata?.productId;
+  if (!userId || !productId) {
+    console.error('[stripe-webhook] checkout完了だがuserId/productIdメタデータ無し');
     return;
   }
   const stripeSubscriptionId =
     typeof session.subscription === 'string'
       ? session.subscription
       : session.subscription?.id;
-
-  const order = await prisma.order.findUnique({
-    where: { orderNumber },
-    include: { subscriptions: true },
-  });
-  if (!order) {
-    console.error(`[stripe-webhook] 注文が見つからない: ${orderNumber}`);
+  if (!stripeSubscriptionId) {
+    console.error('[stripe-webhook] checkout完了だがsubscription IDが無い');
     return;
   }
 
-  // 冪等: 既にpaidなら何もしない
-  if (order.status !== 'paid') {
-    await prisma.order.update({
-      where: { id: order.id },
-      data: { status: 'paid' },
-    });
+  // 冪等: 同じStripeサブスクの注文が既にあれば二重作成しない（Webhook重複配信対策）
+  const existing = await prisma.subscription.findFirst({
+    where: { stripeSubscriptionId },
+    select: { orderId: true },
+  });
+  if (existing?.orderId) {
+    // 既に作成済み。発行だけ念のため冪等呼び出し（provisionは二重発行しない）。
+    await provisionAndDeliverForOrder(existing.orderId);
+    return;
   }
 
-  // 契約をactive化＋StripeサブスクIDを記録（pending_payment→active）
-  for (const sub of order.subscriptions) {
-    await prisma.subscription.update({
-      where: { id: sub.id },
-      data: {
-        status: 'active',
-        stripeSubscriptionId: stripeSubscriptionId || sub.stripeSubscriptionId,
-        stripeStatus: 'active',
+  const product = await prisma.product.findUnique({ where: { id: productId } });
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!product || !user) {
+    console.error(`[stripe-webhook] 注文作成に必要な商品/会員が無い: p=${productId} u=${userId}`);
+    return;
+  }
+
+  // 一意な注文番号を採番
+  let orderNumber = '';
+  for (let i = 0; i < 10; i++) {
+    const cand = genOrderNumber();
+    const dup = await prisma.order.findUnique({ where: { orderNumber: cand } });
+    if (!dup) {
+      orderNumber = cand;
+      break;
+    }
+  }
+  if (!orderNumber) {
+    console.error('[stripe-webhook] 注文番号の生成に失敗');
+    return;
+  }
+
+  // 決済成功したのでpaid注文＋active契約を作成（ここで初めて注文が生まれる）
+  const order = await prisma.order.create({
+    data: {
+      orderNumber,
+      userId,
+      customerName: user.name || '',
+      customerEmail: user.email || '',
+      customerPhone: user.defaultPhone || '',
+      status: 'paid',
+      paymentMethod: 'credit_card',
+      totalAmount: product.price,
+      shippingAddress: 'サブスク（カード継続課金）',
+      items: { create: [{ productId, quantity: 1, price: product.price }] },
+      subscriptions: {
+        create: [
+          {
+            userId,
+            productId,
+            status: 'active',
+            billingType: product.billingType || 'monthly',
+            amount: product.price,
+            stripeSubscriptionId,
+            stripeStatus: 'active',
+          },
+        ],
       },
-    });
-  }
+    },
+  });
 
-  // 在庫アプリ発行（冪等・既存ロジック再利用）
+  // 在庫アプリ発行（既存ロジック再利用・冪等）
   await provisionAndDeliverForOrder(order.id);
 }
 

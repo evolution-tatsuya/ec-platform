@@ -23,17 +23,6 @@ import {
 
 const prisma = new PrismaClient();
 
-/** 注文番号を生成（ORD-YYYYMMDD-XXXXX 形式・orderControllerと同形式）。 */
-function genOrderNumber(): string {
-  const now = new Date();
-  const ymd =
-    now.getFullYear().toString() +
-    String(now.getMonth() + 1).padStart(2, '0') +
-    String(now.getDate()).padStart(2, '0');
-  const rand = Math.floor(10000 + Math.random() * 90000);
-  return `ORD-${ymd}-${rand}`;
-}
-
 /**
  * 契約から在庫アプリのアカウントをsuspendする（解約・一時停止時）。
  * 在庫側は provision時と同じ orderNumber でテナントを特定するため、
@@ -482,69 +471,21 @@ export async function createSubscriptionCheckout(req: Request, res: Response) {
       });
     }
 
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-
-    // 一意な注文番号を採番
-    let orderNumber = '';
-    for (let i = 0; i < 10; i++) {
-      const cand = genOrderNumber();
-      const dup = await prisma.order.findUnique({ where: { orderNumber: cand } });
-      if (!dup) {
-        orderNumber = cand;
-        break;
-      }
-    }
-    if (!orderNumber) {
-      return res.status(500).json({ success: false, message: '注文番号の生成に失敗しました' });
-    }
-
-    // pending注文＋pending_payment契約を作成（入金前発行の防止）。
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        userId,
-        customerName: user?.name || '',
-        customerEmail: user?.email || '',
-        customerPhone: user?.defaultPhone || '',
-        status: 'pending', // 決済成功のWebhookでpaidにする
-        paymentMethod: 'credit_card',
-        totalAmount: fresh.price,
-        shippingAddress: 'サブスク（カード継続課金）',
-        items: {
-          create: [{ productId, quantity: 1, price: fresh.price }],
-        },
-        subscriptions: {
-          create: [
-            {
-              userId,
-              productId,
-              status: 'pending_payment',
-              billingType: fresh.billingType,
-              amount: fresh.price,
-            },
-          ],
-        },
-      },
-    });
-
-    // Stripe Checkout Session を作成
+    // 注文は「決済成功時（Webhook）」に作る。ここでは作らない
+    // → 決済失敗・離脱で未決済のゴミ注文が残らない（入金前発行の防止も自然に維持）。
     const checkout = await createSubscriptionCheckoutSession({
       userId,
+      productId,
       stripePriceId: fresh.stripePriceId,
-      orderNumber,
     });
     if (!checkout) {
-      // セッション作成に失敗したら作った注文は残さない（掃除）
-      await prisma.subscription.deleteMany({ where: { orderId: order.id } });
-      await prisma.orderItem.deleteMany({ where: { orderId: order.id } });
-      await prisma.order.delete({ where: { id: order.id } });
       return res.status(503).json({
         success: false,
         message: 'カード決済セッションの作成に失敗しました。時間をおいて再度お試しください。',
       });
     }
 
-    return res.json({ success: true, checkoutUrl: checkout.url, orderNumber });
+    return res.json({ success: true, checkoutUrl: checkout.url });
   } catch (error: any) {
     console.error('サブスクCheckout作成エラー:', error);
     return res.status(500).json({
