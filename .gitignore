@@ -64,3 +64,11 @@ prisma/migrations/
 .vercel/
 .netlify/
 .cloudflare/
+
+# デプロイ用の一時環境変数ファイル（シークレット含む・絶対コミットしない）
+backend/deploy-env.yaml
+*deploy-env.yaml
+
+# テスト実行成果物（自動生成・コミット不要）
+backend/test-results/
+test-results/
