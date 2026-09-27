@@ -1,0 +1,45 @@
+# ===== .dockerignore =====
+# 作成日: 2026-05-26
+# 目的: Dockerイメージに含めないファイルを指定
+
+# Node modules（Dockerfile内でnpm ciするため不要）
+node_modules/
+
+# 開発用ファイル
+*.log
+.env.local
+.env
+.env.*
+
+# TypeScriptビルド成果物（Dockerfile内でビルドするため不要）
+dist/
+
+# テストファイル
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+
+# ドキュメント
+*.md
+docs/
+
+# Git関連
+.git/
+.gitignore
+
+# エディタ設定
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS固有ファイル
+.DS_Store
+Thumbs.db
+
+# Prismaマイグレーション履歴（本番環境では不要）
+prisma/migrations/
+
+# スクリプト（本番環境では不要）
+scripts/
