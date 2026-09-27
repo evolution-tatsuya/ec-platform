@@ -72,3 +72,6 @@ backend/deploy-env.yaml
 # テスト実行成果物（自動生成・コミット不要）
 backend/test-results/
 test-results/
+
+# 使い捨てのローカル疎通確認スクリプト
+backend/test-login.js
