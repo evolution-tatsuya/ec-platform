@@ -443,6 +443,7 @@ export default function AdminNavigationAxesPage() {
 
         {/* 軸追加・編集ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={openAxisDialog}
           onClose={handleCloseDialog}
           maxWidth="md"
@@ -587,6 +588,7 @@ export default function AdminNavigationAxesPage() {
 
         {/* 削除確認ダイアログ */}
         <Dialog
+        disablePortal={false}
           open={openDeleteDialog}
           onClose={() => setOpenDeleteDialog(false)}
           maxWidth="sm"

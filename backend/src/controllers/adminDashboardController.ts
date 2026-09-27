@@ -119,7 +119,7 @@ export const getDashboardStats = async (_req: Request, res: Response) => {
     }, {} as Record<string, { product: any; totalQuantity: number; totalRevenue: number }>);
 
     // 売上順にソート
-    const topProducts = Object.values(productSales)
+    const topProducts = (Object.values(productSales) as Array<{ product: any; totalQuantity: number; totalRevenue: number }>)
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
       .slice(0, 5)
       .map((item) => ({
