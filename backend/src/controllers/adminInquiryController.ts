@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { sendInquiryReplyEmail } from '../utils/emailService';
 
 const prisma = new PrismaClient();
 
@@ -309,8 +310,19 @@ export const replyToInquiry = async (req: Request, res: Response) => {
       },
     });
 
-    // TODO: メール送信処理（Resend SDK使用）
-    // await sendInquiryReplyEmail(inquiry.email, reply);
+    // 返信メール送信（Resend SDK使用）
+    // メール送信失敗時も返信保存は成功として扱う
+    try {
+      await sendInquiryReplyEmail({
+        to: inquiry.email,
+        customerName: inquiry.name,
+        subject: inquiry.subject,
+        originalMessage: inquiry.message,
+        reply,
+      });
+    } catch (emailError) {
+      console.error('問い合わせ返信メール送信エラー:', emailError);
+    }
 
     return res.json({
       message: '返信を送信しました',
