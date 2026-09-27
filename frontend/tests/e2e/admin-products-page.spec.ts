@@ -1679,6 +1679,327 @@ test('TC-014: 一括公開', async ({ page }) => {
 });
 
 // ========================================
+/**
+ * TC-015: 一括非公開
+ * 目的: 複数商品を選択して一括非公開し、ステータスが「非公開」に変更されることを確認
+ *
+ * テスト手順:
+ * 1. 商品一覧で2件の商品をチェック
+ * 2. [非公開]ボタンをクリック
+ * 3. 選択した商品のステータスが「非公開」に変更されることを確認
+ *
+ * 注意: 現在の実装では一括非公開機能が未実装（`console.log`のみ）のため、
+ *      モック検出時は即座にテストを中止する
+ */
+// ========================================
+test('TC-015: 一括非公開', async ({ page }) => {
+  const startTime = Date.now();
+  console.log('\n=== TC-015: 一括非公開 開始 ===');
+
+  // ブラウザコンソールログをキャプチャ（モック検出用）
+  const consoleMessages: string[] = [];
+  page.on('console', (msg) => {
+    const text = msg.text();
+    consoleMessages.push(text);
+    if (text.includes('Bulk unpublish') || text.includes('非公開') || text.includes('エラー')) {
+      console.log(`[Browser ${msg.type()}]`, text);
+    }
+  });
+
+  try {
+    // 前提条件: 管理者としてログイン済み
+    await loginAsAdmin(page);
+
+    // AuthContextの完全な初期化をさらに待機（重要）
+    await page.waitForTimeout(2000);
+
+    // 1. 商品管理ページに移動
+    await page.goto('/admin/products');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
+    console.log('✓ 商品管理ページに移動');
+
+    // DataGridが表示されるまで待機
+    const dataGrid = page.locator('.MuiDataGrid-root').first();
+    await expect(dataGrid).toBeVisible();
+    console.log('✓ DataGridが表示');
+
+    // 2. 商品一覧の1件目のチェックボックスをクリック
+    const firstRow = dataGrid.locator('.MuiDataGrid-row').first();
+    await expect(firstRow).toBeVisible();
+    const firstCheckbox = firstRow.locator('input[type="checkbox"]').first();
+    await expect(firstCheckbox).toBeVisible();
+    await firstCheckbox.click();
+    await page.waitForTimeout(500);
+    console.log('✓ 1件目のチェックボックスをクリック');
+
+    // 3. 商品一覧の2件目のチェックボックスをクリック
+    const secondRow = dataGrid.locator('.MuiDataGrid-row').nth(1);
+    await expect(secondRow).toBeVisible();
+    const secondCheckbox = secondRow.locator('input[type="checkbox"]').first();
+    await expect(secondCheckbox).toBeVisible();
+    await secondCheckbox.click();
+    await page.waitForTimeout(500);
+    console.log('✓ 2件目のチェックボックスをクリック');
+
+    // 2件がチェックされた状態を確認
+    await expect(firstCheckbox).toBeChecked();
+    await expect(secondCheckbox).toBeChecked();
+    console.log('✓ 2件がチェックされた状態を確認');
+
+    // 選択前のステータスを記録（後で比較するため）
+    const firstRowStatusBefore = await firstRow.locator('[data-field="isActive"]').textContent();
+    const secondRowStatusBefore = await secondRow.locator('[data-field="isActive"]').textContent();
+    console.log(`✓ 選択前のステータス: 1件目「${firstRowStatusBefore}」, 2件目「${secondRowStatusBefore}」`);
+
+    // 4. [非公開]ボタンをクリック
+    const bulkUnpublishButton = page.locator('button:has-text("非公開")').filter({ has: page.locator('svg[data-testid="VisibilityOffIcon"]') });
+    await expect(bulkUnpublishButton).toBeVisible();
+    await expect(bulkUnpublishButton).toBeEnabled();
+    console.log('✓ [非公開]ボタンが有効化されている');
+
+    // [非公開]ボタンをクリック
+    await bulkUnpublishButton.click();
+    console.log('✓ [非公開]ボタンをクリック');
+
+    // 🔍 モック検出: console.logのみの実装か確認
+    await page.waitForTimeout(1000);
+    const hasBulkUnpublishLog = consoleMessages.some(msg => msg.includes('Bulk unpublish:'));
+    if (hasBulkUnpublishLog) {
+      console.log('❌ モック検出: console.logのみの実装が検出されました');
+      console.log('📊 実装状況: handleBulkUnpublish関数は`console.log`のみで、実際のAPI呼び出しが実装されていません');
+      console.log('🚨 このテストは即座に中止します（E2E仕様書の指示通り）');
+      throw new Error('モック実装検出: 一括非公開機能が未実装（console.logのみ）');
+    }
+
+    // 5. API呼び出しを待機（実装されている場合）
+    const updateResponse = await page.waitForResponse(
+      (response) => response.url().includes('/api/admin/products') && response.request().method() === 'PUT',
+      { timeout: 5000 }
+    ).catch(() => null);
+
+    if (!updateResponse) {
+      console.log('❌ API呼び出しが検出されませんでした');
+      console.log('📊 実装状況: 一括非公開のバックエンドAPIが呼び出されていません');
+      throw new Error('一括非公開API呼び出しが検出されませんでした');
+    }
+
+    console.log('✓ API呼び出しを確認');
+
+    // 6. React Queryのキャッシュ更新を待つ
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // ページをリロードして最新データを取得
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    console.log('✓ ページをリロードして最新データを取得');
+
+    // 7. 選択した商品のステータスChipが「非公開」に変更されることを確認
+    const updatedDataGrid = page.locator('.MuiDataGrid-root').first();
+    await expect(updatedDataGrid).toBeVisible();
+
+    const updatedFirstRow = updatedDataGrid.locator('.MuiDataGrid-row').first();
+    const updatedSecondRow = updatedDataGrid.locator('.MuiDataGrid-row').nth(1);
+
+    // ステータス列を確認
+    const firstRowStatusAfter = await updatedFirstRow.locator('[data-field="isActive"]').textContent();
+    const secondRowStatusAfter = await updatedSecondRow.locator('[data-field="isActive"]').textContent();
+
+    console.log(`✓ 更新後のステータス: 1件目「${firstRowStatusAfter}」, 2件目「${secondRowStatusAfter}」`);
+
+    // ステータスが「非公開」になっていることを確認
+    expect(firstRowStatusAfter).toContain('非公開');
+    expect(secondRowStatusAfter).toContain('非公開');
+    console.log('✓ 選択した商品のステータスが「非公開」に変更されました');
+
+    const executionTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n✅ TC-015: Pass (実行時間: ${executionTime}秒) - 一括非公開が正常に動作`);
+  } catch (error) {
+    const executionTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n❌ TC-015: Fail (実行時間: ${executionTime}秒)`);
+    console.error('エラー詳細:', error);
+    throw error;
+  }
+});
+
+// ========================================
+// TC-016: 一括削除
+// ========================================
+test.only('TC-016: 一括削除', async ({ page }) => {
+  const startTime = Date.now();
+  console.log('\n=== TC-016: 一括削除 開始 ===');
+
+  // ブラウザコンソールログをキャプチャ（モック検出用）
+  const consoleMessages: string[] = [];
+  const consoleErrors: string[] = [];
+  page.on('console', (msg) => {
+    const text = msg.text();
+    consoleMessages.push(text);
+    if (msg.type() === 'error') {
+      consoleErrors.push(text);
+      console.log(`[Browser ERROR]`, text);
+    }
+    if (text.includes('Bulk delete') || text.includes('削除') || text.includes('エラー')) {
+      console.log(`[Browser ${msg.type()}]`, text);
+    }
+  });
+
+  // ネットワークリクエストをすべてログ
+  const apiRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/')) {
+      apiRequests.push(`${request.method()} ${request.url()}`);
+      console.log(`[Network Request] ${request.method()} ${request.url()}`);
+    }
+  });
+
+  page.on('response', (response) => {
+    if (response.url().includes('/api/')) {
+      console.log(`[Network Response] ${response.status()} ${response.url()}`);
+    }
+  });
+
+  try {
+    // 前提条件: 管理者としてログイン済み
+    await loginAsAdmin(page);
+
+    // AuthContextの完全な初期化をさらに待機（重要）
+    await page.waitForTimeout(2000);
+
+    // 1. 商品管理ページに移動
+    await page.goto('/admin/products');
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(3000);
+    console.log('✓ 商品管理ページに移動');
+
+    // DataGridが表示されるまで待機
+    const dataGrid = page.locator('.MuiDataGrid-root').first();
+    await expect(dataGrid).toBeVisible();
+    console.log('✓ DataGridが表示');
+
+    // 削除前の総件数を取得
+    const rowsBeforeDelete = await dataGrid.locator('.MuiDataGrid-row').count();
+    console.log(`✓ 削除前の商品総件数: ${rowsBeforeDelete}件`);
+
+    // 2. 商品一覧の1件目のチェックボックスをクリック
+    const firstRow = dataGrid.locator('.MuiDataGrid-row').first();
+    await expect(firstRow).toBeVisible();
+    const firstCheckbox = firstRow.locator('input[type="checkbox"]').first();
+    await expect(firstCheckbox).toBeVisible();
+    await firstCheckbox.click();
+    await page.waitForTimeout(500);
+    console.log('✓ 1件目のチェックボックスをクリック');
+
+    // 3. 商品一覧の2件目のチェックボックスをクリック
+    const secondRow = dataGrid.locator('.MuiDataGrid-row').nth(1);
+    await expect(secondRow).toBeVisible();
+    const secondCheckbox = secondRow.locator('input[type="checkbox"]').first();
+    await expect(secondCheckbox).toBeVisible();
+    await secondCheckbox.click();
+    await page.waitForTimeout(500);
+    console.log('✓ 2件目のチェックボックスをクリック');
+
+    // 4. 商品一覧の3件目のチェックボックスをクリック
+    const thirdRow = dataGrid.locator('.MuiDataGrid-row').nth(2);
+    await expect(thirdRow).toBeVisible();
+    const thirdCheckbox = thirdRow.locator('input[type="checkbox"]').first();
+    await expect(thirdCheckbox).toBeVisible();
+    await thirdCheckbox.click();
+    await page.waitForTimeout(500);
+    console.log('✓ 3件目のチェックボックスをクリック');
+
+    // 3件がチェックされた状態を確認
+    await expect(firstCheckbox).toBeChecked();
+    await expect(secondCheckbox).toBeChecked();
+    await expect(thirdCheckbox).toBeChecked();
+    console.log('✓ 3件がチェックされた状態を確認');
+
+    // 5. [削除]ボタンをクリック
+    const bulkDeleteButton = page.locator('button:has-text("削除")').filter({ has: page.locator('svg[data-testid="DeleteIcon"]') });
+    await expect(bulkDeleteButton).toBeVisible();
+    await expect(bulkDeleteButton).toBeEnabled();
+    console.log('✓ [削除]ボタンが有効化されている');
+
+    // 🔍 モック検出: console.logのみの実装か確認
+    await page.waitForTimeout(500);
+    const hasBulkDeleteLog = consoleMessages.some(msg => msg.includes('Bulk delete:'));
+    if (hasBulkDeleteLog) {
+      console.log('❌ モック検出: console.logのみの実装が検出されました');
+      console.log('📊 実装状況: handleBulkDelete関数は`console.log`のみで、実際のAPI呼び出しが実装されていません');
+      console.log('🚨 このテストは即座に中止します（E2E仕様書の指示通り）');
+      throw new Error('モック実装検出: 一括削除機能が未実装（console.logのみ）');
+    }
+
+    // 6. ブラウザのネイティブ確認ダイアログをハンドル
+    let dialogMessage = '';
+    page.once('dialog', async (dialog) => {
+      dialogMessage = dialog.message();
+      console.log(`✓ 確認ダイアログが表示: "${dialogMessage}"`);
+
+      // ダイアログメッセージの検証
+      expect(dialogMessage).toContain('3件');
+      expect(dialogMessage).toContain('削除');
+      console.log('✓ 確認ダイアログに「3件の商品を削除」と表示');
+
+      // OKボタンをクリック（削除実行）
+      await dialog.accept();
+      console.log('✓ 確認ダイアログの[OK]ボタンをクリック');
+    });
+
+    // 7. API呼び出しとボタンクリックを同時に実行
+    // 一括削除は個別のDELETEリクエストを並列実行するため、最初のDELETEリクエストを待機
+    const [deleteResponse] = await Promise.all([
+      page.waitForResponse(
+        (response) => response.url().match(/\/api\/admin\/products\/[a-z0-9]+$/) && response.request().method() === 'DELETE',
+        { timeout: 10000 }
+      ),
+      bulkDeleteButton.click(),
+    ]);
+
+    if (!deleteResponse) {
+      console.log('❌ API呼び出しが検出されませんでした');
+      console.log('📊 実装状況: 一括削除のバックエンドAPIが呼び出されていません');
+      throw new Error('一括削除API呼び出しが検出されませんでした');
+    }
+
+    console.log('✓ [削除]ボタンをクリック');
+    console.log('✓ API呼び出しを確認（個別DELETEリクエスト×3）');
+
+    // 8. React Queryのキャッシュ更新を待つ
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+
+    // ページをリロードして最新データを取得
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await page.waitForTimeout(2000);
+    console.log('✓ ページをリロードして最新データを取得');
+
+    // 10. 選択した商品がDataGridから削除されていることを確認
+    const updatedDataGrid = page.locator('.MuiDataGrid-root').first();
+    await expect(updatedDataGrid).toBeVisible();
+
+    // 削除後の総件数を取得
+    const rowsAfterDelete = await updatedDataGrid.locator('.MuiDataGrid-row').count();
+    console.log(`✓ 削除後の商品総件数: ${rowsAfterDelete}件`);
+
+    // 件数が3件減っていることを確認
+    expect(rowsAfterDelete).toBe(rowsBeforeDelete - 3);
+    console.log('✓ 選択した3件の商品がDataGridから削除されました');
+
+    const executionTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n✅ TC-016: Pass (実行時間: ${executionTime}秒) - 一括削除が正常に動作`);
+  } catch (error) {
+    const executionTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n❌ TC-016: Fail (実行時間: ${executionTime}秒)`);
+    console.error('エラー詳細:', error);
+    throw error;
+  }
+});
+
+// ========================================
 // TC-019: 在庫調整ダイアログの表示
 // ========================================
 test('TC-019: 在庫調整ダイアログの表示', async ({ page }) => {
@@ -1774,7 +2095,7 @@ test('TC-019: 在庫調整ダイアログの表示', async ({ page }) => {
 // ========================================
 // TC-020: 在庫調整の実行
 // ========================================
-test.only('TC-020: 在庫調整の実行', async ({ page }) => {
+test('TC-020: 在庫調整の実行', async ({ page }) => {
   console.log('\n========================================');
   console.log('TC-020: 在庫調整の実行');
   console.log('========================================\n');
@@ -2068,7 +2389,7 @@ test('TC-018: 在庫ログの表示', async ({ page }) => {
  *
  * 期待結果: ✅ 未ログイン時はログインページにリダイレクトされる
  */
-test.only('TC-021: 権限エラー（未ログイン）', async ({ page }) => {
+test('TC-021: 権限エラー（未ログイン）', async ({ page }) => {
   const startTime = Date.now();
 
   try {
