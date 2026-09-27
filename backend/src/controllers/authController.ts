@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import { prisma } from '../config/prisma';
 import { createError } from '../middleware/errorHandler';
+import { sendPasswordResetEmail } from '../utils/emailService';
 
 const SALT_ROUNDS = 10;
 
@@ -282,30 +283,17 @@ export const requestPasswordReset = async (
       },
     });
 
-    // Resend SDKでメール送信（環境変数が設定されている場合のみ）
-    if (process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL) {
-      try {
-        const { Resend } = require('resend');
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
-
-        await resend.emails.send({
-          from: process.env.RESEND_FROM_EMAIL,
-          to: email,
-          subject: 'パスワードリセットのご案内',
-          html: `
-            <h2>パスワードリセット</h2>
-            <p>以下のリンクをクリックして、パスワードをリセットしてください。</p>
-            <p><a href="${resetUrl}">パスワードをリセット</a></p>
-            <p>このリンクは1時間有効です。</p>
-            <p>もしこのメールに心当たりがない場合は、無視してください。</p>
-          `,
-        });
-      } catch (emailError) {
-        console.error('メール送信エラー:', emailError);
-        // メール送信失敗してもトークンは保存済みなので、エラーにしない
-      }
+    // パスワードリセットメール送信（共通の emailService 経由）
+    // メール送信に失敗してもトークンは保存済みなので、エラーにはしない
+    try {
+      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
+      await sendPasswordResetEmail({
+        to: email,
+        name: user.name || 'お客様',
+        resetUrl,
+      });
+    } catch (emailError) {
+      console.error('パスワードリセットメール送信エラー:', emailError);
     }
 
     return res.json({
