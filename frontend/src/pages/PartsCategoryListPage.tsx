@@ -167,6 +167,7 @@ export const PartsCategoryListPage: React.FC = () => {
                 category={product.category?.name || product.productType}
                 description={product.description || ''}
                 price={product.price}
+                salePrice={product.salePrice}
                 imageUrl={product.images && product.images.length > 0 ? product.images[0] : undefined}
                 inStock={product.isActive}
                 stockText={product.isActive ? '在庫あり' : '在庫なし'}

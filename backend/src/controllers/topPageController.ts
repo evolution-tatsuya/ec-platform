@@ -44,6 +44,7 @@ export const getTopPageData = async (
       newProducts,
       popularProducts,
       news,
+      saleProductsRaw,
     ] = await Promise.all([
       // 1. ヒーロースライド取得
       prisma.heroSlide.findMany({
@@ -100,6 +101,20 @@ export const getTopPageData = async (
         orderBy: { publishedAt: 'desc' },
         take: 5,
       }),
+
+      // 7. セール商品取得（salePriceが設定されている公開商品、最新6件）
+      prisma.product.findMany({
+        where: {
+          isActive: true,
+          salePrice: { not: null },
+        },
+        include: {
+          category: true,
+          images: true,
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: 6,
+      }),
     ]);
 
     // 人気商品を注文数でソート
@@ -118,8 +133,7 @@ export const getTopPageData = async (
       .slice(0, 6)
       .map(({ orderItems, totalOrders, ...product }) => product);
 
-    // セール商品は現時点では未実装（将来的にsalePriceフィールドを追加予定）
-    const saleProducts: any[] = [];
+    // セール商品（salePriceが設定されている商品）
 
     // 商品画像を署名付きURL(order順)に変換して付与
     const withImages = async (products: any[]) =>
@@ -132,6 +146,7 @@ export const getTopPageData = async (
 
     const newProductsWithImages = await withImages(newProducts);
     const popularProductsWithImages = await withImages(sortedPopularProducts);
+    const saleProducts = await withImages(saleProductsRaw);
 
     // ヒーロー/カテゴリーの画像(R2キー)を署名URLに変換
     const heroSlidesWithUrls = await Promise.all(

@@ -8,6 +8,7 @@ interface ProductCardProps {
   category: string;
   description: string;
   price: number;
+  salePrice?: number | null;
   imageUrl?: string;
   inStock?: boolean;
   stockText?: string;
@@ -30,6 +31,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   category,
   description,
   price,
+  salePrice,
   imageUrl,
   inStock = true,
   stockText = '在庫あり',
@@ -132,16 +134,39 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           }}
         >
           {/* 価格 */}
-          <Typography
-            variant="h6"
-            sx={{
-              fontSize: 20,
-              fontWeight: 'bold',
-              color: 'primary.main',
-            }}
-          >
-            {formatPrice(price)}
-          </Typography>
+          {salePrice != null ? (
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap' }}>
+              <Chip
+                label="SALE"
+                size="small"
+                color="error"
+                sx={{ fontSize: 11, fontWeight: 700, height: 20 }}
+              />
+              <Typography
+                variant="body2"
+                sx={{ color: 'text.secondary', textDecoration: 'line-through', fontSize: 13 }}
+              >
+                {formatPrice(price)}
+              </Typography>
+              <Typography
+                variant="h6"
+                sx={{ fontSize: 20, fontWeight: 'bold', color: 'error.main' }}
+              >
+                {formatPrice(salePrice)}
+              </Typography>
+            </Box>
+          ) : (
+            <Typography
+              variant="h6"
+              sx={{
+                fontSize: 20,
+                fontWeight: 'bold',
+                color: 'primary.main',
+              }}
+            >
+              {formatPrice(price)}
+            </Typography>
+          )}
 
           {/* 在庫状態 */}
           <Chip
