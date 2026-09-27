@@ -24,6 +24,7 @@ import {
   Facebook as FacebookIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../hooks/useAuth';
+import { authAPI } from '../lib/api';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -140,8 +141,9 @@ const AuthPage = () => {
     setResetLoading(true);
 
     try {
-      // 実装時はAPIでパスワードリセットメール送信
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // パスワードリセット申請API。セキュリティ上、サーバーは
+      // メールアドレスの存在有無に関わらず成功を返す（ユーザー列挙防止）
+      await authAPI.requestPasswordReset(resetEmail);
       setResetSuccess(true);
       setResetEmail('');
     } catch (error) {

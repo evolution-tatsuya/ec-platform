@@ -105,6 +105,32 @@ export const authAPI = {
   getSession: async (): Promise<AuthResponse> => {
     return fetchAPI<AuthResponse>('/api/auth/session');
   },
+
+  /**
+   * パスワードリセット申請（リセットリンクをメール送信）
+   * セキュリティ上、メールアドレスの存在有無に関わらず成功レスポンスを返す
+   */
+  requestPasswordReset: async (
+    email: string
+  ): Promise<{ success: boolean; message: string }> => {
+    return fetchAPI('/api/auth/password-reset/request', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /**
+   * パスワードリセット確定（トークンと新パスワードで更新）
+   */
+  confirmPasswordReset: async (
+    token: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> => {
+    return fetchAPI('/api/auth/password-reset/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  },
 };
 
 // ========================================

@@ -32,6 +32,7 @@ import PricingPage from './pages/PricingPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import AuthPage from './pages/AuthPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import AboutPage from './pages/AboutPage';
 import LegalPage from './pages/LegalPage';
 import PrivacyPage from './pages/PrivacyPage';
@@ -210,6 +211,17 @@ function App() {
             <Route
               path="/privacy"
               element={<CustomerLayout><PrivacyPage /></CustomerLayout>}
+            />
+
+            {/* パスワード再設定ページ（メールのリンクから遷移。/auth/* より先に評価） */}
+            <Route
+              path="/auth/reset-password"
+              element={
+                <>
+                  <Header />
+                  <ResetPasswordPage />
+                </>
+              }
             />
 
             {/* 認証ページ（独自レイアウト、Headerあり） */}
