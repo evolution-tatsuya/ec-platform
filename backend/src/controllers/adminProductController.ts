@@ -806,6 +806,12 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
           if (target === 'gps') {
             // GPSは limits を送らない。planCode/features と期限(until=nextBillingDate)を送る。
             const planCode = normalizeGpsPlanCodeForUpdate(updatedProduct.planCode);
+            // 系統(planCode)が不正/未設定なら系統不整合の恐れ。planは送らず警告を残す。
+            if (!planCode) {
+              console.warn(
+                `[gps-plan-change] 契約 ${sub.id}: planCodeが不正/未設定のため系統(plan)を送らずfeatures/期限のみ反映します`
+              );
+            }
             const until = sub.nextBillingDate ? sub.nextBillingDate.toISOString() : null;
             const r = await changeGpsPlan({
               orderId: orderNumber,

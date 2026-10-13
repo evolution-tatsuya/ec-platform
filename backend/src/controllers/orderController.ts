@@ -1044,12 +1044,12 @@ export async function provisionAndDeliverForOrder(orderId: string): Promise<void
     }
 
     if (!result.success) {
-      // 失敗はnoteに記録（運営者が管理画面から手動リカバリ可能）
+      // 失敗はnoteに追記（既存noteは保持。運営者が管理画面から手動リカバリ可能）
+      const line = `[自動発行失敗 ${new Date().toISOString()}] ${result.error ?? ''}`;
+      const merged = sub.note ? `${sub.note}\n${line}` : line;
       await prisma.subscription.update({
         where: { id: sub.id },
-        data: {
-          note: `[自動発行失敗 ${new Date().toISOString()}] ${result.error ?? ''}`.slice(0, 500),
-        },
+        data: { note: merged.slice(-500) },
       });
       continue;
     }
