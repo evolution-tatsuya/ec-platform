@@ -16,6 +16,11 @@ import {
   suspendTenant,
   unsuspendTenant,
 } from '../services/inventoryProvisionService';
+// GPS連携は在庫とは別サービス（鍵・URL・データ契約がGPS専用・使い回し禁止）。
+import {
+  suspendGpsGrant,
+  unsuspendGpsGrant,
+} from '../services/gpsProvisionService';
 import {
   createSubscriptionCheckoutSession,
   syncStripeProductPrice,
@@ -36,9 +41,12 @@ async function suspendInventoryForSubscription(
   try {
     const sub = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: { order: { select: { orderNumber: true } } },
+      include: {
+        order: { select: { orderNumber: true } },
+        product: { select: { provisionTarget: true } },
+      },
     });
-    // 買い切りは対象外。注文番号が無い契約もスキップ（在庫テナント無し）。
+    // 買い切りは対象外。注文番号が無い契約もスキップ（連携テナント/利用権が無い）。
     if (!sub || sub.billingType === 'onetime') return;
     const orderNumber = sub.order?.orderNumber;
     if (!orderNumber) {
@@ -48,15 +56,34 @@ async function suspendInventoryForSubscription(
       return;
     }
 
-    const result = await suspendTenant({ orderId: orderNumber, reason });
-    if (!result.success) {
+    // 連携先の振り分け（混在防止）。GPS契約を在庫へ送らない／在庫契約をGPSへ送らない。
+    const target = sub.product?.provisionTarget ?? null;
+    let ok = false;
+    let err: string | undefined;
+    if (target === 'gps') {
+      const r = await suspendGpsGrant({ orderId: orderNumber, reason });
+      ok = r.success;
+      err = r.error;
+    } else if (target === 'inventory') {
+      const r = await suspendTenant({ orderId: orderNumber, reason });
+      ok = r.success;
+      err = r.error;
+    } else {
+      // provisionTarget 未設定は連携先不明。誤送信を避けてスキップしnoteに記録。
       await appendSubscriptionNote(
         subscriptionId,
-        `⚠️在庫suspend失敗(${reason}): ${result.error} — 手動でsuspendしてください`
+        `⚠️suspendスキップ: provisionTarget未設定のため連携先不明 — 手動対応が必要`
+      );
+      return;
+    }
+    if (!ok) {
+      await appendSubscriptionNote(
+        subscriptionId,
+        `⚠️${target} suspend失敗(${reason}): ${err} — 手動でsuspendしてください`
       );
     }
   } catch (error: any) {
-    console.error('[suspend] 在庫suspend連携で例外:', error?.message || error);
+    console.error('[suspend] suspend連携で例外:', error?.message || error);
   }
 }
 
@@ -70,7 +97,10 @@ async function unsuspendInventoryForSubscription(
   try {
     const sub = await prisma.subscription.findUnique({
       where: { id: subscriptionId },
-      include: { order: { select: { orderNumber: true } } },
+      include: {
+        order: { select: { orderNumber: true } },
+        product: { select: { provisionTarget: true } },
+      },
     });
     if (!sub || sub.billingType === 'onetime') return;
     const orderNumber = sub.order?.orderNumber;
@@ -81,15 +111,33 @@ async function unsuspendInventoryForSubscription(
       return;
     }
 
-    const result = await unsuspendTenant(orderNumber);
-    if (!result.success) {
+    // 連携先の振り分け（混在防止）。
+    const target = sub.product?.provisionTarget ?? null;
+    let ok = false;
+    let err: string | undefined;
+    if (target === 'gps') {
+      const r = await unsuspendGpsGrant(orderNumber);
+      ok = r.success;
+      err = r.error;
+    } else if (target === 'inventory') {
+      const r = await unsuspendTenant(orderNumber);
+      ok = r.success;
+      err = r.error;
+    } else {
       await appendSubscriptionNote(
         subscriptionId,
-        `⚠️在庫unsuspend失敗: ${result.error} — 手動で再開してください`
+        `⚠️unsuspendスキップ: provisionTarget未設定のため連携先不明 — 手動対応が必要`
+      );
+      return;
+    }
+    if (!ok) {
+      await appendSubscriptionNote(
+        subscriptionId,
+        `⚠️${target} unsuspend失敗: ${err} — 手動で再開してください`
       );
     }
   } catch (error: any) {
-    console.error('[unsuspend] 在庫unsuspend連携で例外:', error?.message || error);
+    console.error('[unsuspend] unsuspend連携で例外:', error?.message || error);
   }
 }
 

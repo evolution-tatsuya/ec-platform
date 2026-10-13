@@ -35,6 +35,12 @@ import {
   provisionTenant,
   reactivateTenant,
 } from '../services/inventoryProvisionService';
+// GPS連携は在庫連携と完全独立のサービス（鍵・URL・データ契約がGPS専用）。
+import {
+  provisionGpsGrant,
+  reactivateGpsGrant,
+  GpsPlanCode,
+} from '../services/gpsProvisionService';
 
 const prisma = new PrismaClient();
 
@@ -83,6 +89,17 @@ function parseProductFeatureKeys(v: unknown): string[] | null {
       return null;
     }
   }
+  return null;
+}
+
+/**
+ * GPSの系統コードを正規化する（GPS連携専用）。
+ * Product.planCode は 'personal' | 'organizer'（大小文字許容）。不正・未設定は null。
+ */
+function normalizeGpsPlanCode(v: unknown): GpsPlanCode | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  if (s === 'personal' || s === 'organizer') return s;
   return null;
 }
 
@@ -932,19 +949,17 @@ export async function provisionAndDeliverForOrder(orderId: string): Promise<void
     // 既に発行・送付済みならスキップ（冪等・二重送信防止）
     if (sub.licenseKeyDelivered && sub.licenseKey) continue;
 
-    // プランの上限（3項目必ず送る。null=無制限）
-    const limits = {
-      maxParts: sub.product?.maxParts ?? null,
-      maxImageMB: sub.product?.maxImageMB ?? null,
-      maxUsers: sub.product?.maxUsers ?? null,
-    };
-
     // 有効な機能キー（planFeatureKeys: JSON文字列 or null）。null=全機能ON（送らない）。
     const features = parseProductFeatureKeys(sub.product?.planFeatureKeys);
 
-    // 1. 発行API呼び出し。
-    //    引き継ぎ元(inheritFromOrderId)がある再購入は reactivate で旧テナントを新注文へ付け替え、
-    //    無ければ provision で新規テナント発行。どちらも結果の形（key/url/slug）は共通。
+    // 連携先の振り分け（販売時の混在防止の要）。
+    // provisionTarget: 'inventory'=在庫管理 / 'gps'=GPSラップタイマー / null=未設定。
+    const target = sub.product?.provisionTarget ?? null;
+    const isReactivate = !!sub.inheritFromOrderId;
+
+    // 発行API呼び出し。引き継ぎ元(inheritFromOrderId)がある再購入は reactivate で
+    // 旧契約を新注文へ付け替え、無ければ provision で新規発行。
+    // いずれも結果の形（success/key/url/slug/error）は在庫・GPSで共通。
     let result: {
       success: boolean;
       licenseKey?: string;
@@ -952,27 +967,80 @@ export async function provisionAndDeliverForOrder(orderId: string): Promise<void
       slug?: string;
       error?: string;
     };
-    const isReactivate = !!sub.inheritFromOrderId;
-    if (isReactivate) {
-      result = await reactivateTenant({
-        prevOrderId: sub.inheritFromOrderId!,
-        newOrderId: order.orderNumber,
-        plan: sub.product?.name,
-        billingType: sub.billingType,
-        productId: sub.productId,
-        limits,
-        ...(features ? { features } : {}),
-      });
+
+    if (target === 'gps') {
+      // --- GPS連携（在庫とは別サービス・別鍵。limitsは送らずplan/until/featuresを送る） ---
+      const planCode = normalizeGpsPlanCode(sub.product?.planCode);
+      if (!planCode) {
+        // 系統コード未設定/不正のGPS商品は発行不能（混在事故を避けるため黙って送らない）
+        result = {
+          success: false,
+          error:
+            'GPS商品の planCode が未設定/不正（personal|organizer のいずれかを設定してください）',
+        };
+      } else {
+        // 契約期限（= nextBillingDate）をISO文字列で送る。買い切り等でnullなら無期限扱い。
+        const until = sub.nextBillingDate
+          ? sub.nextBillingDate.toISOString()
+          : null;
+        if (isReactivate) {
+          result = await reactivateGpsGrant({
+            prevOrderId: sub.inheritFromOrderId!,
+            newOrderId: order.orderNumber,
+            plan: planCode,
+            billingType: sub.billingType,
+            productId: sub.productId,
+            ...(features ? { features } : {}),
+            until,
+          });
+        } else {
+          result = await provisionGpsGrant({
+            orderId: order.orderNumber, // 冪等キーの一部（GPS側は orderId×plan で冪等管理）
+            email: order.customerEmail,
+            plan: planCode,
+            billingType: sub.billingType,
+            productId: sub.productId,
+            ...(features ? { features } : {}),
+            until,
+          });
+        }
+      }
+    } else if (target === 'inventory') {
+      // --- 在庫管理連携（従来どおり limits を送る） ---
+      const limits = {
+        maxParts: sub.product?.maxParts ?? null,
+        maxImageMB: sub.product?.maxImageMB ?? null,
+        maxUsers: sub.product?.maxUsers ?? null,
+      };
+      if (isReactivate) {
+        result = await reactivateTenant({
+          prevOrderId: sub.inheritFromOrderId!,
+          newOrderId: order.orderNumber,
+          plan: sub.product?.name,
+          billingType: sub.billingType,
+          productId: sub.productId,
+          limits,
+          ...(features ? { features } : {}),
+        });
+      } else {
+        result = await provisionTenant({
+          orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
+          email: order.customerEmail,
+          plan: sub.product?.name,
+          billingType: sub.billingType,
+          productId: sub.productId,
+          limits,
+          ...(features ? { features } : {}),
+        });
+      }
     } else {
-      result = await provisionTenant({
-        orderId: order.orderNumber, // 冪等キー: 表示用注文番号（在庫側と合意）
-        email: order.customerEmail,
-        plan: sub.product?.name,
-        billingType: sub.billingType,
-        productId: sub.productId,
-        limits,
-        ...(features ? { features } : {}),
-      });
+      // provisionTarget 未設定のサブスク商品は連携先が決まらない＝発行不能。
+      // （既存在庫商品には移行で 'inventory' を設定する運用。ここで黙って在庫へ送ると混在事故になる）
+      result = {
+        success: false,
+        error:
+          'provisionTarget が未設定のため連携先を特定できません（inventory|gps を設定してください）',
+      };
     }
 
     if (!result.success) {

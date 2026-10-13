@@ -17,6 +17,8 @@ import { getStripe } from '../config/stripe';
 import { config } from '../config';
 import { provisionAndDeliverForOrder } from './orderController';
 import { suspendTenant } from '../services/inventoryProvisionService';
+// GPS連携は在庫とは別サービス（鍵・URL・データ契約がGPS専用・使い回し禁止）。
+import { suspendGpsGrant } from '../services/gpsProvisionService';
 import Stripe from 'stripe';
 
 const prisma = new PrismaClient();
@@ -225,7 +227,10 @@ async function onInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
 async function onSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
   const sub = await prisma.subscription.findFirst({
     where: { stripeSubscriptionId: subscription.id },
-    include: { order: { select: { orderNumber: true } } },
+    include: {
+      order: { select: { orderNumber: true } },
+      product: { select: { provisionTarget: true } },
+    },
   });
   if (!sub) return;
 
@@ -241,13 +246,27 @@ async function onSubscriptionDeleted(subscription: Stripe.Subscription): Promise
     });
   }
 
-  // 在庫アプリをsuspend（orderNumberで特定）
+  // 連携先をsuspend（orderNumberで特定）。連携先の振り分け（混在防止）。
   const orderNumber = sub.order?.orderNumber;
   if (orderNumber) {
-    const r = await suspendTenant({ orderId: orderNumber, reason: 'cancelled' });
-    if (!r.success) {
+    const target = sub.product?.provisionTarget ?? null;
+    if (target === 'gps') {
+      const r = await suspendGpsGrant({ orderId: orderNumber, reason: 'cancelled' });
+      if (!r.success) {
+        console.error(
+          `[stripe-webhook] GPS解約suspend失敗 (order ${orderNumber}): ${r.error}`
+        );
+      }
+    } else if (target === 'inventory') {
+      const r = await suspendTenant({ orderId: orderNumber, reason: 'cancelled' });
+      if (!r.success) {
+        console.error(
+          `[stripe-webhook] 在庫解約suspend失敗 (order ${orderNumber}): ${r.error}`
+        );
+      }
+    } else {
       console.error(
-        `[stripe-webhook] 解約suspend失敗 (order ${orderNumber}): ${r.error}`
+        `[stripe-webhook] 解約suspendスキップ: provisionTarget未設定 (order ${orderNumber})`
       );
     }
   }

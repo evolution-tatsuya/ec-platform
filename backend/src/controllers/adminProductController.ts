@@ -11,6 +11,8 @@ import {
   buildProductImageUrls,
 } from '../utils/productImageService';
 import { changePlan } from '../services/inventoryProvisionService';
+// GPS連携は在庫とは別サービス（鍵・URL・データ契約がGPS専用・使い回し禁止）。
+import { changeGpsPlan, GpsPlanCode } from '../services/gpsProvisionService';
 import { syncStripeProductPrice } from '../services/stripeService';
 
 // ヘルパー関数: string | string[] を string に変換
@@ -95,6 +97,22 @@ const parseFeatureKeys = (v: unknown): string[] | null => {
       return null;
     }
   }
+  return null;
+};
+
+// 連携先の正規化。'inventory'|'gps' のみ許容（大小文字許容）。不正/未設定はnull。
+const normalizeProvisionTarget = (v: unknown): 'inventory' | 'gps' | null => {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  if (s === 'inventory' || s === 'gps') return s;
+  return null;
+};
+
+// GPS系統コードの正規化（GPS連携専用）。'personal'|'organizer'（大小文字許容）。不正/未設定はnull。
+const normalizeGpsPlanCodeForUpdate = (v: unknown): GpsPlanCode | null => {
+  if (typeof v !== 'string') return null;
+  const s = v.trim().toLowerCase();
+  if (s === 'personal' || s === 'organizer') return s;
   return null;
 };
 
@@ -316,6 +334,10 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       unitLabel,
       planTagline,
       isPopular,
+      // 連携先の振り分け（サブスクのみ）。'inventory'|'gps'。混在防止の要。
+      provisionTarget,
+      // GPS連携の系統コード。'personal'|'organizer'。
+      planCode,
       preparationDays = 3,
       allowWeekendDelivery = true,
       initialStock = 0,
@@ -429,6 +451,9 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
           maxUsers: productType === 'subscription' ? parseLimitInt(maxUsers) : null,
           planFeatures: productType === 'subscription' ? normalizeFeatures(planFeatures) : null,
           planFeatureKeys: productType === 'subscription' ? normalizeFeatureKeys(planFeatureKeys) : null,
+          // 連携先・系統コードはサブスク商品のみ保存（それ以外はnull）。
+          provisionTarget: productType === 'subscription' ? normalizeProvisionTarget(provisionTarget) : null,
+          planCode: productType === 'subscription' ? normalizeGpsPlanCodeForUpdate(planCode) : null,
           unitLabel: productType === 'subscription' ? (unitLabel || null) : null,
           planTagline: productType === 'subscription' ? (planTagline || null) : null,
           isPopular: productType === 'subscription' ? parseBool(isPopular) : false,
@@ -557,6 +582,8 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       maxUsers,
       planFeatures,
       planFeatureKeys,
+      provisionTarget,
+      planCode,
       unitLabel,
       planTagline,
       isPopular,
@@ -724,6 +751,9 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
         ...(maxUsers !== undefined && { maxUsers: parseLimitInt(maxUsers) }),
         ...(planFeatures !== undefined && { planFeatures: normalizeFeatures(planFeatures) }),
         ...(planFeatureKeys !== undefined && { planFeatureKeys: normalizeFeatureKeys(planFeatureKeys) }),
+        // 連携先・系統コード（送られてきたフィールドのみ更新。不正値はnull化＝混在防止）
+        ...(provisionTarget !== undefined && { provisionTarget: normalizeProvisionTarget(provisionTarget) }),
+        ...(planCode !== undefined && { planCode: normalizeGpsPlanCodeForUpdate(planCode) }),
         ...(unitLabel !== undefined && { unitLabel: unitLabel || null }),
         ...(planTagline !== undefined && { planTagline: planTagline || null }),
         ...(isPopular !== undefined && { isPopular: parseBool(isPopular) }),
@@ -739,46 +769,75 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       },
     });
 
-    // サブスク商品の上限または機能フラグが変わったら、契約中の既存顧客の在庫に自動反映
-    // （方法A: EC側でループ）。名前・価格・表示用機能リスト等の変更は在庫反映不要。
+    // サブスク商品の設定（上限/機能/系統）が変わったら、契約中の既存顧客の連携先に自動反映
+    // （方法A: EC側でループ）。名前・価格・表示用機能リスト等の変更は連携反映不要。
+    // 連携先ごとに意味のある項目が違う: 在庫=limits/features、GPS=planCode/features。
     const isSubscription = updatedProduct.productType === 'subscription';
+    const target = updatedProduct.provisionTarget ?? null;
     const limitsChanged =
-      isSubscription &&
-      (existingProduct.maxParts !== updatedProduct.maxParts ||
-        existingProduct.maxImageMB !== updatedProduct.maxImageMB ||
-        existingProduct.maxUsers !== updatedProduct.maxUsers);
+      existingProduct.maxParts !== updatedProduct.maxParts ||
+      existingProduct.maxImageMB !== updatedProduct.maxImageMB ||
+      existingProduct.maxUsers !== updatedProduct.maxUsers;
     const featuresChanged =
-      isSubscription &&
       (existingProduct.planFeatureKeys ?? null) !== (updatedProduct.planFeatureKeys ?? null);
-    if (limitsChanged || featuresChanged) {
+    const planCodeChanged =
+      (existingProduct.planCode ?? null) !== (updatedProduct.planCode ?? null);
+
+    // 在庫: limits か features の変更で反映 / GPS: planCode か features の変更で反映
+    const inventoryNeedsSync =
+      isSubscription && target === 'inventory' && (limitsChanged || featuresChanged);
+    const gpsNeedsSync =
+      isSubscription && target === 'gps' && (planCodeChanged || featuresChanged);
+
+    if (inventoryNeedsSync || gpsNeedsSync) {
       try {
-        // この商品を契約中(active)の全契約に、新しい上限・機能を反映
+        // この商品を契約中(active)の全契約に、新しい設定を反映
         const activeSubs = await prisma.subscription.findMany({
           where: { productId: id, status: 'active' },
           include: { order: { select: { orderNumber: true } } },
         });
-        const newLimits = {
-          maxParts: updatedProduct.maxParts,
-          maxImageMB: updatedProduct.maxImageMB,
-          maxUsers: updatedProduct.maxUsers,
-        };
         // planFeatureKeys(JSON文字列 or null)→features配列。null=全機能ON（features送らない）。
         const features = parseFeatureKeys(updatedProduct.planFeatureKeys);
+
         for (const sub of activeSubs) {
           const orderNumber = sub.order?.orderNumber;
           if (!orderNumber) continue;
-          const r = await changePlan({
-            orderId: orderNumber,
-            productId: id,
-            limits: newLimits,
-            ...(features ? { features } : {}),
-          });
-          if (!r.success) {
-            console.error(`[plan-change] 契約 ${sub.id} の反映失敗:`, r.error);
+
+          if (target === 'gps') {
+            // GPSは limits を送らない。planCode/features と期限(until=nextBillingDate)を送る。
+            const planCode = normalizeGpsPlanCodeForUpdate(updatedProduct.planCode);
+            const until = sub.nextBillingDate ? sub.nextBillingDate.toISOString() : null;
+            const r = await changeGpsPlan({
+              orderId: orderNumber,
+              ...(planCode ? { plan: planCode } : {}),
+              productId: id,
+              ...(features ? { features } : {}),
+              until,
+            });
+            if (!r.success) {
+              console.error(`[gps-plan-change] 契約 ${sub.id} の反映失敗:`, r.error);
+            }
+          } else {
+            // 在庫（従来どおり limits を送る）
+            const r = await changePlan({
+              orderId: orderNumber,
+              productId: id,
+              limits: {
+                maxParts: updatedProduct.maxParts,
+                maxImageMB: updatedProduct.maxImageMB,
+                maxUsers: updatedProduct.maxUsers,
+              },
+              ...(features ? { features } : {}),
+            });
+            if (!r.success) {
+              console.error(`[plan-change] 契約 ${sub.id} の反映失敗:`, r.error);
+            }
           }
         }
         if (activeSubs.length > 0) {
-          console.log(`[plan-change] ${activeSubs.length}件の契約に上限/機能を反映しました`);
+          console.log(
+            `[plan-change] ${activeSubs.length}件の契約に設定を反映しました (${target})`
+          );
         }
       } catch (e) {
         console.error('[plan-change] 反映処理でエラー:', e);
