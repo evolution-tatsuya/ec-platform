@@ -107,6 +107,14 @@ model Product {
   // 在庫アプリに送る「有効な機能キー」のJSON配列（例 ["search","qr_code"]）。
   // null/空=全機能ON（在庫側仕様）。表示用のplanFeaturesとは別で、実際のON/OFF制御に使う。
   planFeatureKeys      String?  @map("plan_feature_keys")
+  // 連携先アプリの識別子（productType='subscription'のみ意味を持つ）。
+  // 'inventory'=在庫管理アプリ / 'gps'=GPSラップタイマー。null=未設定（発行時は振り分け不能＝連携スキップ）。
+  // 既存の在庫サブスク商品には移行時に 'inventory' を明示設定する。販売時の連携先混在を防ぐ唯一の真実。
+  provisionTarget      String?  @map("provision_target")
+  // GPS連携専用: サブスクの系統コード。'personal'=個人仕様 / 'organizer'=イベント運営。
+  // GPSへ provision/plan-change 時に plan として送る（GPS側が系統判定に使用）。
+  // 在庫連携(provisionTarget='inventory')では未使用。
+  planCode             String?  @map("plan_code")
   // Stripe連携（案B: 自動継続課金）。EC商品↔Stripe Product/Price のマッピング。
   // 商品保存時にコードからStripe Product/Priceを自動作成して埋める。null=未作成。
   // billingType=monthly/yearlyのサブスク商品はサブスク用Price、物販はProductのみ（都度Price不要）。
